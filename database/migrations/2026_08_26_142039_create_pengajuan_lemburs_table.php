@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('pengajuan_lemburs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->timestamp('waktu_mulai');
+            $table->timestamp('waktu_selesai');
+            $table->text('deskripsi_tugas')->nullable();
+            $table->string('status_approval', 30)->default('Pending');
             $table->timestamps();
         });
     }

@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('performance_appraisals', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->integer('periode_bulan')->nullable();
+            $table->integer('periode_tahun')->nullable();
+            $table->string('nilai_huruf', 5)->nullable();
+            $table->decimal('skor', 5, 2)->nullable();
+            $table->text('catatan')->nullable();
             $table->timestamps();
         });
     }

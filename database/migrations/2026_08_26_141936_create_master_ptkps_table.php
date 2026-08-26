@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('master_ptkps', function (Blueprint $table) {
             $table->id();
+            $table->string('kode_ptkp', 10)->unique();
+            $table->string('deskripsi', 100)->nullable();
+            $table->decimal('nominal_neto_tahunan', 15, 2);
             $table->timestamps();
         });
     }

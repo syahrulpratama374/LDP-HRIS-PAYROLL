@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('surat_peringatans', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->string('jenis_sp', 50)->nullable();
+            $table->date('tgl_mulai');
+            $table->date('tgl_selesai');
+            $table->text('keterangan')->nullable();
             $table->timestamps();
         });
     }

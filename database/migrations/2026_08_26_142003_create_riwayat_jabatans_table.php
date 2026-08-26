@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('riwayat_jabatans', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->foreignId('jabatan_id')->constrained('jabatans');
+            $table->date('effective_date_start');
+            $table->date('effective_date_end')->nullable();
             $table->timestamps();
         });
     }

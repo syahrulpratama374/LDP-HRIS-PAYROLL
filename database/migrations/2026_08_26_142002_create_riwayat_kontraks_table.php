@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('riwayat_kontraks', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->string('no_dokumen', 100);
+            $table->string('jenis_kontrak', 50)->nullable();
+            $table->date('tgl_mulai');
+            $table->date('tgl_akhir')->nullable();
             $table->timestamps();
         });
     }

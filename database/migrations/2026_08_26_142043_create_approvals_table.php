@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('approvals', function (Blueprint $table) {
             $table->id();
+            $table->morphs('approvable'); // Otomatis membuat approvable_type & approvable_id
+            $table->foreignId('approver_id')->constrained('users')->cascadeOnDelete();
+            $table->integer('level_approval')->comment('1: SPV, 2: HC, 3: Finance/Direktur');
+            $table->string('status', 30)->default('Pending');
+            $table->text('catatan')->nullable();
             $table->timestamps();
         });
     }

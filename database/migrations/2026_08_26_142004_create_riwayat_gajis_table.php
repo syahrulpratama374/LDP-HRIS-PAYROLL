@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('riwayat_gajis', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->decimal('nominal_gaji_pokok', 15, 2);
+            $table->date('effective_date_start');
+            $table->date('effective_date_end')->nullable();
             $table->timestamps();
         });
     }

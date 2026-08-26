@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('hari_liburs', function (Blueprint $table) {
             $table->id();
+            $table->date('tanggal')->unique();
+            $table->string('keterangan', 150);
+            $table->boolean('is_cuti_bersama')->default(false);
             $table->timestamps();
         });
     }

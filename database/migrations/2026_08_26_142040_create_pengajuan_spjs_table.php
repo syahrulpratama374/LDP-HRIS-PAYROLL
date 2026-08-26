@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('pengajuan_spjs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->string('tujuan', 150);
+            $table->date('tgl_mulai');
+            $table->date('tgl_selesai');
+            $table->string('status_approval', 30)->default('Pending');
             $table->timestamps();
         });
     }

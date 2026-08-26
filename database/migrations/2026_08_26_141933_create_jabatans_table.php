@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('jabatans', function (Blueprint $table) {
             $table->id();
+            $table->string('nama_jabatan', 100);
+            $table->integer('level_otoritas')->default(0);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

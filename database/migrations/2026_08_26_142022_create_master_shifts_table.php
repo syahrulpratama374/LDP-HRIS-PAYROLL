@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('master_shifts', function (Blueprint $table) {
             $table->id();
+            $table->string('kode_shift', 20)->unique();
+            $table->string('nama_shift', 50);
+            $table->time('jam_masuk');
+            $table->time('jam_keluar');
+            $table->boolean('lintas_hari')->default(false);
             $table->timestamps();
         });
     }

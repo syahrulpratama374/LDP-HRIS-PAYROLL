@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('departemens', function (Blueprint $table) {
             $table->id();
+            $table->string('kode_departemen', 20)->unique();
+            $table->string('nama_departemen', 100);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

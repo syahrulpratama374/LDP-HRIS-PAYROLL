@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('audit_trails', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('modul', 100)->nullable();
+            $table->string('aksi', 50)->nullable();
+            $table->longText('data_lama')->nullable();
+            $table->longText('data_baru')->nullable();
+            $table->timestamp('waktu')->useCurrent();
             $table->timestamps();
         });
     }

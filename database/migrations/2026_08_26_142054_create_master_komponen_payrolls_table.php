@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('master_komponen_payrolls', function (Blueprint $table) {
             $table->id();
+            $table->string('kode_komponen', 50)->unique();
+            $table->string('nama_komponen', 100);
+            $table->string('jenis', 20); 
+            $table->boolean('is_taxable')->default(true);
             $table->timestamps();
         });
     }

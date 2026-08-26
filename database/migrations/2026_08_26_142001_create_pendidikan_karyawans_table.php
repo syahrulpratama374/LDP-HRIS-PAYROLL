@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('pendidikan_karyawans', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->string('institusi', 150);
+            $table->string('jurusan', 100)->nullable();
+            $table->integer('thn_masuk')->nullable();
+            $table->integer('thn_lulus')->nullable();
             $table->timestamps();
         });
     }

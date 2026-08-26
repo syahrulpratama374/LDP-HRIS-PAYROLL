@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('detail_payrolls', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('payroll_id')->constrained('payrolls')->cascadeOnDelete();
+            $table->foreignId('komponen_id')->constrained('master_komponen_payrolls');
+            $table->string('jenis', 20);
+            $table->decimal('nominal', 15, 2);
             $table->timestamps();
         });
     }

@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('riwayat_it_tickets', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('ticket_id')->constrained('it_tickets')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->integer('progress_sebelumnya')->nullable();
+            $table->integer('progress_baru')->nullable();
+            $table->text('catatan')->nullable();
             $table->timestamps();
         });
     }

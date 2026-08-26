@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('jadwal_shift_karyawans', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->foreignId('shift_id')->constrained('master_shifts');
+            $table->date('tanggal');
             $table->timestamps();
         });
     }

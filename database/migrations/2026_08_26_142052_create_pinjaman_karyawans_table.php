@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('pinjaman_karyawans', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->decimal('total_pinjaman', 15, 2);
+            $table->integer('tenor_bulan');
+            $table->decimal('sisa_pinjaman', 15, 2);
+            $table->string('status', 30)->default('Berjalan');
             $table->timestamps();
         });
     }

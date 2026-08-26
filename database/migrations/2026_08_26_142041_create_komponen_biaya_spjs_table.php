@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('komponen_biaya_spjs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('spj_id')->constrained('pengajuan_spjs')->cascadeOnDelete();
+            $table->string('jenis_biaya', 50)->nullable();
+            $table->decimal('nominal', 15, 2);
+            $table->string('bukti_path', 255)->nullable();
             $table->timestamps();
         });
     }

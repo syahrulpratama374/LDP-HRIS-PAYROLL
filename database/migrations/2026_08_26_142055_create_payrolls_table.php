@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('payrolls', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
+            $table->integer('periode_bulan');
+            $table->integer('periode_tahun');
+            $table->decimal('total_gaji_bersih', 15, 2);
+            $table->string('status', 30)->default('Draft');
             $table->timestamps();
         });
     }
