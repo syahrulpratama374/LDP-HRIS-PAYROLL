@@ -11,9 +11,8 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             
-            
             $table->foreignId('role_id')->nullable()->constrained('roles')->nullOnDelete();
-            $table->foreignId('karyawan_id')->nullable()->constrained('karyawans')->nullOnDelete();
+            
             
             $table->string('name');
             $table->string('username', 100)->unique();

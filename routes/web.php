@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MasterData\DepartemenController;
+use App\Http\Controllers\JabatanController;
+use App\Http\Controllers\GolonganController;
+use App\Http\Controllers\Kepegawaian\KaryawanController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -28,8 +31,17 @@ Route::middleware('auth')->group(function () {
     // Semua rute di dalam kotak ini akan diawali URL /master-data
     Route::prefix('master-data')->group(function () {
         Route::resource('departemen', DepartemenController::class)->except(['create', 'show', 'edit']);
+        Route::resource('jabatan', JabatanController::class)->except(['create', 'show', 'edit']);
+        Route::resource('golongan', GolonganController::class)->except(['create', 'show', 'edit']);
         
         // Rute Master Data lainnya seperti Jabatan dan Golongan akan ditambahkan di baris ini nanti
+    });
+
+    // ==========================================
+    // ROUTING OPERASIONAL & KEPEGAWAIAN
+    // ==========================================
+    Route::prefix('kepegawaian')->group(function () {
+        Route::resource('karyawan', KaryawanController::class);
     });
 });
 

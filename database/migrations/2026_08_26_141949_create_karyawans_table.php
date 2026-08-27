@@ -6,15 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('karyawans', function (Blueprint $table) {
             $table->id();
             
-            // Foreign Keys
+            // Relasi ke tabel akun login (Tambahan Baru)
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            
+            // Foreign Keys (Pondasi Master Data)
             $table->foreignId('departemen_id')->constrained('departemens');
             $table->foreignId('jabatan_id')->constrained('jabatans');
             $table->foreignId('golongan_id')->constrained('golongans');
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('no_telp', 20)->nullable();
             $table->date('tgl_bergabung');
             
-            // Data Sensitif 
+            // Data Sensitif (Keamanan Tinggi)
             $table->text('no_ktp_encrypted');
             $table->text('npwp_encrypted')->nullable();
             $table->text('no_rek_bca_encrypted')->nullable();
@@ -47,9 +47,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('karyawans');
