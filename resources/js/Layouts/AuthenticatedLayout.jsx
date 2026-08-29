@@ -3,10 +3,8 @@ import ApplicationLogo from "@/Components/ApplicationLogo";
 import Dropdown from "@/Components/Dropdown";
 import NavLink from "@/Components/NavLink";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink";
-// Tambahkan usePage di sini
 import { Link, usePage } from "@inertiajs/react";
 
-// Hapus 'user' dari dalam kurung props
 export default function AuthenticatedLayout({ header, children }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -21,74 +19,122 @@ export default function AuthenticatedLayout({ header, children }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
-                            {/* Logo */}
+                            {/* Logo: Mengarahkan ke rute yang berbeda berdasarkan Role */}
                             <div className="shrink-0 flex items-center">
-                                <Link href={route("dashboard")}>
+                                <Link
+                                    href={
+                                        user.role_id === 1
+                                            ? route("dashboard")
+                                            : route("absensi.create")
+                                    }
+                                >
                                     <ApplicationLogo className="block h-9 w-auto fill-current text-indigo-600" />
                                 </Link>
                             </div>
 
                             {/* Menu Navigasi Desktop */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route("dashboard")}
-                                    active={route().current("dashboard")}
-                                >
-                                    Dashboard
-                                </NavLink>
-                                <NavLink
-                                    href={route("karyawan.index")}
-                                    active={route().current("karyawan.*")}
-                                >
-                                    Data Karyawan
-                                </NavLink>
+                                {/* === MENU KHUSUS ADMIN === */}
+                                {user.role_id === 1 && (
+                                    <>
+                                        <NavLink
+                                            href={route("dashboard")}
+                                            active={route().current(
+                                                "dashboard",
+                                            )}
+                                        >
+                                            Dashboard
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("karyawan.index")}
+                                            active={route().current(
+                                                "karyawan.*",
+                                            )}
+                                        >
+                                            Data Karyawan
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("absensi.index")}
+                                            active={route().current(
+                                                "absensi.index",
+                                            )}
+                                        >
+                                            Monitor Absensi
+                                        </NavLink>
 
-                                {/* Dropdown Master Data */}
-                                <div className="hidden sm:flex sm:items-center">
-                                    <Dropdown>
-                                        <Dropdown.Trigger>
-                                            <span className="inline-flex rounded-md mt-1">
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
-                                                >
-                                                    Master Data
-                                                    <svg
-                                                        className="ms-2 -me-0.5 h-4 w-4"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
+                                        {/* Dropdown Master Data */}
+                                        <div className="hidden sm:flex sm:items-center">
+                                            <Dropdown>
+                                                <Dropdown.Trigger>
+                                                    <span className="inline-flex rounded-md mt-1">
+                                                        <button
+                                                            type="button"
+                                                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                                        >
+                                                            Master Data
+                                                            <svg
+                                                                className="ms-2 -me-0.5 h-4 w-4"
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                viewBox="0 0 20 20"
+                                                                fill="currentColor"
+                                                            >
+                                                                <path
+                                                                    fillRule="evenodd"
+                                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                                    clipRule="evenodd"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    </span>
+                                                </Dropdown.Trigger>
+                                                <Dropdown.Content>
+                                                    <Dropdown.Link
+                                                        href={route(
+                                                            "departemen.index",
+                                                        )}
                                                     >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            </span>
-                                        </Dropdown.Trigger>
+                                                        Departemen
+                                                    </Dropdown.Link>
+                                                    <Dropdown.Link
+                                                        href={route(
+                                                            "jabatan.index",
+                                                        )}
+                                                    >
+                                                        Jabatan
+                                                    </Dropdown.Link>
+                                                    <Dropdown.Link
+                                                        href={route(
+                                                            "golongan.index",
+                                                        )}
+                                                    >
+                                                        Golongan
+                                                    </Dropdown.Link>
+                                                </Dropdown.Content>
+                                            </Dropdown>
+                                        </div>
+                                    </>
+                                )}
 
-                                        <Dropdown.Content>
-                                            <Dropdown.Link
-                                                href={route("departemen.index")}
-                                            >
-                                                Departemen
-                                            </Dropdown.Link>
-                                            <Dropdown.Link
-                                                href={route("jabatan.index")}
-                                            >
-                                                Jabatan
-                                            </Dropdown.Link>
-                                            <Dropdown.Link
-                                                href={route("golongan.index")}
-                                            >
-                                                Golongan
-                                            </Dropdown.Link>
-                                            {/* Rute Jabatan dan Golongan akan ditaruh di sini nanti */}
-                                        </Dropdown.Content>
-                                    </Dropdown>
-                                </div>
+                                {/* === MENU KHUSUS KARYAWAN === */}
+
+                                {user.role_id == 2 && (
+                                    <>
+                                        <NavLink
+                                            href={route("absensi.create")}
+                                            active={route().current(
+                                                "absensi.create",
+                                            )}
+                                        >
+                                            Absensi Kehadiran
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("cuti.index")}
+                                            active={route().current("cuti.*")}
+                                        >
+                                            Pengajuan Cuti & Izin
+                                        </NavLink>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -118,7 +164,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                             </button>
                                         </span>
                                     </Dropdown.Trigger>
-
                                     <Dropdown.Content>
                                         <Dropdown.Link
                                             href={route("profile.edit")}
@@ -189,23 +234,69 @@ export default function AuthenticatedLayout({ header, children }) {
                     }
                 >
                     <div className="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink
-                            href={route("dashboard")}
-                            active={route().current("dashboard")}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
+                        {/* === MENU KHUSUS ADMIN (MOBILE) === */}
+                        {user.role_id === 1 && (
+                            <>
+                                <ResponsiveNavLink
+                                    href={route("dashboard")}
+                                    active={route().current("dashboard")}
+                                >
+                                    Dashboard
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("karyawan.index")}
+                                    active={route().current("karyawan.*")}
+                                >
+                                    Data Karyawan
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("absensi.index")}
+                                    active={route().current("absensi.index")}
+                                >
+                                    Monitor Absensi
+                                </ResponsiveNavLink>
 
-                        {/* Judul Kategori Master Data di Mobile */}
-                        <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                            Master Data
-                        </div>
-                        <ResponsiveNavLink
-                            href={route("departemen.index")}
-                            active={route().current("departemen.index")}
-                        >
-                            Departemen
-                        </ResponsiveNavLink>
+                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                    Master Data
+                                </div>
+                                <ResponsiveNavLink
+                                    href={route("departemen.index")}
+                                    active={route().current("departemen.index")}
+                                >
+                                    Departemen
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("jabatan.index")}
+                                    active={route().current("jabatan.index")}
+                                >
+                                    Jabatan
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("golongan.index")}
+                                    active={route().current("golongan.index")}
+                                >
+                                    Golongan
+                                </ResponsiveNavLink>
+                            </>
+                        )}
+
+                        {/* === MENU KHUSUS KARYAWAN (MOBILE) === */}
+                        {user.role_id === 2 && (
+                            <>
+                                <ResponsiveNavLink
+                                    href={route("absensi.create")}
+                                    active={route().current("absensi.create")}
+                                >
+                                    Absensi Kehadiran
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("cuti.index")}
+                                    active={route().current("cuti.*")}
+                                >
+                                    Pengajuan Cuti & Izin
+                                </ResponsiveNavLink>
+                            </>
+                        )}
                     </div>
 
                     <div className="pt-4 pb-1 border-t border-gray-200">
@@ -217,7 +308,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {user.email}
                             </div>
                         </div>
-
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink href={route("profile.edit")}>
                                 Profile

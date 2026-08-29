@@ -27,7 +27,7 @@ class KaryawanController extends Controller
     public function create()
     {
         // Pastikan tabel master_ptkps sudah ada isinya atau minimal tidak error saat dipanggil
-        $ptkps = DB::table('master_ptkps')->get(); 
+        $ptkps = DB::table('master_ptkps')->get();
 
         return Inertia::render('Kepegawaian/Karyawan/Create', [
             'departemens' => Departemen::orderBy('nama_departemen')->get(),
@@ -50,16 +50,16 @@ class KaryawanController extends Controller
             'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
-            
+
             'departemen_id' => 'required|exists:departemens,id',
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            
+
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
-            
+
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
         ]);
@@ -72,7 +72,7 @@ class KaryawanController extends Controller
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
-                'password' => Hash::make($validated['nik_internal']), 
+                'password' => Hash::make($validated['nik_internal']),
                 'role_id' => 2, // Asumsi Role ID 2 adalah Karyawan Biasa
             ]);
 
@@ -83,7 +83,7 @@ class KaryawanController extends Controller
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
-                
+
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'tempat_lahir' => $validated['tempat_lahir'],
@@ -93,12 +93,12 @@ class KaryawanController extends Controller
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
-                
+
                 // Proses Enkripsi Tingkat Militer
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
                 'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-                
+
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
                 'status_aktif' => true,
@@ -106,7 +106,6 @@ class KaryawanController extends Controller
 
             DB::commit(); // Kunci data jika semua sukses
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan Akun Login berhasil dibuat!');
-
         } catch (\Exception $e) {
             DB::rollBack(); // Batalkan semua jika ada yang gagal
             return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()]);
@@ -145,16 +144,16 @@ class KaryawanController extends Controller
             'email_kantor' => 'required|email|unique:karyawans,email_kantor,' . $karyawan->id,
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
-            
+
             'departemen_id' => 'required|exists:departemens,id',
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            
+
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
-            
+
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
             'status_aktif' => 'required|boolean',
@@ -176,7 +175,7 @@ class KaryawanController extends Controller
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
-                
+
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'tempat_lahir' => $validated['tempat_lahir'],
@@ -186,11 +185,11 @@ class KaryawanController extends Controller
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
-                
+
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
                 'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-                
+
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
                 'status_aktif' => $validated['status_aktif'],
@@ -210,16 +209,114 @@ class KaryawanController extends Controller
         try {
             $karyawan = Karyawan::findOrFail($id);
             $userId = $karyawan->user_id;
-            
+
             // 3. Pembersihan Menyeluruh (Soft Delete atau Hard Delete)
             $karyawan->delete();
             User::where('id', $userId)->delete(); // Hapus juga akun loginnya
-            
+
             DB::commit();
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan akun loginnya berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Gagal menghapus data: ' . $e->getMessage()]);
+        }
+    }
+
+    public function show($id)
+    {
+        // Tambahkan 'riwayatGajis' dan 'riwayatJabatans.jabatan' ke dalam array with()
+        $karyawan = Karyawan::with([
+            'departemen',
+            'jabatan',
+            'golongan',
+            'user',
+            'riwayatGajis',
+            'riwayatJabatans.jabatan'
+        ])->findOrFail($id);
+
+        $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
+        $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : 'Belum Tersedia';
+        $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : 'Belum Tersedia';
+
+        // Pastikan Anda mem-passing data master jabatan untuk keperluan dropdown form riwayat
+        return Inertia::render('Kepegawaian/Karyawan/Show', [
+            'karyawan' => $karyawan,
+            'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
+        ]);
+    }
+
+    public function updateGaji(Request $request, $id)
+    {
+        $request->validate([
+            'nominal_gaji_pokok' => 'required|numeric|min:0',
+            'effective_date_start' => 'required|date',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Cari riwayat gaji yang masih aktif (belum punya tanggal akhir)
+            $riwayatAktif = \App\Models\RiwayatGaji::where('karyawan_id', $id)
+                ->whereNull('effective_date_end')
+                ->orderBy('effective_date_start', 'desc')
+                ->first();
+
+            // 2. Jika ada, tutup riwayat lama pada H-1 sebelum riwayat baru berlaku
+            if ($riwayatAktif) {
+                $tanggalTutup = \Carbon\Carbon::parse($request->effective_date_start)->subDay()->toDateString();
+                $riwayatAktif->update(['effective_date_end' => $tanggalTutup]);
+            }
+
+            // 3. Buat riwayat gaji baru
+            \App\Models\RiwayatGaji::create([
+                'karyawan_id' => $id,
+                'nominal_gaji_pokok' => $request->nominal_gaji_pokok,
+                'effective_date_start' => $request->effective_date_start,
+            ]);
+
+            DB::commit();
+            return back()->with('success', 'Riwayat Gaji berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Gagal memperbarui gaji: ' . $e->getMessage()]);
+        }
+    }
+
+    public function updateJabatan(Request $request, $id)
+    {
+        $request->validate([
+            'jabatan_id' => 'required|exists:jabatans,id',
+            'effective_date_start' => 'required|date',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Tutup riwayat jabatan lama (SCD Logic)
+            $riwayatAktif = \App\Models\RiwayatJabatan::where('karyawan_id', $id)
+                ->whereNull('effective_date_end')
+                ->orderBy('effective_date_start', 'desc')
+                ->first();
+
+            if ($riwayatAktif) {
+                $tanggalTutup = \Carbon\Carbon::parse($request->effective_date_start)->subDay()->toDateString();
+                $riwayatAktif->update(['effective_date_end' => $tanggalTutup]);
+            }
+
+            // 2. Buat riwayat jabatan baru
+            \App\Models\RiwayatJabatan::create([
+                'karyawan_id' => $id,
+                'jabatan_id' => $request->jabatan_id,
+                'effective_date_start' => $request->effective_date_start,
+            ]);
+
+            // 3. Sinkronisasi jabatan_id di tabel utama karyawans
+            $karyawan = Karyawan::findOrFail($id);
+            $karyawan->update(['jabatan_id' => $request->jabatan_id]);
+
+            DB::commit();
+            return back()->with('success', 'Riwayat Jabatan berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Gagal memperbarui jabatan: ' . $e->getMessage()]);
         }
     }
 }

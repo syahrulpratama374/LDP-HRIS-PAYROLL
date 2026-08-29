@@ -16,8 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
+        
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\IsAdmin::class,
+        ]);
 
-        //
+        // Mengatur arah tujuan otomatis bagi user yang sudah login
+        $middleware->redirectUsersTo(fn () => auth()->user()->role_id == 1 ? '/dashboard' : '/absensi/karyawan');
+        
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
