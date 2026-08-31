@@ -35,7 +35,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             {/* Menu Navigasi Desktop */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 {/* === MENU KHUSUS ADMIN === */}
-                                {/* === MENU KHUSUS ADMIN === */}
+
                                 {user.role_id === 1 && (
                                     <>
                                         <NavLink
@@ -77,6 +77,60 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                         >
                                             Approval Lembur
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.pinjaman.index")}
+                                            active={route().current(
+                                                "admin.pinjaman.*",
+                                            )}
+                                        >
+                                            Approval Kasbon
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.spj.index")}
+                                            active={route().current(
+                                                "admin.spj.*",
+                                            )}
+                                        >
+                                            Approval SPJ
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.payroll.index")}
+                                            active={route().current(
+                                                "admin.payroll.*",
+                                            )}
+                                        >
+                                            Kalkulator Payroll
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.ticket.index")}
+                                            active={route().current(
+                                                "admin.ticket.*",
+                                            )}
+                                        >
+                                            IT Helpdesk
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.sp.index")}
+                                            active={route().current(
+                                                "admin.sp.*",
+                                            )}
+                                        >
+                                            Data Pelanggaran (SP)
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("admin.kinerja.index")}
+                                            active={route().current(
+                                                "admin.kinerja.*",
+                                            )}
+                                        >
+                                            Penilaian Kinerja (KPI)
                                         </NavLink>
 
                                         {/* Dropdown Master Data */}
@@ -154,6 +208,36 @@ export default function AuthenticatedLayout({ header, children }) {
                                             active={route().current("lembur.*")}
                                         >
                                             Pengajuan Lembur
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("pinjaman.index")}
+                                            active={route().current(
+                                                "pinjaman.*",
+                                            )}
+                                        >
+                                            Kasbon & Pinjaman
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("spj.index")}
+                                            active={route().current("spj.*")}
+                                        >
+                                            Perjalanan Dinas (SPJ)
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("slip.index")}
+                                            active={route().current("slip.*")}
+                                        >
+                                            Slip Gaji Saya
+                                        </NavLink>
+
+                                        <NavLink
+                                            href={route("ticket.index")}
+                                            active={route().current("ticket.*")}
+                                        >
+                                            IT Ticket
                                         </NavLink>
                                     </>
                                 )}
@@ -291,6 +375,41 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Approval Cuti
                                 </ResponsiveNavLink>
 
+                                <NavLink
+                                    href={route("admin.spj.index")}
+                                    active={route().current("admin.spj.*")}
+                                >
+                                    Approval SPJ
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("admin.pinjaman.index")}
+                                    active={route().current("admin.pinjaman.*")}
+                                >
+                                    Approval Kasbon
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("admin.payroll.index")}
+                                    active={route().current("admin.payroll.*")}
+                                >
+                                    Kalkulator Payroll
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("admin.ticket.index")}
+                                    active={route().current("admin.ticket.*")}
+                                >
+                                    IT Helpdesk
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("admin.kinerja.index")}
+                                    active={route().current("admin.kinerja.*")}
+                                >
+                                    Penilaian Kinerja (KPI)
+                                </NavLink>
+
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
                                     Master Data
                                 </div>
@@ -312,6 +431,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Golongan
                                 </ResponsiveNavLink>
+
+                                <NavLink
+                                    href={route("admin.sp.index")}
+                                    active={route().current("admin.sp.*")}
+                                >
+                                    Data Pelanggaran (SP)
+                                </NavLink>
                             </>
                         )}
 
@@ -342,6 +468,34 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current("admin.lembur.*")}
                                 >
                                     Approval Lembur
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("pinjaman.index")}
+                                    active={route().current("pinjaman.*")}
+                                >
+                                    Kasbon & Pinjaman
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("spj.index")}
+                                    active={route().current("spj.*")}
+                                >
+                                    Perjalanan Dinas (SPJ)
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("slip.index")}
+                                    active={route().current("slip.*")}
+                                >
+                                    Slip Gaji Saya
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("ticket.index")}
+                                    active={route().current("ticket.*")}
+                                >
+                                    IT Ticket
                                 </NavLink>
                             </>
                         )}

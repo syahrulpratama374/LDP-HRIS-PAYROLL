@@ -1,5 +1,10 @@
 <?php
 
+use App\Models\Karyawan;
+use App\Models\PengajuanCuti;
+use App\Models\PengajuanSpj;
+use App\Models\ItTicket;
+
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MasterData\DepartemenController;
 use App\Http\Controllers\JabatanController;
@@ -8,6 +13,12 @@ use App\Http\Controllers\Kepegawaian\KaryawanController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\PengajuanCutiController;
 use App\Http\Controllers\PengajuanLemburController;
+use App\Http\Controllers\PinjamanController;
+use App\Http\Controllers\PengajuanSpjController;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\ItTicketController;
+use App\Http\Controllers\SuratPeringatanController;
+use App\Http\Controllers\PenilaianKinerjaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -37,6 +48,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/lembur', [PengajuanLemburController::class, 'index'])->name('lembur.index');
     Route::get('/lembur/ajukan', [PengajuanLemburController::class, 'create'])->name('lembur.create');
     Route::post('/lembur', [PengajuanLemburController::class, 'store'])->name('lembur.store');
+
+    // ROUTING KASBON / PINJAMAN (KARYAWAN)
+    Route::get('/pinjaman', [PinjamanController::class, 'index'])->name('pinjaman.index');
+    Route::get('/pinjaman/ajukan', [PinjamanController::class, 'create'])->name('pinjaman.create');
+    Route::post('/pinjaman', [PinjamanController::class, 'store'])->name('pinjaman.store');
+
+    // ROUTING SPJ / PERJALANAN DINAS (KARYAWAN)
+    Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.index');
+    Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.create');
+    Route::post('/spj', [PengajuanSpjController::class, 'store'])->name('spj.store');
+
+    // ROUTING SLIP GAJI (KARYAWAN)
+    Route::get('/slip-gaji', [PayrollController::class, 'myPayslips'])->name('slip.index');
+    Route::get('/slip-gaji/{id}', [PayrollController::class, 'show'])->name('slip.show');
+
+    // IT TICKET (KARYAWAN)
+    Route::get('/it-ticket', [ItTicketController::class, 'index'])->name('ticket.index');
+    Route::post('/it-ticket', [ItTicketController::class, 'store'])->name('ticket.store');
 });
 
 // 3. Rute Khusus Administrator (Dilindungi 'auth' DAN 'admin')
@@ -44,7 +73,17 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // Dashboard Admin
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
+        return Inertia::render('Dashboard', [
+            'stats' => [
+                'total_karyawan' => Karyawan::where('status_aktif', true)->count(),
+
+                // PERBAIKAN: Ubah 'status' menjadi 'status_approval'
+                'cuti_pending' => PengajuanCuti::where('status_approval', 'Pending')->count(),
+
+                'spj_pending' => PengajuanSpj::where('status_approval', 'Pending')->count(),
+                'tiket_open' => ItTicket::whereIn('status', ['Submitted', 'In Progress'])->count(),
+            ]
+        ]);
     })->name('dashboard');
 
     // Monitor Absensi Admin
@@ -56,6 +95,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
     Route::post('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
+
+    // APPROVAL KASBON / PINJAMAN (ADMIN / FINANCE)
+    Route::get('/admin/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
+    Route::post('/admin/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
+
+    // APPROVAL SPJ (ADMIN / FINANCE)
+    Route::get('/admin/spj', [PengajuanSpjController::class, 'adminIndex'])->name('admin.spj.index');
+    Route::post('/admin/spj/{id}/status', [PengajuanSpjController::class, 'updateStatus'])->name('admin.spj.update');
+
+    Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
+    Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
+    Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
+
+    // APPROVAL / MANAJEMEN IT TICKET (ADMIN)
+    Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
+    Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
 
     // Master Data
     Route::prefix('master-data')->group(function () {
@@ -69,6 +124,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('karyawan', KaryawanController::class);
         Route::post('karyawan/{id}/gaji', [KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
         Route::post('karyawan/{id}/jabatan', [KaryawanController::class, 'updateJabatan'])->name('karyawan.updateJabatan');
+
+        Route::get('/surat-peringatan', [SuratPeringatanController::class, 'index'])->name('admin.sp.index');
+        Route::get('/surat-peringatan/buat', [SuratPeringatanController::class, 'create'])->name('admin.sp.create');
+        Route::post('/surat-peringatan', [SuratPeringatanController::class, 'store'])->name('admin.sp.store');
+        Route::delete('/surat-peringatan/{id}', [SuratPeringatanController::class, 'destroy'])->name('admin.sp.destroy');
+
+        Route::get('/kinerja', [PenilaianKinerjaController::class, 'index'])->name('admin.kinerja.index');
+        Route::get('/kinerja/buat', [PenilaianKinerjaController::class, 'create'])->name('admin.kinerja.create');
+        Route::post('/kinerja', [PenilaianKinerjaController::class, 'store'])->name('admin.kinerja.store');
+        Route::delete('/kinerja/{id}', [PenilaianKinerjaController::class, 'destroy'])->name('admin.kinerja.destroy');
     });
 });
 

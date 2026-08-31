@@ -1,19 +1,20 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react"; // 1. Gunakan router
+import { Head, router } from "@inertiajs/react"; // 1. Ubah useForm menjadi router
 
-export default function AdminIndex({ lemburs }) {
+export default function AdminIndex({ pinjaman }) {
     // 2. Hapus const { post } = useForm();
 
     const handleAction = (id, status) => {
-        if (
-            confirm(
-                `Apakah Anda yakin ingin mengubah status pengajuan ini menjadi ${status}?`,
-            )
-        ) {
-            // 3. Gunakan router.post agar data status_approval berhasil dikirim
-            router.post(route("admin.lembur.update", id), {
-                status_approval: status,
+        let confirmText =
+            status === "Disetujui"
+                ? "Setujui pengajuan ini? Sistem akan otomatis membuat jadwal pemotongan gaji (cicilan) sesuai tenor."
+                : "Tolak pengajuan kasbon ini?";
+
+        if (confirm(confirmText)) {
+            // 3. Gunakan router.post agar data 'status' benar-benar terkirim
+            router.post(route("admin.pinjaman.update", id), {
+                status: status,
             });
         }
     };
@@ -22,11 +23,11 @@ export default function AdminIndex({ lemburs }) {
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Persetujuan (Approval) Lembur Karyawan
+                    Approval Kasbon & Pinjaman Karyawan
                 </h2>
             }
         >
-            <Head title="Approval Lembur" />
+            <Head title="Approval Kasbon" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -39,13 +40,13 @@ export default function AdminIndex({ lemburs }) {
                                             Nama Karyawan
                                         </th>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
-                                            Departemen
+                                            Tgl Pengajuan
                                         </th>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
-                                            Tanggal / Jam
+                                            Total & Tenor
                                         </th>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
-                                            Deskripsi
+                                            Sisa Hutang
                                         </th>
                                         <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
                                             Status
@@ -56,58 +57,91 @@ export default function AdminIndex({ lemburs }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {lemburs.length === 0 ? (
+                                    {pinjaman.length === 0 ? (
                                         <tr>
                                             <td
                                                 colSpan="6"
                                                 className="px-6 py-8 text-center text-gray-500"
                                             >
-                                                Belum ada pengajuan lembur yang
-                                                masuk.
+                                                Belum ada pengajuan kasbon dari
+                                                karyawan.
                                             </td>
                                         </tr>
                                     ) : (
-                                        lemburs.map((lembur) => (
+                                        pinjaman.map((p) => (
                                             <tr
-                                                key={lembur.id}
+                                                key={p.id}
                                                 className="hover:bg-gray-50 transition"
                                             >
-                                                <td className="px-6 py-4 border-b text-sm font-bold text-gray-800">
-                                                    {lembur.karyawan
-                                                        ? lembur.karyawan
-                                                              .nama_lengkap
-                                                        : "Tidak Diketahui"}
-                                                </td>
-                                                <td className="px-6 py-4 border-b text-sm text-gray-600">
-                                                    {lembur.karyawan?.departemen
-                                                        ? lembur.karyawan
-                                                              .departemen
-                                                              .nama_departemen
-                                                        : "-"}
+                                                <td className="px-6 py-4 border-b">
+                                                    <div className="text-sm font-bold text-gray-800">
+                                                        {p.karyawan
+                                                            ? p.karyawan
+                                                                  .nama_lengkap
+                                                            : "Tidak Diketahui"}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {p.karyawan?.departemen
+                                                            ? p.karyawan
+                                                                  .departemen
+                                                                  .nama_departemen
+                                                            : "-"}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-700">
                                                     {new Date(
-                                                        lembur.tanggal,
+                                                        p.created_at,
                                                     ).toLocaleDateString(
                                                         "id-ID",
-                                                    )}{" "}
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 border-b text-sm text-gray-800">
+                                                    <span className="font-bold">
+                                                        Rp{" "}
+                                                        {Number(
+                                                            p.total_pinjaman,
+                                                        ).toLocaleString(
+                                                            "id-ID",
+                                                        )}
+                                                    </span>{" "}
                                                     <br />
                                                     <span className="text-xs text-gray-500">
-                                                        {lembur.jam_mulai} -{" "}
-                                                        {lembur.jam_selesai}
+                                                        {p.tenor_bulan} Bulan
+                                                        Cicilan
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 border-b text-sm text-gray-600">
-                                                    {lembur.deskripsi_pekerjaan}
+                                                <td className="px-6 py-4 border-b text-sm text-red-600 font-semibold">
+                                                    Rp{" "}
+                                                    {Number(
+                                                        p.sisa_pinjaman,
+                                                    ).toLocaleString("id-ID")}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
-                                                    {lembur.status_approval ===
-                                                    "Pending" ? (
+                                                    <span
+                                                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                        ${
+                                                            p.status ===
+                                                            "Pending"
+                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                : p.status ===
+                                                                    "Disetujui"
+                                                                  ? "bg-blue-100 text-blue-800"
+                                                                  : p.status ===
+                                                                      "Lunas"
+                                                                    ? "bg-green-100 text-green-800"
+                                                                    : "bg-red-100 text-red-800"
+                                                        }`}
+                                                    >
+                                                        {p.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 border-b text-center">
+                                                    {p.status === "Pending" ? (
                                                         <div className="flex justify-center items-center space-x-2">
                                                             <button
                                                                 onClick={() =>
                                                                     handleAction(
-                                                                        lembur.id,
+                                                                        p.id,
                                                                         "Disetujui",
                                                                     )
                                                                 }
@@ -118,7 +152,7 @@ export default function AdminIndex({ lemburs }) {
                                                             <button
                                                                 onClick={() =>
                                                                     handleAction(
-                                                                        lembur.id,
+                                                                        p.id,
                                                                         "Ditolak",
                                                                     )
                                                                 }

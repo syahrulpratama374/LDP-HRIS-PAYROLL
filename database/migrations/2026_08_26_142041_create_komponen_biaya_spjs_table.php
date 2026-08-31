@@ -6,24 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('komponen_biaya_spjs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('spj_id')->constrained('pengajuan_spjs')->cascadeOnDelete();
-            $table->string('jenis_biaya', 50)->nullable();
+            $table->foreignId('pengajuan_spj_id')->constrained('pengajuan_spjs')->cascadeOnDelete();
+            
+            // Jenis biaya (misal: 'Tiket Pesawat/Kereta', 'Penginapan', 'Uang Makan', 'Transportasi Lokal', 'Lain-lain')
+            $table->string('jenis_biaya', 100); 
             $table->decimal('nominal', 15, 2);
-            $table->string('bukti_path', 255)->nullable();
+            $table->string('keterangan', 255)->nullable();
+            
+            // Opsional: Lampiran struk/nota per komponen biaya agar audit lebih tajam
+            $table->string('file_nota_path', 255)->nullable(); 
+            
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('komponen_biaya_spjs');
