@@ -6,25 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('pengajuan_cutis', function (Blueprint $table) {
             $table->id();
             $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
-            $table->date('tgl_mulai');
-            $table->date('tgl_selesai');
+            
+            // Kolom yang disesuaikan dengan form React
+            $table->string('jenis_cuti', 50);
+            $table->date('tanggal_mulai'); 
+            $table->date('tanggal_selesai');
             $table->text('alasan');
+            $table->string('dokumen_bukti_path', 255)->nullable();
             $table->string('status_approval', 30)->default('Pending');
+            
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('pengajuan_cutis');

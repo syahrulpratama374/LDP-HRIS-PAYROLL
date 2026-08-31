@@ -59,4 +59,36 @@ class PengajuanCutiController extends Controller
 
         return redirect()->route('cuti.index')->with('success', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
     }
+
+    // ==========================================
+    // AREA KHUSUS ADMIN / HC
+    // ==========================================
+
+    // Menampilkan seluruh pengajuan cuti perusahaan
+    public function adminIndex()
+    {
+        $pengajuanCuti = PengajuanCuti::with(['karyawan.departemen', 'karyawan.jabatan'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return Inertia::render('Kepegawaian/Cuti/AdminIndex', [
+            'pengajuanCuti' => $pengajuanCuti
+        ]);
+    }
+
+    // Mengubah status persetujuan
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status_approval' => 'required|in:Disetujui,Ditolak',
+        ]);
+
+        $cuti = PengajuanCuti::findOrFail($id);
+        
+        $cuti->update([
+            'status_approval' => $request->status_approval
+        ]);
+
+        return redirect()->back()->with('success', 'Status pengajuan cuti berhasil diperbarui!');
+    }
 }

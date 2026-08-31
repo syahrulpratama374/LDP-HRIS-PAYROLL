@@ -35,6 +35,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             {/* Menu Navigasi Desktop */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 {/* === MENU KHUSUS ADMIN === */}
+                                {/* === MENU KHUSUS ADMIN === */}
                                 {user.role_id === 1 && (
                                     <>
                                         <NavLink
@@ -60,6 +61,22 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                         >
                                             Monitor Absensi
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.cuti.index")}
+                                            active={route().current(
+                                                "admin.cuti.*",
+                                            )}
+                                        >
+                                            Approval Cuti
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.lembur.index")}
+                                            active={route().current(
+                                                "admin.lembur.*",
+                                            )}
+                                        >
+                                            Approval Lembur
                                         </NavLink>
 
                                         {/* Dropdown Master Data */}
@@ -115,9 +132,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </>
                                 )}
 
-                                {/* === MENU KHUSUS KARYAWAN === */}
-
-                                {user.role_id == 2 && (
+                                {/* === MENU KHUSUS KARYAWAN (SELF-SERVICE) === */}
+                                {[2, 3, 4, 5, 6].includes(user.role_id) && (
                                     <>
                                         <NavLink
                                             href={route("absensi.create")}
@@ -132,6 +148,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                             active={route().current("cuti.*")}
                                         >
                                             Pengajuan Cuti & Izin
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("lembur.index")}
+                                            active={route().current("lembur.*")}
+                                        >
+                                            Pengajuan Lembur
                                         </NavLink>
                                     </>
                                 )}
@@ -255,6 +277,19 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Monitor Absensi
                                 </ResponsiveNavLink>
+                                <NavLink
+                                    href={route("admin.lembur.index")}
+                                    active={route().current("admin.lembur.*")}
+                                >
+                                    Approval Lembur
+                                </NavLink>
+
+                                <ResponsiveNavLink
+                                    href={route("admin.cuti.index")}
+                                    active={route().current("admin.cuti.*")}
+                                >
+                                    Approval Cuti
+                                </ResponsiveNavLink>
 
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
                                     Master Data
@@ -281,7 +316,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         )}
 
                         {/* === MENU KHUSUS KARYAWAN (MOBILE) === */}
-                        {user.role_id === 2 && (
+
+                        {[2, 3, 4, 5, 6].includes(user.role_id) && (
                             <>
                                 <ResponsiveNavLink
                                     href={route("absensi.create")}
@@ -295,6 +331,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Pengajuan Cuti & Izin
                                 </ResponsiveNavLink>
+                                <NavLink
+                                    href={route("lembur.index")}
+                                    active={route().current("lembur.*")}
+                                >
+                                    Pengajuan Lembur
+                                </NavLink>
+                                <NavLink
+                                    href={route("admin.lembur.index")}
+                                    active={route().current("admin.lembur.*")}
+                                >
+                                    Approval Lembur
+                                </NavLink>
                             </>
                         )}
                     </div>

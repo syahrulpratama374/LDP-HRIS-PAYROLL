@@ -6,6 +6,8 @@ use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\GolonganController;
 use App\Http\Controllers\Kepegawaian\KaryawanController;
 use App\Http\Controllers\AbsensiController;
+use App\Http\Controllers\PengajuanCutiController;
+use App\Http\Controllers\PengajuanLemburController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -28,9 +30,13 @@ Route::middleware('auth')->group(function () {
     // ==========================================
     // ROUTING PENGAJUAN CUTI & IZIN (KARYAWAN)
     // ==========================================
-    Route::get('/cuti', [App\Http\Controllers\PengajuanCutiController::class, 'index'])->name('cuti.index');
-    Route::get('/cuti/ajukan', [App\Http\Controllers\PengajuanCutiController::class, 'create'])->name('cuti.create');
-    Route::post('/cuti', [App\Http\Controllers\PengajuanCutiController::class, 'store'])->name('cuti.store');
+    Route::get('/cuti', [PengajuanCutiController::class, 'index'])->name('cuti.index');
+    Route::get('/cuti/ajukan', [PengajuanCutiController::class, 'create'])->name('cuti.create');
+    Route::post('/cuti', [PengajuanCutiController::class, 'store'])->name('cuti.store');
+
+    Route::get('/lembur', [PengajuanLemburController::class, 'index'])->name('lembur.index');
+    Route::get('/lembur/ajukan', [PengajuanLemburController::class, 'create'])->name('lembur.create');
+    Route::post('/lembur', [PengajuanLemburController::class, 'store'])->name('lembur.store');
 });
 
 // 3. Rute Khusus Administrator (Dilindungi 'auth' DAN 'admin')
@@ -40,6 +46,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+    // Monitor Absensi Admin
+    Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
+
+    // Approval Cuti Admin (Dipisah menjadi /admin/cuti agar tidak bentrok dengan Karyawan)
+    Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
+    Route::post('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.update');
+
+    Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
+    Route::post('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
 
     // Master Data
     Route::prefix('master-data')->group(function () {
@@ -53,9 +69,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('karyawan', KaryawanController::class);
         Route::post('karyawan/{id}/gaji', [KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
         Route::post('karyawan/{id}/jabatan', [KaryawanController::class, 'updateJabatan'])->name('karyawan.updateJabatan');
-
-        // Monitor Absensi Admin
-        Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
     });
 });
 
