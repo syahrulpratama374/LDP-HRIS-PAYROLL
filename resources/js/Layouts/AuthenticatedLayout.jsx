@@ -133,6 +133,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Penilaian Kinerja (KPI)
                                         </NavLink>
 
+                                        <NavLink
+                                            href={route("admin.delegasi.index")}
+                                            active={route().current(
+                                                "admin.delegasi.*",
+                                            )}
+                                        >
+                                            Delegasi Wewenang (Plt)
+                                        </NavLink>
+
                                         {/* Dropdown Master Data */}
                                         <div className="hidden sm:flex sm:items-center">
                                             <Dropdown>
@@ -408,6 +417,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current("admin.kinerja.*")}
                                 >
                                     Penilaian Kinerja (KPI)
+                                </NavLink>
+
+                                <NavLink
+                                    href={route("admin.delegasi.index")}
+                                    active={route().current("admin.delegasi.*")}
+                                >
+                                    Delegasi Wewenang (Plt)
                                 </NavLink>
 
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">

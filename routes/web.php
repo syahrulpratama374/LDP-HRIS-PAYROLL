@@ -19,6 +19,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ItTicketController;
 use App\Http\Controllers\SuratPeringatanController;
 use App\Http\Controllers\PenilaianKinerjaController;
+use App\Http\Controllers\DelegasiWewenangController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -134,6 +135,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/kinerja/buat', [PenilaianKinerjaController::class, 'create'])->name('admin.kinerja.create');
         Route::post('/kinerja', [PenilaianKinerjaController::class, 'store'])->name('admin.kinerja.store');
         Route::delete('/kinerja/{id}', [PenilaianKinerjaController::class, 'destroy'])->name('admin.kinerja.destroy');
+
+        Route::get('/delegasi', [DelegasiWewenangController::class, 'index'])->name('admin.delegasi.index');
+        Route::post('/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
+        Route::post('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
+        Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
     });
 });
 
