@@ -1,0 +1,356 @@
+.
+├── AGENTS.md
+├── CLAUDE.md
+├── Dockerfile
+├── README.md
+├── app
+│   ├── Http
+│   │   ├── Controllers
+│   │   │   ├── Absensi
+│   │   │   ├── AbsensiController.php
+│   │   │   ├── Auth
+│   │   │   │   ├── AuthenticatedSessionController.php
+│   │   │   │   ├── ConfirmablePasswordController.php
+│   │   │   │   ├── EmailVerificationNotificationController.php
+│   │   │   │   ├── EmailVerificationPromptController.php
+│   │   │   │   ├── NewPasswordController.php
+│   │   │   │   ├── PasswordController.php
+│   │   │   │   ├── PasswordResetLinkController.php
+│   │   │   │   ├── RegisteredUserController.php
+│   │   │   │   └── VerifyEmailController.php
+│   │   │   ├── Controller.php
+│   │   │   ├── DashboardController.php
+│   │   │   ├── GolonganController.php
+│   │   │   ├── ItTicket
+│   │   │   ├── ItTicketController.php
+│   │   │   ├── JabatanController.php
+│   │   │   ├── Kepegawaian
+│   │   │   │   └── KaryawanController.php
+│   │   │   ├── Keuangan
+│   │   │   ├── MasterData
+│   │   │   │   └── DepartemenController.php
+│   │   │   ├── Payroll
+│   │   │   ├── PayrollController.php
+│   │   │   ├── Pengajuan
+│   │   │   ├── PengajuanCutiController.php
+│   │   │   ├── PengajuanLemburController.php
+│   │   │   ├── PengajuanSpjController.php
+│   │   │   ├── PenilaianKinerjaController.php
+│   │   │   ├── PinjamanController.php
+│   │   │   ├── ProfileController.php
+│   │   │   └── SuratPeringatanController.php
+│   │   ├── Middleware
+│   │   │   ├── HandleInertiaRequests.php
+│   │   │   └── IsAdmin.php
+│   │   └── Requests
+│   │       ├── Absensi
+│   │       ├── Auth
+│   │       │   └── LoginRequest.php
+│   │       ├── ItTicket
+│   │       ├── Keuangan
+│   │       ├── MasterData
+│   │       ├── Payroll
+│   │       ├── Pengajuan
+│   │       └── ProfileUpdateRequest.php
+│   ├── Models
+│   │   ├── Absensi.php
+│   │   ├── Approval.php
+│   │   ├── AuditTrail.php
+│   │   ├── CicilanPinjaman.php
+│   │   ├── DelegasiWewenang.php
+│   │   ├── Departemen.php
+│   │   ├── DetailPayroll.php
+│   │   ├── Golongan.php
+│   │   ├── HariLibur.php
+│   │   ├── ItTicket.php
+│   │   ├── Jabatan.php
+│   │   ├── JadwalShiftKaryawan.php
+│   │   ├── Karyawan.php
+│   │   ├── KeluargaKaryawan.php
+│   │   ├── KomponenBiayaSpj.php
+│   │   ├── MasterKomponenPayroll.php
+│   │   ├── MasterPtkp.php
+│   │   ├── MasterShift.php
+│   │   ├── Payroll.php
+│   │   ├── PendidikanKaryawan.php
+│   │   ├── PengajuanCuti.php
+│   │   ├── PengajuanLembur.php
+│   │   ├── PengajuanSpj.php
+│   │   ├── Pengaturan.php
+│   │   ├── PenilaianKinerja.php
+│   │   ├── PerformanceAppraisal.php
+│   │   ├── PinjamanKaryawan.php
+│   │   ├── RiwayatGaji.php
+│   │   ├── RiwayatItTicket.php
+│   │   ├── RiwayatJabatan.php
+│   │   ├── RiwayatKontrak.php
+│   │   ├── Role.php
+│   │   ├── SaldoCuti.php
+│   │   ├── SuratPeringatan.php
+│   │   └── User.php
+│   ├── Providers
+│   │   └── AppServiceProvider.php
+│   └── Services
+├── artisan
+├── composer.json
+├── composer.lock
+├── config
+│   ├── app.php
+│   ├── auth.php
+│   ├── cache.php
+│   ├── database.php
+│   ├── filesystems.php
+│   ├── logging.php
+│   ├── mail.php
+│   ├── queue.php
+│   ├── services.php
+│   └── session.php
+├── database
+│   ├── database.sqlite
+│   ├── factories
+│   │   └── UserFactory.php
+│   ├── migrations
+│   │   ├── 0001_01_01_000001_create_cache_table.php
+│   │   ├── 0001_01_01_000002_create_jobs_table.php
+│   │   ├── 2026_08_26_141932_create_departemens_table.php
+│   │   ├── 2026_08_26_141933_create_jabatans_table.php
+│   │   ├── 2026_08_26_141934_create_golongans_table.php
+│   │   ├── 2026_08_26_141936_create_master_ptkps_table.php
+│   │   ├── 2026_08_26_141937_create_roles_table.php
+│   │   ├── 2026_08_26_141948_create_users_table.php
+│   │   ├── 2026_08_26_141949_create_karyawans_table.php
+│   │   ├── 2026_08_26_142000_create_keluarga_karyawans_table.php
+│   │   ├── 2026_08_26_142001_create_pendidikan_karyawans_table.php
+│   │   ├── 2026_08_26_142002_create_riwayat_kontraks_table.php
+│   │   ├── 2026_08_26_142003_create_riwayat_jabatans_table.php
+│   │   ├── 2026_08_26_142004_create_riwayat_gajis_table.php
+│   │   ├── 2026_08_26_142006_create_saldo_cutis_table.php
+│   │   ├── 2026_08_26_142007_create_performance_appraisals_table.php
+│   │   ├── 2026_08_26_142008_create_surat_peringatans_table.php
+│   │   ├── 2026_08_26_142020_create_hari_liburs_table.php
+│   │   ├── 2026_08_26_142022_create_master_shifts_table.php
+│   │   ├── 2026_08_26_142023_create_jadwal_shift_karyawans_table.php
+│   │   ├── 2026_08_26_142024_create_absensis_table.php
+│   │   ├── 2026_08_26_142038_create_pengajuan_cutis_table.php
+│   │   ├── 2026_08_26_142039_create_pengajuan_lemburs_table.php
+│   │   ├── 2026_08_26_142040_create_pengajuan_spjs_table.php
+│   │   ├── 2026_08_26_142041_create_komponen_biaya_spjs_table.php
+│   │   ├── 2026_08_26_142043_create_approvals_table.php
+│   │   ├── 2026_08_26_142052_create_pinjaman_karyawans_table.php
+│   │   ├── 2026_08_26_142054_create_master_komponen_payrolls_table.php
+│   │   ├── 2026_08_26_142055_create_payrolls_table.php
+│   │   ├── 2026_08_26_142056_create_cicilan_pinjaman_table.php.php
+│   │   ├── 2026_08_26_142057_create_detail_payrolls_table.php
+│   │   ├── 2026_08_26_142058_create_audit_trails_table.php
+│   │   ├── 2026_08_26_142059_create_it_tickets_table.php
+│   │   ├── 2026_08_26_142100_create_riwayat_it_tickets_table.php
+│   │   ├── 2026_08_31_154506_create_penilaian_kinerjas_table.php
+│   │   ├── 2026_08_31_160344_create_delegasi_wewenangs_table.php
+│   │   └── 2026_09_02_044832_create_pengaturans_table.php
+│   └── seeders
+│       ├── DatabaseSeeder.php
+│       ├── MasterDataSeeder.php
+│       ├── MasterKomponenPayrollSeeder.php
+│       ├── MasterPtkpSeeder.php
+│       ├── PengaturanSeeder.php
+│       ├── RoleSeeder.php
+│       └── UserSeeder.php
+├── docker
+│   └── nginx
+│       └── default.conf
+├── docker-compose.yml
+├── jsconfig.json
+├── package-lock.json
+├── package.json
+├── phpunit.xml
+├── postcss.config.js
+├── public
+│   ├── build
+│   │   ├── assets
+│   │   │   ├── AdminIndex-BDyeX5Ei.js
+│   │   │   ├── AdminIndex-BvzRIbUU.js
+│   │   │   ├── AdminIndex-CgHyzMzI.js
+│   │   │   ├── AdminIndex-CzfjmTwd.js
+│   │   │   ├── AdminIndex-D3BvlPbt.js
+│   │   │   ├── ApplicationLogo-DKbkljD9.js
+│   │   │   ├── AuthenticatedLayout-CuymFyWF.js
+│   │   │   ├── ConfirmPassword-BkBctIla.js
+│   │   │   ├── Create-APvIEZDP.js
+│   │   │   ├── Create-BPETejfh.js
+│   │   │   ├── Create-C03FVpR2.js
+│   │   │   ├── Create-DFwbu-Ne.js
+│   │   │   ├── Create-DyQvwo-w.js
+│   │   │   ├── Create-LgXIk30n.js
+│   │   │   ├── Create-YsPldNpc.js
+│   │   │   ├── Create-ZDnPQF0i.js
+│   │   │   ├── Create-wRnPKRjx.js
+│   │   │   ├── DangerButton-d9H2xErR.js
+│   │   │   ├── Dashboard-CgSYToDt.js
+│   │   │   ├── DeleteUserForm-qnJIwucE.js
+│   │   │   ├── Edit-CoABS0tg.js
+│   │   │   ├── Edit-YL3v5aeV.js
+│   │   │   ├── ForgotPassword-bVqRl5wQ.js
+│   │   │   ├── GuestLayout-DVyPV1A4.js
+│   │   │   ├── Index-CKIdaR_p.js
+│   │   │   ├── Index-CQMPVOwl.js
+│   │   │   ├── Index-CSpYXWCB.js
+│   │   │   ├── Index-CXQ2FCZv.js
+│   │   │   ├── Index-CZFiVctb.js
+│   │   │   ├── Index-CiAISEFX.js
+│   │   │   ├── Index-D4LLxBoC.js
+│   │   │   ├── Index-DFuEtm0J.js
+│   │   │   ├── Index-DMASafua.js
+│   │   │   ├── Index-DQRRzD1n.js
+│   │   │   ├── Index-DeLXmPqV.js
+│   │   │   ├── Index-DjpUPGMy.js
+│   │   │   ├── Index-LAErXMGH.js
+│   │   │   ├── InputLabel-COkxAJjb.js
+│   │   │   ├── Login-XNn6JdTH.js
+│   │   │   ├── Modal-BgIX4Y6j.js
+│   │   │   ├── MyPayslips-DNC9Mgm2.js
+│   │   │   ├── PrimaryButton-BSilvCo4.js
+│   │   │   ├── Register-CYUwGa3_.js
+│   │   │   ├── ResetPassword-BRWLOntU.js
+│   │   │   ├── SecondaryButton-0zfXAOA1.js
+│   │   │   ├── Show-BNRzeeFq.js
+│   │   │   ├── Show-CX4aY2Fd.js
+│   │   │   ├── TextInput-9c383FKo.js
+│   │   │   ├── UpdatePasswordForm-DM8w7evB.js
+│   │   │   ├── UpdateProfileInformationForm-HmQU4W9V.js
+│   │   │   ├── VerifyEmail-3iSwhXC_.js
+│   │   │   ├── Welcome-CaF79oi1.js
+│   │   │   ├── app-BwClPLce.css
+│   │   │   ├── app-QLd5KW24.js
+│   │   │   ├── react-webcam-Ba4s9IqC.js
+│   │   │   └── transition-CUvAMJy7.js
+│   │   └── manifest.json
+│   ├── favicon.ico
+│   ├── hot
+│   ├── index.php
+│   └── robots.txt
+├── resources
+│   ├── css
+│   │   └── app.css
+│   ├── js
+│   │   ├── Components
+│   │   │   ├── ApplicationLogo.jsx
+│   │   │   ├── Checkbox.jsx
+│   │   │   ├── DangerButton.jsx
+│   │   │   ├── Dropdown.jsx
+│   │   │   ├── Form
+│   │   │   ├── InputError.jsx
+│   │   │   ├── InputLabel.jsx
+│   │   │   ├── Modal.jsx
+│   │   │   ├── NavLink.jsx
+│   │   │   ├── PrimaryButton.jsx
+│   │   │   ├── ResponsiveNavLink.jsx
+│   │   │   ├── SecondaryButton.jsx
+│   │   │   ├── TextInput.jsx
+│   │   │   └── UI
+│   │   ├── Layouts
+│   │   │   ├── AuthenticatedLayout.jsx
+│   │   │   └── GuestLayout.jsx
+│   │   ├── Pages
+│   │   │   ├── Absensi
+│   │   │   │   └── Create.jsx
+│   │   │   ├── Auth
+│   │   │   │   ├── ConfirmPassword.jsx
+│   │   │   │   ├── ForgotPassword.jsx
+│   │   │   │   ├── Login.jsx
+│   │   │   │   ├── Register.jsx
+│   │   │   │   ├── ResetPassword.jsx
+│   │   │   │   └── VerifyEmail.jsx
+│   │   │   ├── Dashboard
+│   │   │   │   ├── Admin.jsx
+│   │   │   │   ├── Direktur.jsx
+│   │   │   │   ├── Finance.jsx
+│   │   │   │   ├── HC.jsx
+│   │   │   │   ├── Karyawan.jsx
+│   │   │   │   └── Supervisor.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── ItTicket
+│   │   │   │   ├── AdminIndex.jsx
+│   │   │   │   └── Index.jsx
+│   │   │   ├── Kepegawaian
+│   │   │   │   ├── Absensi
+│   │   │   │   │   ├── Create.jsx
+│   │   │   │   │   └── Index.jsx
+│   │   │   │   ├── Cuti
+│   │   │   │   │   ├── AdminIndex.jsx
+│   │   │   │   │   ├── Create.jsx
+│   │   │   │   │   └── Index.jsx
+│   │   │   │   ├── Karyawan
+│   │   │   │   │   ├── Create.jsx
+│   │   │   │   │   ├── Edit.jsx
+│   │   │   │   │   ├── Index.jsx
+│   │   │   │   │   └── Show.jsx
+│   │   │   │   ├── PenilaianKinerja
+│   │   │   │   │   ├── Create.jsx
+│   │   │   │   │   └── Index.jsx
+│   │   │   │   └── SuratPeringatan
+│   │   │   │       ├── Create.jsx
+│   │   │   │       └── Index.jsx
+│   │   │   ├── Keuangan
+│   │   │   ├── Lembur
+│   │   │   │   ├── AdminIndex.jsx
+│   │   │   │   ├── Create.jsx
+│   │   │   │   └── Index.jsx
+│   │   │   ├── MasterData
+│   │   │   │   ├── Departemen
+│   │   │   │   │   └── Index.jsx
+│   │   │   │   ├── Golongan
+│   │   │   │   │   └── Index.jsx
+│   │   │   │   └── Jabatan
+│   │   │   │       └── Index.jsx
+│   │   │   ├── Payroll
+│   │   │   │   ├── Index.jsx
+│   │   │   │   ├── Kalkulasi
+│   │   │   │   ├── KomponenGaji
+│   │   │   │   ├── MyPayslips.jsx
+│   │   │   │   └── Show.jsx
+│   │   │   ├── Pengajuan
+│   │   │   ├── Pinjaman
+│   │   │   │   ├── AdminIndex.jsx
+│   │   │   │   ├── Create.jsx
+│   │   │   │   └── Index.jsx
+│   │   │   ├── Profile
+│   │   │   │   ├── Edit.jsx
+│   │   │   │   └── Partials
+│   │   │   │       ├── DeleteUserForm.jsx
+│   │   │   │       ├── UpdatePasswordForm.jsx
+│   │   │   │       └── UpdateProfileInformationForm.jsx
+│   │   │   ├── Spj
+│   │   │   │   ├── AdminIndex.jsx
+│   │   │   │   ├── Create.jsx
+│   │   │   │   └── Index.jsx
+│   │   │   └── Welcome.jsx
+│   │   ├── Utils
+│   │   │   └── formatRupiah.js
+│   │   ├── app.jsx
+│   │   ├── bootstrap.js
+│   │   └── ziggy.js
+│   └── views
+│       └── app.blade.php
+├── routes
+│   ├── auth.php
+│   ├── console.php
+│   └── web.php
+├── struktur.txt
+├── tailwind.config.js
+├── tests
+│   ├── Feature
+│   │   ├── Auth
+│   │   │   ├── AuthenticationTest.php
+│   │   │   ├── EmailVerificationTest.php
+│   │   │   ├── PasswordConfirmationTest.php
+│   │   │   ├── PasswordResetTest.php
+│   │   │   ├── PasswordUpdateTest.php
+│   │   │   └── RegistrationTest.php
+│   │   ├── ExampleTest.php
+│   │   └── ProfileTest.php
+│   ├── TestCase.php
+│   └── Unit
+│       └── ExampleTest.php
+└── vite.config.js
+
+73 directories, 281 files

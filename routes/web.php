@@ -20,6 +20,7 @@ use App\Http\Controllers\ItTicketController;
 use App\Http\Controllers\SuratPeringatanController;
 use App\Http\Controllers\PenilaianKinerjaController;
 use App\Http\Controllers\DelegasiWewenangController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -29,7 +30,9 @@ Route::get('/', function () {
 });
 
 // 2. Rute Umum (Wajib Login - Bisa diakses Admin & Karyawan)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
     // Rute Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -67,25 +70,8 @@ Route::middleware('auth')->group(function () {
     // IT TICKET (KARYAWAN)
     Route::get('/it-ticket', [ItTicketController::class, 'index'])->name('ticket.index');
     Route::post('/it-ticket', [ItTicketController::class, 'store'])->name('ticket.store');
-});
-
 // 3. Rute Khusus Administrator (Dilindungi 'auth' DAN 'admin')
 Route::middleware(['auth', 'admin'])->group(function () {
-
-    // Dashboard Admin
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard', [
-            'stats' => [
-                'total_karyawan' => Karyawan::where('status_aktif', true)->count(),
-
-                // PERBAIKAN: Ubah 'status' menjadi 'status_approval'
-                'cuti_pending' => PengajuanCuti::where('status_approval', 'Pending')->count(),
-
-                'spj_pending' => PengajuanSpj::where('status_approval', 'Pending')->count(),
-                'tiket_open' => ItTicket::whereIn('status', ['Submitted', 'In Progress'])->count(),
-            ]
-        ]);
-    })->name('dashboard');
 
     // Monitor Absensi Admin
     Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
@@ -140,6 +126,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
         Route::post('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
         Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
+
+        // ==========================================
+    // SISTEM PERSURATAN HC
+    // ==========================================
+    Route::prefix('persuratan')->group(function () {
+        // Master Template (Hanya bisa diakses HC/Admin)
+        Route::resource('template', App\Http\Controllers\Persuratan\MasterTemplateController::class);
+        
+        // Surat Keluar (Generate, Draft, Terbit)
+        Route::resource('keluar', App\Http\Controllers\Persuratan\SuratKeluarController::class);
+        Route::post('keluar/{id}/terbitkan', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
+        Route::post('keluar/{id}/batal', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
+        
+        // Surat Masuk (Arsip)
+        Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
+    });
     });
 });
 
