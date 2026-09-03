@@ -127,6 +127,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
         Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
 
+         });
+
         // ==========================================
     // SISTEM PERSURATAN HC
     // ==========================================
@@ -141,7 +143,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         
         // Surat Masuk (Arsip)
         Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
-    });
+   
     });
 });
 
