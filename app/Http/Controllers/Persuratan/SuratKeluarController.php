@@ -7,6 +7,7 @@ use App\Models\SuratKeluar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SuratKeluarController extends Controller
 {
@@ -30,7 +31,8 @@ class SuratKeluarController extends Controller
     public function create()
     {
         $templates = \App\Models\MasterTemplateSurat::where('is_active', true)->get();
-        $karyawans = \App\Models\Karyawan::select('id', 'nama_lengkap', 'nik')->get();
+        // UBAH BARIS INI:
+        $karyawans = \App\Models\Karyawan::select('id', 'nama_lengkap', 'nik_internal')->get();
 
         return Inertia::render('Persuratan/Keluar/Create', [
             'templates' => $templates,
@@ -116,5 +118,35 @@ class SuratKeluarController extends Controller
             7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
         ];
         return $map[$bulan];
+    }
+
+    /**
+     * Generate dan Unduh File PDF Surat Resmi
+     */
+    public function unduhPdf($id)
+    {
+        $surat = SuratKeluar::with(['template', 'karyawan'])->findOrFail($id);
+
+        if ($surat->status !== 'Terbit') {
+            abort(403, 'Hanya surat yang sudah terbit yang bisa dicetak.');
+        }
+
+        // 1. Ambil format HTML dari database
+        $konten = $surat->template->konten;
+
+        // 2. Ganti kata kunci [NAMA_KARYAWAN] dan [NIK] dengan data asli
+        $konten = str_replace('[NAMA_KARYAWAN]', $surat->karyawan->nama_lengkap, $konten);
+        $konten = str_replace('[NIK]', $surat->karyawan->nik_internal, $konten);
+
+        // 3. Render HTML tersebut menjadi file PDF
+        $pdf = Pdf::loadView('pdf.surat', [
+            'surat' => $surat,
+            'konten' => $konten
+        ]);
+
+        // 4. Buat penamaan file otomatis (contoh: SKK_001_SKK_LDP_IX_2026.pdf)
+        $namaFile = $surat->template->kode_surat . '_' . str_replace('/', '_', $surat->nomor_surat) . '.pdf';
+
+        return $pdf->download($namaFile);
     }
 }

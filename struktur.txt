@@ -36,6 +36,8 @@
 │   │   │   ├── PengajuanLemburController.php
 │   │   │   ├── PengajuanSpjController.php
 │   │   │   ├── PenilaianKinerjaController.php
+│   │   │   ├── Persuratan
+│   │   │   │   └── SuratKeluarController.php
 │   │   │   ├── PinjamanController.php
 │   │   │   ├── ProfileController.php
 │   │   │   └── SuratPeringatanController.php
@@ -71,6 +73,7 @@
 │   │   ├── MasterKomponenPayroll.php
 │   │   ├── MasterPtkp.php
 │   │   ├── MasterShift.php
+│   │   ├── MasterTemplateSurat.php
 │   │   ├── Payroll.php
 │   │   ├── PendidikanKaryawan.php
 │   │   ├── PengajuanCuti.php
@@ -86,6 +89,8 @@
 │   │   ├── RiwayatKontrak.php
 │   │   ├── Role.php
 │   │   ├── SaldoCuti.php
+│   │   ├── SuratKeluar.php
+│   │   ├── SuratMasuk.php
 │   │   ├── SuratPeringatan.php
 │   │   └── User.php
 │   ├── Providers
@@ -146,14 +151,20 @@
 │   │   ├── 2026_08_26_142100_create_riwayat_it_tickets_table.php
 │   │   ├── 2026_08_31_154506_create_penilaian_kinerjas_table.php
 │   │   ├── 2026_08_31_160344_create_delegasi_wewenangs_table.php
-│   │   └── 2026_09_02_044832_create_pengaturans_table.php
+│   │   ├── 2026_09_02_044832_create_pengaturans_table.php
+│   │   ├── 2026_09_03_140514_create_master_template_surats_table.php
+│   │   ├── 2026_09_03_140515_create_surat_keluars_table.php
+│   │   ├── 2026_09_03_140516_create_surat_masuks_table.php
+│   │   ├── 2026_09_04_040435_add_role_to_users_table.php
+│   │   └── 2026_09_04_042907_add_status_and_catatan_to_absensis_table.php
 │   └── seeders
 │       ├── DatabaseSeeder.php
 │       ├── MasterDataSeeder.php
 │       ├── MasterKomponenPayrollSeeder.php
 │       ├── MasterPtkpSeeder.php
+│       ├── MasterTemplateSuratSeeder.php
 │       ├── PengaturanSeeder.php
-│       ├── RoleSeeder.php
+│       ├── UserRoleSeeder.php
 │       └── UserSeeder.php
 ├── docker
 │   └── nginx
@@ -165,65 +176,6 @@
 ├── phpunit.xml
 ├── postcss.config.js
 ├── public
-│   ├── build
-│   │   ├── assets
-│   │   │   ├── AdminIndex-BDyeX5Ei.js
-│   │   │   ├── AdminIndex-BvzRIbUU.js
-│   │   │   ├── AdminIndex-CgHyzMzI.js
-│   │   │   ├── AdminIndex-CzfjmTwd.js
-│   │   │   ├── AdminIndex-D3BvlPbt.js
-│   │   │   ├── ApplicationLogo-DKbkljD9.js
-│   │   │   ├── AuthenticatedLayout-CuymFyWF.js
-│   │   │   ├── ConfirmPassword-BkBctIla.js
-│   │   │   ├── Create-APvIEZDP.js
-│   │   │   ├── Create-BPETejfh.js
-│   │   │   ├── Create-C03FVpR2.js
-│   │   │   ├── Create-DFwbu-Ne.js
-│   │   │   ├── Create-DyQvwo-w.js
-│   │   │   ├── Create-LgXIk30n.js
-│   │   │   ├── Create-YsPldNpc.js
-│   │   │   ├── Create-ZDnPQF0i.js
-│   │   │   ├── Create-wRnPKRjx.js
-│   │   │   ├── DangerButton-d9H2xErR.js
-│   │   │   ├── Dashboard-CgSYToDt.js
-│   │   │   ├── DeleteUserForm-qnJIwucE.js
-│   │   │   ├── Edit-CoABS0tg.js
-│   │   │   ├── Edit-YL3v5aeV.js
-│   │   │   ├── ForgotPassword-bVqRl5wQ.js
-│   │   │   ├── GuestLayout-DVyPV1A4.js
-│   │   │   ├── Index-CKIdaR_p.js
-│   │   │   ├── Index-CQMPVOwl.js
-│   │   │   ├── Index-CSpYXWCB.js
-│   │   │   ├── Index-CXQ2FCZv.js
-│   │   │   ├── Index-CZFiVctb.js
-│   │   │   ├── Index-CiAISEFX.js
-│   │   │   ├── Index-D4LLxBoC.js
-│   │   │   ├── Index-DFuEtm0J.js
-│   │   │   ├── Index-DMASafua.js
-│   │   │   ├── Index-DQRRzD1n.js
-│   │   │   ├── Index-DeLXmPqV.js
-│   │   │   ├── Index-DjpUPGMy.js
-│   │   │   ├── Index-LAErXMGH.js
-│   │   │   ├── InputLabel-COkxAJjb.js
-│   │   │   ├── Login-XNn6JdTH.js
-│   │   │   ├── Modal-BgIX4Y6j.js
-│   │   │   ├── MyPayslips-DNC9Mgm2.js
-│   │   │   ├── PrimaryButton-BSilvCo4.js
-│   │   │   ├── Register-CYUwGa3_.js
-│   │   │   ├── ResetPassword-BRWLOntU.js
-│   │   │   ├── SecondaryButton-0zfXAOA1.js
-│   │   │   ├── Show-BNRzeeFq.js
-│   │   │   ├── Show-CX4aY2Fd.js
-│   │   │   ├── TextInput-9c383FKo.js
-│   │   │   ├── UpdatePasswordForm-DM8w7evB.js
-│   │   │   ├── UpdateProfileInformationForm-HmQU4W9V.js
-│   │   │   ├── VerifyEmail-3iSwhXC_.js
-│   │   │   ├── Welcome-CaF79oi1.js
-│   │   │   ├── app-BwClPLce.css
-│   │   │   ├── app-QLd5KW24.js
-│   │   │   ├── react-webcam-Ba4s9IqC.js
-│   │   │   └── transition-CUvAMJy7.js
-│   │   └── manifest.json
 │   ├── favicon.ico
 │   ├── hot
 │   ├── index.php
@@ -309,6 +261,10 @@
 │   │   │   │   ├── MyPayslips.jsx
 │   │   │   │   └── Show.jsx
 │   │   │   ├── Pengajuan
+│   │   │   ├── Persuratan
+│   │   │   │   └── Keluar
+│   │   │   │       ├── Create.jsx
+│   │   │   │       └── Index.jsx
 │   │   │   ├── Pinjaman
 │   │   │   │   ├── AdminIndex.jsx
 │   │   │   │   ├── Create.jsx
@@ -330,7 +286,9 @@
 │   │   ├── bootstrap.js
 │   │   └── ziggy.js
 │   └── views
-│       └── app.blade.php
+│       ├── app.blade.php
+│       └── pdf
+│           └── surat.blade.php
 ├── routes
 │   ├── auth.php
 │   ├── console.php
@@ -353,4 +311,4 @@
 │       └── ExampleTest.php
 └── vite.config.js
 
-73 directories, 281 files
+75 directories, 237 files

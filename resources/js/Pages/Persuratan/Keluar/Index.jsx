@@ -104,8 +104,11 @@ export default function Index({ auth, suratKeluars }) {
                                                 )}
                                                 {surat.status === "Terbit" && (
                                                     <a
-                                                        href="#"
-                                                        className="text-gray-600 hover:underline"
+                                                        href={route(
+                                                            "keluar.pdf",
+                                                            surat.id,
+                                                        )}
+                                                        className="text-gray-600 hover:text-red-600 font-medium hover:underline flex items-center gap-1"
                                                     >
                                                         Unduh PDF
                                                     </a>

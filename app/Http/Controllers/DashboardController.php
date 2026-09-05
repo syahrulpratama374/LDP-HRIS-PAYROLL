@@ -15,17 +15,17 @@ class DashboardController extends Controller
         $roleId = $user->role_id ?? 6; 
 
         switch ($roleId) {
-            case 1: // Sesuai DB: Syahrul
+            case 1: // Super Admin 
                 return Inertia::render('Dashboard/Admin');
-            case 2:
-                return Inertia::render('Dashboard/Supervisor');
-            case 3:
-                return Inertia::render('Dashboard/HC');
-            case 4:
-                return Inertia::render('Dashboard/Finance');
-            case 5:
+            case 2: // Direktur (Sesuai ID 2 di database)
                 return Inertia::render('Dashboard/Direktur');
-            case 6: // Sesuai DB: Kevin
+            case 3: // HRD / HC
+                return Inertia::render('Dashboard/HC');
+            case 4: // Finance
+                return Inertia::render('Dashboard/Finance');
+            case 5: // Supervisor (Sesuai ID 5 di database)
+                return Inertia::render('Dashboard/Supervisor');
+            case 6: // Karyawan 
                 return Inertia::render('Dashboard/Karyawan');
             default:
                 return Inertia::render('Dashboard/Karyawan');

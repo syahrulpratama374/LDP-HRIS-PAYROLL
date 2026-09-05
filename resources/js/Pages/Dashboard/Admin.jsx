@@ -1,15 +1,23 @@
-import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import React from "react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { Head } from "@inertiajs/react";
 
-export default function AdminDashboard({ auth }) {
+export default function Admin({ auth }) {
     return (
-        <AuthenticatedLayout user={auth.user}>
-            <Head title="Dasbor Admin" />
+        <AuthenticatedLayout
+            user={auth.user}
+            header={
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Dashboard Super Admin
+                </h2>
+            }
+        >
+            <Head title="Dashboard Admin" />
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 font-bold text-gray-900">
-                        Ini adalah cangkang kosong untuk Dasbor Admin.
+                        Selamat datang di Dasbor Utama Super Admin PT LDP Jogja.
+                        (Manajemen Sistem & IT Helpdesk)
                     </div>
                 </div>
             </div>

@@ -24,6 +24,7 @@ use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+
 // 1. Arahkan pengguna ke halaman Login saat mengakses domain utama
 Route::get('/', function () {
     return redirect()->route('login');
@@ -140,6 +141,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('keluar', App\Http\Controllers\Persuratan\SuratKeluarController::class);
         Route::post('keluar/{id}/terbitkan', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
         Route::post('keluar/{id}/batal', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
+        Route::get('keluar/{id}/pdf', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
         
         // Surat Masuk (Arsip)
         Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
