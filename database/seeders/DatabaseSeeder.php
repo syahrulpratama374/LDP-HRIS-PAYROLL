@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
     {
         // Urutan: Role diciptakan dulu, baru User.
         $this->call([
-            RoleSeeder::class,
+            UserRoleSeeder::class,
             UserSeeder::class,
         ]);
     }
