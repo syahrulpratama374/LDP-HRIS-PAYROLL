@@ -9,14 +9,21 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // Urutan: Role diciptakan dulu, baru User.
         $this->call([
+            // 1. Buat Role Dasar
             UserRoleSeeder::class,
+            
+            // 2. Eksekusi SEMUA Master Data Terlebih Dahulu
+            MasterDataSeeder::class,
+            MasterPtkpSeeder::class,
+            MasterKomponenPayrollSeeder::class,
+            MasterTemplateSuratSeeder::class,
+            PengaturanSeeder::class,
+
+            // 3. Setelah Master Data siap, barulah User & Profil Karyawan dibuat
+            // UserSeeder akan otomatis memakai Master Data yang sudah terbuat di atas
             UserSeeder::class,
         ]);
     }
