@@ -1,51 +1,33 @@
 <?php
 
-use App\Models\Karyawan;
-use App\Models\PengajuanCuti;
-use App\Models\PengajuanSpj;
-use App\Models\ItTicket;
-
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\MasterData\DepartemenController;
-use App\Http\Controllers\JabatanController;
-use App\Http\Controllers\GolonganController;
-use App\Http\Controllers\Kepegawaian\KaryawanController;
-use App\Http\Controllers\AbsensiController;
-use App\Http\Controllers\PengajuanCutiController;
-use App\Http\Controllers\PengajuanLemburController;
-use App\Http\Controllers\PinjamanController;
-use App\Http\Controllers\PengajuanSpjController;
-use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\ItTicketController;
-use App\Http\Controllers\SuratPeringatanController;
-use App\Http\Controllers\PenilaianKinerjaController;
-use App\Http\Controllers\DelegasiWewenangController;
-use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\{
+    ProfileController, DashboardController, AbsensiController, 
+    PengajuanCutiController, PengajuanLemburController, PinjamanController, 
+    PengajuanSpjController, PayrollController, ItTicketController, 
+    SuratPeringatanController, PenilaianKinerjaController, DelegasiWewenangController,
+    JabatanController, GolonganController
+};
+use App\Http\Controllers\MasterData\DepartemenController;
 
-
-// 1. Arahkan pengguna ke halaman Login saat mengakses domain utama
+// 1. Redirect Utama
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// 2. Rute Umum (Wajib Login - Bisa diakses Admin & Karyawan)
+// 2. Rute Umum (Wajib Login - Berlaku untuk Semua Role 1-6)
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-});
+
     // Rute Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Rute Absensi Karyawan (Terminal Kamera)
+    // Terminal Absensi & Self-Service
     Route::get('/absensi/karyawan', [AbsensiController::class, 'create'])->name('absensi.create');
     Route::post('/absensi/karyawan', [AbsensiController::class, 'store'])->name('absensi.store');
 
-    // ==========================================
-    // ROUTING PENGAJUAN CUTI & IZIN (KARYAWAN)
-    // ==========================================
     Route::get('/cuti', [PengajuanCutiController::class, 'index'])->name('cuti.index');
     Route::get('/cuti/ajukan', [PengajuanCutiController::class, 'create'])->name('cuti.create');
     Route::post('/cuti', [PengajuanCutiController::class, 'store'])->name('cuti.store');
@@ -54,64 +36,71 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lembur/ajukan', [PengajuanLemburController::class, 'create'])->name('lembur.create');
     Route::post('/lembur', [PengajuanLemburController::class, 'store'])->name('lembur.store');
 
-    // ROUTING KASBON / PINJAMAN (KARYAWAN)
     Route::get('/pinjaman', [PinjamanController::class, 'index'])->name('pinjaman.index');
     Route::get('/pinjaman/ajukan', [PinjamanController::class, 'create'])->name('pinjaman.create');
     Route::post('/pinjaman', [PinjamanController::class, 'store'])->name('pinjaman.store');
 
-    // ROUTING SPJ / PERJALANAN DINAS (KARYAWAN)
     Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.index');
     Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.create');
     Route::post('/spj', [PengajuanSpjController::class, 'store'])->name('spj.store');
 
-    // ROUTING SLIP GAJI (KARYAWAN)
     Route::get('/slip-gaji', [PayrollController::class, 'myPayslips'])->name('slip.index');
     Route::get('/slip-gaji/{id}', [PayrollController::class, 'show'])->name('slip.show');
 
-    // IT TICKET (KARYAWAN)
     Route::get('/it-ticket', [ItTicketController::class, 'index'])->name('ticket.index');
     Route::post('/it-ticket', [ItTicketController::class, 'store'])->name('ticket.store');
-// 3. Rute Khusus Administrator (Dilindungi 'auth' DAN 'admin')
-Route::middleware(['auth', 'admin'])->group(function () {
+});
 
-    // Monitor Absensi Admin
-    Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
 
-    // Approval Cuti Admin (Dipisah menjadi /admin/cuti agar tidak bentrok dengan Karyawan)
+// 3. RUTE MANAJERIAL & OPERASIONAL (Dilindungi CheckRole)
+
+// A. Akses SPV (5), HC (3), Admin (1) -> Modul Approval Kehadiran
+Route::middleware(['auth', 'role:1,3,5'])->group(function () {
     Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
     Route::post('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.update');
-
+    
     Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
     Route::post('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
+});
 
-    // APPROVAL KASBON / PINJAMAN (ADMIN / FINANCE)
+// B. Akses Finance (4) & Admin (1) -> Modul Keuangan & Payroll
+Route::middleware(['auth', 'role:1,4'])->group(function () {
     Route::get('/admin/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
     Route::post('/admin/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
-
-    // APPROVAL SPJ (ADMIN / FINANCE)
-    Route::get('/admin/spj', [PengajuanSpjController::class, 'adminIndex'])->name('admin.spj.index');
-    Route::post('/admin/spj/{id}/status', [PengajuanSpjController::class, 'updateStatus'])->name('admin.spj.update');
 
     Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
     Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
     Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
+});
 
-    // APPROVAL / MANAJEMEN IT TICKET (ADMIN)
-    Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
-    Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
+// C. Akses SPV (5), Finance (4), Direktur (2), Admin (1) -> Modul Multi-Tier Approval
+Route::middleware(['auth', 'role:1,2,4,5'])->group(function () {
+    Route::get('/admin/spj', [PengajuanSpjController::class, 'adminIndex'])->name('admin.spj.index');
+    Route::post('/admin/spj/{id}/status', [PengajuanSpjController::class, 'updateStatus'])->name('admin.spj.update');
+});
 
+// D. Akses Khusus HC (3) & Admin (1) -> Master Data, Kepegawaian, Persuratan
+Route::middleware(['auth', 'role:1,3'])->group(function () {
+    Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
+    
     // Master Data
     Route::prefix('master-data')->group(function () {
         Route::resource('departemen', DepartemenController::class)->except(['create', 'show', 'edit']);
         Route::resource('jabatan', JabatanController::class)->except(['create', 'show', 'edit']);
         Route::resource('golongan', GolonganController::class)->except(['create', 'show', 'edit']);
+
+        // Master Cuti & Kalender Libur (HC & Admin)
+    Route::get('/hc/master-cuti', [App\Http\Controllers\Kepegawaian\MasterCutiLiburController::class, 'index'])->name('hc.cuti.index');
+    Route::post('/hc/master-cuti/default', [App\Http\Controllers\Kepegawaian\MasterCutiLiburController::class, 'updateDefaultCuti'])->name('hc.cuti.default');
+    Route::post('/hc/master-cuti/libur', [App\Http\Controllers\Kepegawaian\MasterCutiLiburController::class, 'storeLibur'])->name('hc.libur.store');
+    Route::delete('/hc/master-cuti/libur/{id}', [App\Http\Controllers\Kepegawaian\MasterCutiLiburController::class, 'destroyLibur'])->name('hc.libur.destroy');
     });
 
-    // Operasional & Kepegawaian
+    // Kepegawaian & Disiplin
     Route::prefix('kepegawaian')->group(function () {
-        Route::resource('karyawan', KaryawanController::class);
-        Route::post('karyawan/{id}/gaji', [KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
-        Route::post('karyawan/{id}/jabatan', [KaryawanController::class, 'updateJabatan'])->name('karyawan.updateJabatan');
+        Route::resource('karyawan', App\Http\Controllers\Kepegawaian\KaryawanController::class);
+        Route::post('karyawan/{id}/gaji', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
+        Route::post('karyawan/{id}/jabatan', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'updateJabatan'])->name('karyawan.updateJabatan');
 
         Route::get('/surat-peringatan', [SuratPeringatanController::class, 'index'])->name('admin.sp.index');
         Route::get('/surat-peringatan/buat', [SuratPeringatanController::class, 'create'])->name('admin.sp.create');
@@ -127,26 +116,23 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
         Route::post('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
         Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
+    });
 
-         });
-
-        // ==========================================
-    // SISTEM PERSURATAN HC
-    // ==========================================
+    // Persuratan HC
     Route::prefix('persuratan')->group(function () {
-        // Master Template (Hanya bisa diakses HC/Admin)
         Route::resource('template', App\Http\Controllers\Persuratan\MasterTemplateController::class);
-        
-        // Surat Keluar (Generate, Draft, Terbit)
         Route::resource('keluar', App\Http\Controllers\Persuratan\SuratKeluarController::class);
         Route::post('keluar/{id}/terbitkan', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
         Route::post('keluar/{id}/batal', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
         Route::get('keluar/{id}/pdf', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
-        
-        // Surat Masuk (Arsip)
         Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
-   
     });
+});
+
+// E. Akses Eksklusif Super Admin (1) -> Master IT
+Route::middleware(['auth', 'role:1'])->group(function () {
+    Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
+    Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
 });
 
 require __DIR__ . '/auth.php';

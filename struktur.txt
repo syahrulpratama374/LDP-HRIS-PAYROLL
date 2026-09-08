@@ -42,6 +42,7 @@
 │   │   │   ├── ProfileController.php
 │   │   │   └── SuratPeringatanController.php
 │   │   ├── Middleware
+│   │   │   ├── CheckRole.php
 │   │   │   ├── HandleInertiaRequests.php
 │   │   │   └── IsAdmin.php
 │   │   └── Requests
@@ -311,4 +312,4 @@
 │       └── ExampleTest.php
 └── vite.config.js
 
-75 directories, 237 files
+75 directories, 238 files
