@@ -59,10 +59,10 @@ Route::middleware(['auth'])->group(function () {
 // A. Akses SPV (5), HC (3), Admin (1) -> Modul Approval Kehadiran
 Route::middleware(['auth', 'role:1,3,5'])->group(function () {
     Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
-    Route::post('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.update');
+    Route::patch('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.status');
     
-    Route::get('/admin/lembur', [App\Http\Controllers\PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
-    Route::post('/admin/lembur/{id}/status', [App\Http\Controllers\PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
+    Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
+    Route::patch('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');
 });
 
 // B. Akses Finance (4) & Admin (1) -> Modul Keuangan & Payroll

@@ -139,11 +139,29 @@ class PengajuanSpjController extends Controller
 
         return redirect()->route('spj.index')->with('success', 'Pengajuan Perjalanan Dinas (SPJ) berhasil dikirim.');
     }
+// ==========================================
+    // AREA KHUSUS ADMIN / HC / SUPERVISOR / FINANCE
+    // ==========================================
 
-    // [ADMIN/FINANCE] Menampilkan daftar seluruh pengajuan SPJ
-    public function adminIndex()
+    // [SUPERVISOR/ADMIN/FINANCE] Menampilkan daftar SPJ
+    public function adminIndex(Request $request)
     {
-        $spj = PengajuanSpj::with(['karyawan.departemen', 'komponenBiaya'])
+        $user = $request->user();
+        $karyawan = $user->karyawan;
+
+        $query = PengajuanSpj::with(['karyawan.departemen', 'karyawan.jabatan', 'komponenBiaya']);
+
+        // Logika Hierarki: Jika user adalah Supervisor (Role 5), filter hanya bawahan langsungnya
+        if ($user->role_id == 5) {
+            if (!$karyawan) {
+                abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
+            }
+            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+            $query->whereIn('karyawan_id', $bawahanIds);
+        }
+
+        // Tarik data dengan memprioritaskan yang berstatus 'Pending' di urutan teratas
+        $spj = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -152,7 +170,7 @@ class PengajuanSpjController extends Controller
         ]);
     }
 
-    // [ADMIN/FINANCE] Mengubah status approval
+    // [SUPERVISOR/ADMIN/FINANCE] Mengubah status approval SPJ (Tier-1 / Pra-SPJ)
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -160,10 +178,15 @@ class PengajuanSpjController extends Controller
         ]);
 
         $spj = PengajuanSpj::findOrFail($id);
+        
         $spj->update([
             'status_approval' => $request->status_approval
         ]);
 
-        return redirect()->back()->with('success', 'Status pengajuan SPJ berhasil diperbarui.');
+        $pesan = $request->status_approval === 'Disetujui' 
+            ? 'Anggaran Perjalanan Dinas (Pra-SPJ) berhasil disetujui.' 
+            : 'Pengajuan Perjalanan Dinas ditolak.';
+
+        return redirect()->back()->with('success', $pesan);
     }
 }

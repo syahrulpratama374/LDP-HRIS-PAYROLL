@@ -68,6 +68,17 @@ class Karyawan extends Model
     {
         return $this->hasMany(RiwayatJabatan::class)->orderBy('effective_date_start', 'desc');
     }
+    // Relasi ke Atasan Langsung (Satu Karyawan punya Satu Atasan)
+    public function atasan()
+    {
+        return $this->belongsTo(Karyawan::class, 'atasan_id');
+    }
+
+    // Relasi ke Bawahan (Satu Atasan bisa punya Banyak Bawahan)
+    public function bawahan()
+    {
+        return $this->hasMany(Karyawan::class, 'atasan_id');
+    }
     // Jika Anda membuat Model untuk PTKP, Anda bisa membuka komentar ini:
     // public function ptkp() { 
     //     return $this->belongsTo(MasterPtkp::class, 'ptkp_id'); 

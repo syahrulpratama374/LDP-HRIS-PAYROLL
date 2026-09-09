@@ -73,13 +73,31 @@ class PengajuanLemburController extends Controller
 
         return redirect()->route('lembur.index')->with('success', 'Pengajuan lembur berhasil dikirim dan menunggu persetujuan.');
     }
+// ==========================================
+    // AREA KHUSUS ADMIN / HC / SUPERVISOR
+    // ==========================================
 
-    // [SUPERVISOR/ADMIN] Menampilkan daftar seluruh lembur untuk di-approve
-    public function adminIndex()
+    // [SUPERVISOR/ADMIN] Menampilkan daftar lembur bawahan
+    public function adminIndex(Request $request)
     {
-        $lemburs = PengajuanLembur::with('karyawan.departemen')
+        $user = $request->user();
+        $karyawan = $user->karyawan;
+
+        $query = PengajuanLembur::with(['karyawan.departemen', 'karyawan.jabatan']);
+
+        // Logika Hierarki: Jika user adalah Supervisor (Role 5), filter hanya bawahan langsungnya
+        if ($user->role_id == 5) {
+            if (!$karyawan) {
+                abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
+            }
+            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+            $query->whereIn('karyawan_id', $bawahanIds);
+        }
+
+        // Tarik data dengan memprioritaskan yang berstatus 'Pending' di urutan teratas
+        $lemburs = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->get(); // Menggunakan get() agar konsisten dengan antarmuka Approval kita
 
         return Inertia::render('Lembur/AdminIndex', [
             'lemburs' => $lemburs
@@ -99,6 +117,10 @@ class PengajuanLemburController extends Controller
             'status_approval' => $request->status_approval
         ]);
 
-        return redirect()->back()->with('success', 'Status pengajuan lembur berhasil diperbarui.');
+        $pesan = $request->status_approval === 'Disetujui' 
+            ? 'Pengajuan lembur berhasil disetujui.' 
+            : 'Pengajuan lembur telah ditolak.';
+
+        return redirect()->back()->with('success', $pesan);
     }
 }

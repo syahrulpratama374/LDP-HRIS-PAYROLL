@@ -1,72 +1,181 @@
-import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import React from "react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { Head, router } from "@inertiajs/react";
 
-export default function AdminIndex({ auth, pengajuanCuti }) {
-    
-    const handleApproval = (id, status) => {
-        if (confirm(`Apakah Anda yakin ingin memberikan status "${status}" pada pengajuan ini?`)) {
-            router.post(route('admin.cuti.update', id), {
-                status_approval: status
-            }, { preserveScroll: true });
+export default function AdminIndex({ auth, pengajuan }) {
+    // Fungsi untuk menembak update status ke backend
+    const handleApproval = (id, status, namaKaryawan) => {
+        if (
+            confirm(
+                `Anda yakin ingin ${status.toUpperCase()} pengajuan cuti dari ${namaKaryawan}?`,
+            )
+        ) {
+            router.patch(
+                route("admin.cuti.status", id),
+                {
+                    status_approval: status,
+                },
+                {
+                    preserveScroll: true,
+                },
+            );
         }
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Approval Pengajuan Cuti & Izin</h2>}>
-            <Head title="Approval Cuti" />
+        <AuthenticatedLayout
+            header={
+                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                    Approval Cuti Tim (Tier-1)
+                </h2>
+            }
+        >
+            <Head title="Approval Cuti Tim" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        
+                        <div className="mb-6 border-b pb-4">
+                            <h3 className="text-lg font-bold text-gray-800">
+                                Daftar Pengajuan Cuti Bawahan
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Persetujuan ini akan memicu sistem untuk
+                                memotong saldo cuti tahunan Karyawan terkait.
+                            </p>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="min-w-full bg-white border border-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">Tgl Pengajuan</th>
-                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">Karyawan</th>
-                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">Detail Cuti</th>
-                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">Dokumen</th>
-                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">Status & Aksi</th>
+                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
+                                            Karyawan
+                                        </th>
+                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
+                                            Detail Cuti
+                                        </th>
+                                        <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
+                                            Alasan
+                                        </th>
+                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
+                                            Status
+                                        </th>
+                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
+                                            Aksi (Tier-1)
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {pengajuanCuti.data.length === 0 ? (
+                                    {pengajuan.length === 0 ? (
                                         <tr>
-                                            <td colSpan="5" className="px-6 py-8 text-center text-gray-500">Belum ada pengajuan cuti yang masuk.</td>
+                                            <td
+                                                colSpan="5"
+                                                className="px-6 py-8 text-center text-gray-500"
+                                            >
+                                                Tidak ada pengajuan cuti dari
+                                                tim Anda.
+                                            </td>
                                         </tr>
                                     ) : (
-                                        pengajuanCuti.data.map((cuti) => (
-                                            <tr key={cuti.id} className="hover:bg-gray-50 transition">
-                                                <td className="px-6 py-4 border-b text-sm text-gray-700 whitespace-nowrap">
-                                                    {new Date(cuti.created_at).toLocaleDateString('id-ID')}
-                                                </td>
+                                        pengajuan.map((item) => (
+                                            <tr
+                                                key={item.id}
+                                                className="hover:bg-gray-50 transition"
+                                            >
                                                 <td className="px-6 py-4 border-b">
-                                                    <div className="text-sm font-bold text-gray-800">{cuti.karyawan?.nama_lengkap}</div>
-                                                    <div className="text-xs text-gray-500">{cuti.karyawan?.departemen?.nama_departemen || '-'}</div>
-                                                </td>
-                                                <td className="px-6 py-4 border-b">
-                                                    <div className="text-sm font-bold text-indigo-600">{cuti.jenis_cuti}</div>
-                                                    <div className="text-xs text-gray-600 mt-1">
-                                                        {new Date(cuti.tanggal_mulai).toLocaleDateString('id-ID')} s/d {new Date(cuti.tanggal_selesai).toLocaleDateString('id-ID')}
+                                                    <div className="font-bold text-gray-800">
+                                                        {
+                                                            item.karyawan
+                                                                ?.nama_lengkap
+                                                        }
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1 italic">"{cuti.alasan}"</div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {
+                                                            item.karyawan
+                                                                ?.jabatan
+                                                                ?.nama_jabatan
+                                                        }
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 border-b">
+                                                    <div className="font-semibold text-indigo-600">
+                                                        {item.jenis_cuti}
+                                                    </div>
+                                                    <div className="text-sm text-gray-600">
+                                                        {new Date(
+                                                            item.tanggal_mulai,
+                                                        ).toLocaleDateString(
+                                                            "id-ID",
+                                                        )}{" "}
+                                                        s/d{" "}
+                                                        {new Date(
+                                                            item.tanggal_selesai,
+                                                        ).toLocaleDateString(
+                                                            "id-ID",
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    className="px-6 py-4 border-b text-sm text-gray-700 max-w-xs truncate"
+                                                    title={item.alasan}
+                                                >
+                                                    {item.alasan}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
-                                                    {cuti.dokumen_bukti_path ? (
-                                                        <a href={`/storage/${cuti.dokumen_bukti_path}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Lihat Lampiran</a>
-                                                    ) : '-'}
+                                                    <span
+                                                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                        ${
+                                                            item.status_approval ===
+                                                            "Pending"
+                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                : item.status_approval ===
+                                                                    "Disetujui"
+                                                                  ? "bg-green-100 text-green-800"
+                                                                  : "bg-red-100 text-red-800"
+                                                        }`}
+                                                    >
+                                                        {item.status_approval}
+                                                    </span>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
-                                                    {cuti.status_approval === 'Pending' ? (
+                                                    {item.status_approval ===
+                                                    "Pending" ? (
                                                         <div className="flex justify-center space-x-2">
-                                                            <button onClick={() => handleApproval(cuti.id, 'Disetujui')} className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded shadow hover:bg-green-600 transition">Setujui</button>
-                                                            <button onClick={() => handleApproval(cuti.id, 'Ditolak')} className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded shadow hover:bg-red-600 transition">Tolak</button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleApproval(
+                                                                        item.id,
+                                                                        "Disetujui",
+                                                                        item
+                                                                            .karyawan
+                                                                            ?.nama_lengkap,
+                                                                    )
+                                                                }
+                                                                className="bg-green-500 hover:bg-green-600 text-white p-2 rounded shadow transition"
+                                                                title="Setujui"
+                                                            >
+                                                                ✅
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleApproval(
+                                                                        item.id,
+                                                                        "Ditolak",
+                                                                        item
+                                                                            .karyawan
+                                                                            ?.nama_lengkap,
+                                                                    )
+                                                                }
+                                                                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded shadow transition"
+                                                                title="Tolak"
+                                                            >
+                                                                ❌
+                                                            </button>
                                                         </div>
                                                     ) : (
-                                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${cuti.status_approval === 'Disetujui' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                            {cuti.status_approval}
+                                                        <span className="text-xs text-gray-400 italic">
+                                                            Sudah Diproses
                                                         </span>
                                                     )}
                                                 </td>
@@ -76,18 +185,6 @@ export default function AdminIndex({ auth, pengajuanCuti }) {
                                 </tbody>
                             </table>
                         </div>
-
-                        {/* Pagination */}
-                        {pengajuanCuti.links && pengajuanCuti.links.length > 3 && (
-                            <div className="mt-4 flex justify-end space-x-1">
-                                {pengajuanCuti.links.map((link, index) => (
-                                    <Link key={index} href={link.url || '#'} dangerouslySetInnerHTML={{ __html: link.label }}
-                                        className={`px-3 py-1 border rounded text-sm ${link.active ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} ${!link.url && 'opacity-50 cursor-not-allowed'}`}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
                     </div>
                 </div>
             </div>

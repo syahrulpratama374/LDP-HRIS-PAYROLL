@@ -91,14 +91,30 @@ class PengajuanCutiController extends Controller
     // AREA KHUSUS ADMIN / HC / SUPERVISOR
     // ==========================================
 
-    public function adminIndex()
+    public function adminIndex(Request $request)
     {
-        $pengajuanCuti = PengajuanCuti::with(['karyawan.departemen', 'karyawan.jabatan'])
+        $user = $request->user();
+        $karyawan = $user->karyawan;
+
+        $query = PengajuanCuti::with(['karyawan.departemen', 'karyawan.jabatan']);
+
+        // Logika Hierarki: Jika user adalah Supervisor (Role 5), filter hanya bawaan langsungnya
+        if ($user->role_id == 5) {
+            if (!$karyawan) {
+                abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
+            }
+            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+            $query->whereIn('karyawan_id', $bawahanIds);
+        }
+        // Jika user adalah HC / Direktur / Admin, query tidak difilter (bisa melihat semua)
+
+        // Tarik data dengan memprioritaskan yang berstatus 'Pending' di urutan teratas
+        $pengajuan = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->get(); // Menggunakan get() agar tidak bentrok dengan mapping di React
 
         return Inertia::render('Kepegawaian/Cuti/AdminIndex', [
-            'pengajuanCuti' => $pengajuanCuti
+            'pengajuan' => $pengajuan // Menggunakan nama variabel 'pengajuan' agar sesuai dengan React AdminIndex.jsx kita
         ]);
     }
 
@@ -122,7 +138,6 @@ class PengajuanCutiController extends Controller
             $tahunSekarang = $tanggalMulai->year;
 
             // 2. Pemotongan Saldo Cuti Reaktif (Hanya untuk Cuti Tahunan)
-     // 2. Pemotongan Saldo Cuti Reaktif (Hanya untuk Cuti Tahunan)
             if ($cuti->jenis_cuti === 'Tahunan') {
                 // Cari saldo tahun ini, jika tidak ada, otomatis buatkan data baru!
                 $saldo = \App\Models\SaldoCuti::firstOrCreate(
@@ -165,6 +180,6 @@ class PengajuanCutiController extends Controller
             'status_approval' => $request->status_approval
         ]);
 
-        return redirect()->back()->with('success', 'Cuti disetujui! Saldo karyawan telah dipotong dan jadwal absensi otomatis diperbarui.');
+        return redirect()->back()->with('success', 'Status cuti berhasil diperbarui! Saldo dan absensi otomatis disesuaikan jika disetujui.');
     }
 }
