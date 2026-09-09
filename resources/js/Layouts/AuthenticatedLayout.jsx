@@ -19,15 +19,9 @@ export default function AuthenticatedLayout({ header, children }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
-                            {/* Logo: Mengarahkan ke rute yang berbeda berdasarkan Role */}
+                            {/* Logo: Selalu mengarah ke Dashboard untuk semua Role */}
                             <div className="shrink-0 flex items-center">
-                                <Link
-                                    href={
-                                        user.role_id === 1
-                                            ? route("dashboard")
-                                            : route("absensi.create")
-                                    }
-                                >
+                                <Link href={route("dashboard")}>
                                     <ApplicationLogo className="block h-9 w-auto fill-current text-indigo-600" />
                                 </Link>
                             </div>
@@ -35,7 +29,6 @@ export default function AuthenticatedLayout({ header, children }) {
                             {/* Menu Navigasi Desktop */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 {/* === MENU KHUSUS ADMIN === */}
-
                                 {user.role_id === 1 && (
                                     <>
                                         <NavLink
@@ -78,7 +71,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Approval Lembur
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.pinjaman.index")}
                                             active={route().current(
@@ -87,7 +79,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Approval Kasbon
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.spj.index")}
                                             active={route().current(
@@ -96,7 +87,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Approval SPJ
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.payroll.index")}
                                             active={route().current(
@@ -105,7 +95,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Kalkulator Payroll
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.ticket.index")}
                                             active={route().current(
@@ -114,7 +103,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             IT Helpdesk
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.sp.index")}
                                             active={route().current(
@@ -123,7 +111,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Data Pelanggaran (SP)
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.kinerja.index")}
                                             active={route().current(
@@ -132,7 +119,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Penilaian Kinerja (KPI)
                                         </NavLink>
-
                                         <NavLink
                                             href={route("admin.delegasi.index")}
                                             active={route().current(
@@ -141,7 +127,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Delegasi Wewenang (Plt)
                                         </NavLink>
-
                                         <NavLink
                                             href={route("keluar.index")}
                                             active={route().current("keluar.*")}
@@ -206,6 +191,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {[2, 3, 4, 5, 6].includes(user.role_id) && (
                                     <>
                                         <NavLink
+                                            href={route("dashboard")}
+                                            active={route().current(
+                                                "dashboard",
+                                            )}
+                                        >
+                                            Dashboard
+                                        </NavLink>
+                                        <NavLink
                                             href={route("absensi.create")}
                                             active={route().current(
                                                 "absensi.create",
@@ -225,7 +218,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Pengajuan Lembur
                                         </NavLink>
-
                                         <NavLink
                                             href={route("pinjaman.index")}
                                             active={route().current(
@@ -234,21 +226,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Kasbon & Pinjaman
                                         </NavLink>
-
                                         <NavLink
                                             href={route("spj.index")}
                                             active={route().current("spj.*")}
                                         >
                                             Perjalanan Dinas (SPJ)
                                         </NavLink>
-
                                         <NavLink
                                             href={route("slip.index")}
                                             active={route().current("slip.*")}
                                         >
                                             Slip Gaji Saya
                                         </NavLink>
-
                                         <NavLink
                                             href={route("ticket.index")}
                                             active={route().current("ticket.*")}
@@ -377,68 +366,60 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Monitor Absensi
                                 </ResponsiveNavLink>
-                                <NavLink
+                                <ResponsiveNavLink
                                     href={route("admin.lembur.index")}
                                     active={route().current("admin.lembur.*")}
                                 >
                                     Approval Lembur
-                                </NavLink>
-
+                                </ResponsiveNavLink>
                                 <ResponsiveNavLink
                                     href={route("admin.cuti.index")}
                                     active={route().current("admin.cuti.*")}
                                 >
                                     Approval Cuti
                                 </ResponsiveNavLink>
-
-                                <NavLink
+                                <ResponsiveNavLink
                                     href={route("admin.spj.index")}
                                     active={route().current("admin.spj.*")}
                                 >
                                     Approval SPJ
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("admin.pinjaman.index")}
                                     active={route().current("admin.pinjaman.*")}
                                 >
                                     Approval Kasbon
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("admin.payroll.index")}
                                     active={route().current("admin.payroll.*")}
                                 >
                                     Kalkulator Payroll
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("admin.ticket.index")}
                                     active={route().current("admin.ticket.*")}
                                 >
                                     IT Helpdesk
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("admin.kinerja.index")}
                                     active={route().current("admin.kinerja.*")}
                                 >
                                     Penilaian Kinerja (KPI)
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("admin.delegasi.index")}
                                     active={route().current("admin.delegasi.*")}
                                 >
                                     Delegasi Wewenang (Plt)
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("keluar.index")}
                                     active={route().current("keluar.*")}
                                 >
                                     Persuratan HC
-                                </NavLink>
+                                </ResponsiveNavLink>
 
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
                                     Master Data
@@ -461,20 +442,24 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Golongan
                                 </ResponsiveNavLink>
-
-                                <NavLink
+                                <ResponsiveNavLink
                                     href={route("admin.sp.index")}
                                     active={route().current("admin.sp.*")}
                                 >
                                     Data Pelanggaran (SP)
-                                </NavLink>
+                                </ResponsiveNavLink>
                             </>
                         )}
 
                         {/* === MENU KHUSUS KARYAWAN (MOBILE) === */}
-
                         {[2, 3, 4, 5, 6].includes(user.role_id) && (
                             <>
+                                <ResponsiveNavLink
+                                    href={route("dashboard")}
+                                    active={route().current("dashboard")}
+                                >
+                                    Dashboard
+                                </ResponsiveNavLink>
                                 <ResponsiveNavLink
                                     href={route("absensi.create")}
                                     active={route().current("absensi.create")}
@@ -487,46 +472,36 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Pengajuan Cuti & Izin
                                 </ResponsiveNavLink>
-                                <NavLink
+                                <ResponsiveNavLink
                                     href={route("lembur.index")}
                                     active={route().current("lembur.*")}
                                 >
                                     Pengajuan Lembur
-                                </NavLink>
-                                <NavLink
-                                    href={route("admin.lembur.index")}
-                                    active={route().current("admin.lembur.*")}
-                                >
-                                    Approval Lembur
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("pinjaman.index")}
                                     active={route().current("pinjaman.*")}
                                 >
                                     Kasbon & Pinjaman
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("spj.index")}
                                     active={route().current("spj.*")}
                                 >
                                     Perjalanan Dinas (SPJ)
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("slip.index")}
                                     active={route().current("slip.*")}
                                 >
                                     Slip Gaji Saya
-                                </NavLink>
-
-                                <NavLink
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
                                     href={route("ticket.index")}
                                     active={route().current("ticket.*")}
                                 >
                                     IT Ticket
-                                </NavLink>
+                                </ResponsiveNavLink>
                             </>
                         )}
                     </div>

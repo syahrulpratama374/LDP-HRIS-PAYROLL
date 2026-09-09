@@ -1,20 +1,24 @@
 import React from "react";
+// Pastikan usePage ditambahkan di baris import ini
+import { Head, useForm, usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
 
 export default function Index({ tickets }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         judul: "",
         modul: "Hardware",
         deskripsi: "",
-        prioritas: "Medium",
+        prioritas: "Sedang",
         file_lampiran: null,
     });
+
+    // 1. LETAKKAN DI SINI: Ekstrak flash message sebelum return
+    const { flash } = usePage().props;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route("ticket.store"), {
-            forceFormData: true, // Wajib untuk upload file
+            forceFormData: true,
             onSuccess: () => reset(),
         });
     };
@@ -31,6 +35,13 @@ export default function Index({ tickets }) {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                    {/* 2. TAMPILKAN DI SINI: Notifikasi Sukses */}
+                    {flash?.success && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+                            {flash.success}
+                        </div>
+                    )}
+
                     {/* FORM PENGAJUAN TIKET */}
                     <div className="bg-white p-6 shadow-sm sm:rounded-lg border-t-4 border-indigo-500">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">
@@ -111,14 +122,17 @@ export default function Index({ tickets }) {
                                     }
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                 >
-                                    <option value="Low">
-                                        Low (Bisa ditunda)
+                                    <option value="Rendah">
+                                        Rendah (Bisa ditunda)
                                     </option>
-                                    <option value="Medium">
-                                        Medium (Mengganggu pekerjaan)
+                                    <option value="Sedang">
+                                        Sedang (Mengganggu pekerjaan)
                                     </option>
-                                    <option value="High">
-                                        High (Pekerjaan terhenti)
+                                    <option value="Tinggi">
+                                        Tinggi (Pekerjaan terhenti)
+                                    </option>
+                                    <option value="Darurat">
+                                        Darurat (Sistem lumpuh total)
                                     </option>
                                 </select>
                             </div>

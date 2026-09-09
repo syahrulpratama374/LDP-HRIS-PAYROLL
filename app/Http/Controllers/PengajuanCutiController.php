@@ -11,13 +11,17 @@ use Illuminate\Support\Facades\Auth;
 class PengajuanCutiController extends Controller
 {
     // Menampilkan riwayat cuti/izin milik karyawan yang sedang login
+// Menampilkan riwayat cuti/izin milik karyawan yang sedang login
     public function index()
     {
         $karyawan = Auth::user()->karyawan;
+        $riwayatCuti = [];
         
-        $riwayatCuti = PengajuanCuti::where('karyawan_id', $karyawan->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if ($karyawan) {
+            $riwayatCuti = PengajuanCuti::where('karyawan_id', $karyawan->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
 
         return Inertia::render('Kepegawaian/Cuti/Index', [
             'riwayatCuti' => $riwayatCuti
@@ -28,14 +32,18 @@ class PengajuanCutiController extends Controller
     public function create()
     {
         $karyawan = Auth::user()->karyawan;
+        
+        // Jaring pengaman jika user (seperti admin/HRD) tidak punya profil karyawan
+        if (!$karyawan) {
+            return redirect()->route('dashboard')->withErrors(['error' => 'Akun Anda tidak terhubung dengan profil Karyawan untuk mengajukan cuti.']);
+        }
+
         $tahunSekarang = date('Y');
         
-        // Membaca saldo cuti tahun ini
-        $saldoCuti = SaldoCuti::where('karyawan_id', $karyawan->id)
+        $saldoCuti = \App\Models\SaldoCuti::where('karyawan_id', $karyawan->id)
             ->where('tahun_periode', $tahunSekarang)
             ->first();
 
-        // Jika master data saldo belum di-generate oleh HC, berikan fallback nilai default
         if (!$saldoCuti) {
             $saldoCuti = [
                 'hak_cuti_tahunan' => 12,

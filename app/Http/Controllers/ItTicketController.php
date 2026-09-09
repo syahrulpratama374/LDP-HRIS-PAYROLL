@@ -3,16 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\ItTicket;
+use App\Models\RiwayatItTicket;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
 class ItTicketController extends Controller
 {
-    // [KARYAWAN] Tampilkan daftar tiket saya
+    // [KARYAWAN] Menampilkan daftar tiket milik sendiri
     public function index(Request $request)
     {
-        $tickets = ItTicket::where('user_id', $request->user()->id)
+        $user = $request->user();
+
+        $tickets = ItTicket::where('user_id', $user->id)
+            ->with('riwayats')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -21,60 +25,83 @@ class ItTicketController extends Controller
         ]);
     }
 
-    // [KARYAWAN] Simpan tiket baru
+    // [KARYAWAN] Menyimpan tiket keluhan baru
     public function store(Request $request)
     {
         $request->validate([
             'judul' => 'required|string|max:150',
             'modul' => 'required|string|max:100',
+            'prioritas' => 'required|in:Rendah,Sedang,Tinggi,Darurat',
             'deskripsi' => 'required|string',
-            'prioritas' => 'nullable|string',
-            'file_lampiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf,zip|max:5120', // Maks 5MB
+            'file_lampiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
-        $path = null;
+        $filePath = null;
         if ($request->hasFile('file_lampiran')) {
-            $path = $request->file('file_lampiran')->store('tickets', 'public');
+            $filePath = $request->file('file_lampiran')->store('it_tickets', 'public');
         }
 
-        ItTicket::create([
+        $ticket = ItTicket::create([
             'user_id' => $request->user()->id,
             'judul' => $request->judul,
             'modul' => $request->modul,
+            'prioritas' => $request->prioritas,
             'deskripsi' => $request->deskripsi,
-            'prioritas' => $request->prioritas ?? 'Medium',
-            'status' => 'Submitted',
+            'file_lampiran' => $filePath,
+            'status' => 'Pending',
             'persentase_progress' => 0,
-            'file_lampiran' => $path,
         ]);
 
-        return redirect()->back()->with('success', 'Tiket berhasil dikirim ke tim IT.');
+        // Catat entri awal ke tabel riwayat_it_tickets
+        RiwayatItTicket::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $request->user()->id,
+            'progress_sebelumnya' => 0,
+            'progress_baru' => 0,
+            'catatan' => 'Tiket kendala berhasil dibuat oleh pelapor.',
+        ]);
+
+        return redirect()->route('ticket.index')->with('success', 'Tiket kendala berhasil dilaporkan ke tim IT.');
     }
 
-    // [ADMIN] Tampilkan semua tiket masuk
+    // [ADMIN IT] Menampilkan seluruh antrean tiket masuk
     public function adminIndex()
     {
-        $tickets = ItTicket::with('user')->orderBy('created_at', 'desc')->get();
+        $tickets = ItTicket::with(['user.karyawan.departemen', 'riwayats'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return Inertia::render('ItTicket/AdminIndex', [
             'tickets' => $tickets
         ]);
     }
 
-    // [ADMIN] Update status dan progress tiket
+    // [ADMIN IT] Memperbarui progress & status penanganan tiket
     public function update(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|string',
+            'status' => 'required|in:Pending,Diproses,Selesai,Ditolak',
             'persentase_progress' => 'required|integer|min:0|max:100',
+            'catatan' => 'required|string|max:500',
         ]);
 
         $ticket = ItTicket::findOrFail($id);
+        $progressLama = $ticket->persentase_progress;
+
         $ticket->update([
             'status' => $request->status,
             'persentase_progress' => $request->persentase_progress,
         ]);
 
-        return redirect()->back()->with('success', 'Status tiket berhasil diperbarui.');
+        // Catat audit trail perbaikan
+        RiwayatItTicket::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $request->user()->id,
+            'progress_sebelumnya' => $progressLama,
+            'progress_baru' => $request->persentase_progress,
+            'catatan' => $request->catatan,
+        ]);
+
+        return redirect()->back()->with('success', 'Perkembangan tiket berhasil diperbarui.');
     }
 }

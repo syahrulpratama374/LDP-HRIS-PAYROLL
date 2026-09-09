@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm, router } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react"; // Hapus useForm karena kita pakai router.post
 import Webcam from "react-webcam";
 
 export default function Create({ auth, absensiHariIni, karyawan }) {
@@ -14,8 +14,9 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
     const [isLocationReady, setIsLocationReady] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // State BARU: Mengontrol kapan kamera absen pulang dimunculkan
+    // State untuk Kamera Pulang dan Catatan Logbook
     const [bukaKameraPulang, setBukaKameraPulang] = useState(false);
+    const [catatanLogbook, setCatatanLogbook] = useState("");
 
     useEffect(() => {
         const timer = setInterval(() => setWaktu(new Date()), 1000);
@@ -61,12 +62,14 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
                     image: imageSrc,
                     koordinat: koordinat,
                     tipe: tipe,
+                    catatan_logbook: catatanLogbook, // Kirim logbook ke backend
                 },
                 {
                     preserveScroll: true,
                     onSuccess: () => {
                         setIsSubmitting(false);
-                        setBukaKameraPulang(false); // Tutup kamera setelah berhasil absen pulang
+                        setBukaKameraPulang(false);
+                        setCatatanLogbook(""); // Reset logbook
                     },
                     onError: (errors) => {
                         setIsSubmitting(false);
@@ -75,7 +78,7 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
                 },
             );
         },
-        [webcamRef, koordinat, isLocationReady],
+        [webcamRef, koordinat, isLocationReady, catatanLogbook],
     );
 
     const sudahMasuk = absensiHariIni !== null;
@@ -128,8 +131,6 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
                             {isLocationReady && `(${koordinat})`}
                         </div>
 
-                        {/* LOGIKA ANTARMUKA YANG BARU */}
-
                         {/* KONDISI 1: Belum Absen Masuk Sama Sekali */}
                         {!sudahMasuk && (
                             <>
@@ -138,12 +139,12 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
                                         audio={false}
                                         ref={webcamRef}
                                         screenshotFormat="image/jpeg"
-                                        screenshotQuality={0.6} // Kompresi Kualitas Gambar (Keamanan Server)
+                                        screenshotQuality={0.6}
                                         videoConstraints={{
                                             width: 640,
                                             height: 480,
                                             facingMode: "user",
-                                        }} // Turunkan Resolusi
+                                        }}
                                         className="w-full max-w-md h-auto mirrored"
                                     />
                                 </div>
@@ -185,9 +186,24 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
                             </div>
                         )}
 
-                        {/* KONDISI 3: Membuka Kamera Untuk Pulang */}
+                        {/* KONDISI 3: Membuka Kamera Untuk Pulang + Form Logbook */}
                         {sudahMasuk && !sudahKeluar && bukaKameraPulang && (
                             <>
+                                <div className="w-full max-w-md mb-4 text-left">
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                        Catatan / Shift Handover Logbook
+                                    </label>
+                                    <textarea
+                                        className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        rows="3"
+                                        placeholder="Ketik ringkasan tugas/kendala hari ini (Wajib bagi tim NOC)..."
+                                        value={catatanLogbook}
+                                        onChange={(e) =>
+                                            setCatatanLogbook(e.target.value)
+                                        }
+                                    ></textarea>
+                                </div>
+
                                 <div className="relative border-4 border-orange-200 rounded-lg overflow-hidden shadow-inner mb-6 bg-black">
                                     <Webcam
                                         audio={false}

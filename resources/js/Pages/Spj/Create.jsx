@@ -63,6 +63,20 @@ export default function Create() {
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        {/* Notifikasi Error Validasi Plafon dari Backend */}
+                        {errors.error && (
+                            <div
+                                className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                                role="alert"
+                            >
+                                <strong className="font-bold">
+                                    Pengajuan SPJ Ditolak!{" "}
+                                </strong>
+                                <span className="block sm:inline">
+                                    {errors.error}
+                                </span>
+                            </div>
+                        )}
                         <form onSubmit={submit} className="space-y-6">
                             {/* --- BAGIAN 1: DETAIL PERJALANAN --- */}
                             <div className="border-b pb-4">
@@ -140,6 +154,11 @@ export default function Create() {
                                             className="mt-1 block w-full border-gray-300 rounded-md"
                                             placeholder="Jelaskan agenda perjalanan dinas..."
                                         ></textarea>
+                                        {errors.keperluan && (
+                                            <div className="text-red-500 text-sm mt-1">
+                                                {errors.keperluan}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

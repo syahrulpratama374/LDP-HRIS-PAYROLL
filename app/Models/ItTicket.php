@@ -9,22 +9,24 @@ class ItTicket extends Model
 {
     use HasFactory;
 
-    protected $table = 'it_tickets';
-
     protected $fillable = [
         'user_id',
         'judul',
         'modul',
+        'prioritas',
         'deskripsi',
         'file_lampiran',
-        'prioritas',
         'status',
-        'persentase_progress'
+        'persentase_progress',
     ];
 
-    // Karena di migrasi Anda menggunakan user_id, maka relasinya ke tabel User
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function riwayats()
+    {
+        return $this->hasMany(RiwayatItTicket::class, 'ticket_id')->orderBy('created_at', 'desc');
     }
 }

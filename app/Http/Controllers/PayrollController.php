@@ -10,6 +10,7 @@ use App\Models\PengajuanSpj;
 use App\Models\CicilanPinjaman;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 
 class PayrollController extends Controller
@@ -248,5 +249,17 @@ class PayrollController extends Controller
         return Inertia::render('Payroll/Show', [
             'payroll' => $payroll
         ]);
+    }
+    // [KARYAWAN & ADMIN] Mengunduh Slip Gaji (PDF)
+    public function downloadPdf($id)
+    {
+        $payroll = Payroll::with(['karyawan.departemen', 'karyawan.jabatan', 'detailPayrolls'])
+            ->findOrFail($id);
+
+        $pdf = Pdf::loadView('pdf.slip_gaji', ['payroll' => $payroll]);
+        
+        $namaFile = 'Slip_Gaji_' . str_replace(' ', '_', $payroll->karyawan->nama_lengkap) . '_' . $payroll->periode_bulan . '_' . $payroll->periode_tahun . '.pdf';
+
+        return $pdf->download($namaFile);
     }
 }

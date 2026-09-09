@@ -28,6 +28,21 @@ export default function Create() {
             <div className="py-12">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        {/* Notifikasi Error Umum dari Backend */}
+                        {errors.error && (
+                            <div
+                                className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                                role="alert"
+                            >
+                                <strong className="font-bold">
+                                    Pengajuan Ditolak!{" "}
+                                </strong>
+                                <span className="block sm:inline">
+                                    {errors.error}
+                                </span>
+                            </div>
+                        )}
+
                         <form onSubmit={submit} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">

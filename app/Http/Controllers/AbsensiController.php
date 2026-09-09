@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Absensi;
 use App\Models\Pengaturan;
+use App\Models\PengajuanSpj; // Impor model SPJ
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -54,39 +55,41 @@ class AbsensiController extends Controller
             return back()->withErrors(['error' => 'Akses Ditolak: Akun Anda tidak memiliki profil karyawan.']);
         }
 
+        // Tambahkan validasi catatan_logbook (Opsional, khusus saat clock-out)
         $request->validate([
             'image' => 'required|string',
             'koordinat' => 'required|string',
-            'tipe' => 'required|in:masuk,keluar'
+            'tipe' => 'required|in:masuk,keluar',
+            'catatan_logbook' => 'nullable|string|max:500' 
         ]);
 
         $waktuSekarang = Carbon::now('Asia/Jakarta');
         $tanggal = $waktuSekarang->toDateString();
 
         // --- MULAI BLOK VALIDASI GEOFENCING (RADIUS GPS) ---
-        // 1. Ambil Pengaturan dari Database
         $titikKantor = Pengaturan::where('kunci', 'koordinat_kantor')->value('nilai');
         $radiusMaksimal = (int) Pengaturan::where('kunci', 'radius_absensi')->value('nilai');
         
-        // 2. Pecah koordinat kantor dan user menjadi Latitude & Longitude
         $koorKantor = explode(',', str_replace(' ', '', $titikKantor));
         $koorUser = explode(',', str_replace(' ', '', $request->koordinat));
         
-        // 3. Hitung Jarak
         $jarakMeter = $this->hitungJarakMeter(
             (float) $koorKantor[0], (float) $koorKantor[1], 
             (float) $koorUser[0], (float) $koorUser[1]
         );
 
-        // 4. Simulasi Cek SPJ (Bypass Radius)
-        $sedangSPJ = false; // Nanti dihubungkan ke model PengajuanSpj
+        // 4. Deteksi Real-time Cek SPJ (Bypass Radius)
+        $sedangSPJ = PengajuanSpj::where('karyawan_id', $karyawan->id)
+            ->where('status_approval', 'Disetujui')
+            ->where('tgl_mulai', '<=', $tanggal)
+            ->where('tgl_selesai', '>=', $tanggal)
+            ->exists();
 
-        // 5. Tolak jika di luar radius (dan tidak sedang SPJ)
+        // 5. Tolak jika di luar radius (dan Karyawan TIDAK sedang SPJ)
         if (!$sedangSPJ && $jarakMeter > $radiusMaksimal) {
             return back()->withErrors(['error' => "Gagal: Anda di luar jangkauan kantor. Jarak Anda " . round($jarakMeter) . "m (Batas: {$radiusMaksimal}m)."]);
         }
         // --- SELESAI BLOK VALIDASI GEOFENCING ---
-
 
         // --- MULAI BLOK PROSES GAMBAR BASE64 ---
         $image_parts = explode(";base64,", $request->image);
@@ -98,14 +101,12 @@ class AbsensiController extends Controller
         Storage::disk('public')->put($filePath, $image_base64);
         // --- SELESAI BLOK PROSES GAMBAR ---
 
-
         $absensi = Absensi::where('karyawan_id', $karyawan->id)->where('tanggal', $tanggal)->first();
 
         // LOGIKA CLOCK IN (MASUK)
         if ($request->tipe === 'masuk') {
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
-            // Validasi Keterlambatan
             $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai');
             $toleransiMenit = (int) Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai');
             
@@ -114,6 +115,7 @@ class AbsensiController extends Controller
             $status = 'Hadir';
             $catatan = null;
 
+            // Jika sedang SPJ, status langsung diset Dinas Luar
             if ($sedangSPJ) {
                 $status = 'Dinas Luar';
                 $catatan = 'Bypass Radius: SPJ Aktif';
@@ -136,24 +138,29 @@ class AbsensiController extends Controller
             return back()->with('success', 'Clock In berhasil! Status: ' . $status);
         } 
         
-        // LOGIKA CLOCK OUT (KELUAR)
+        // LOGIKA CLOCK OUT (KELUAR) & SHIFT HANDOVER LOGBOOK
         else if ($request->tipe === 'keluar') {
             if (!$absensi) return back()->withErrors(['error' => 'Anda belum melakukan Clock In.']);
             if ($absensi->waktu_keluar) return back()->withErrors(['error' => 'Anda sudah melakukan Clock Out hari ini.']);
+
+            // Menggabungkan catatan pagi (seperti info terlambat) dengan Logbook kepulangan
+            $catatanKeluar = $absensi->catatan;
+            if ($request->filled('catatan_logbook')) {
+                $tambahanLogbook = 'Logbook Handover: ' . $request->catatan_logbook;
+                $catatanKeluar = $catatanKeluar ? $catatanKeluar . ' | ' . $tambahanLogbook : $tambahanLogbook;
+            }
 
             $absensi->update([
                 'waktu_keluar' => $waktuSekarang,
                 'koordinat_keluar' => $request->koordinat,
                 'foto_keluar_path' => $filePath,
+                'catatan' => $catatanKeluar
             ]);
             
-            return back()->with('success', 'Clock Out berhasil dicatat! Selamat beristirahat.');
+            return back()->with('success', 'Clock Out dan Logbook berhasil dicatat! Selamat beristirahat.');
         }
     }
 
-    /**
-     * Menghitung Jarak GPS menggunakan Haversine Formula
-     */
     private function hitungJarakMeter($lat1, $lon1, $lat2, $lon2)
     {
         $earthRadius = 6371000; 
@@ -165,8 +172,6 @@ class AbsensiController extends Controller
              sin($dLon / 2) * sin($dLon / 2);
 
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        $distance = $earthRadius * $c;
-
-        return $distance;
+        return $earthRadius * $c;
     }
 }

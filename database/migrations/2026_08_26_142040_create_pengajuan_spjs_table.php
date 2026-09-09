@@ -6,13 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+public function up(): void
     {
         Schema::create('pengajuan_spjs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('karyawan_id')->constrained('karyawans')->cascadeOnDelete();
             
-            // Detail Perjalanan
+            // Detail Perjalanan (Pra-SPJ)
             $table->string('tujuan', 150);
             $table->text('keperluan');
             $table->date('tgl_mulai');
@@ -20,11 +20,15 @@ return new class extends Migration
             
             // Finansial & Bukti
             $table->decimal('total_biaya', 15, 2)->default(0);
-            $table->string('file_bukti_path', 255)->nullable();
+            
+            // Pelaporan (Pasca-SPJ)
+            $table->text('laporan_hasil')->nullable(); // Menggantikan risalah fisik
+            $table->string('file_bukti_path', 255)->nullable(); // Menampung unggahan foto bon
             
             // Status Approval & Payroll
+            // Status: Pending -> Disetujui -> Menunggu Pelaporan -> Selesai
             $table->string('status_approval', 30)->default('Pending');
-            $table->boolean('sudah_dibayar')->default(false); // Penanda jika dana sudah masuk ke Payroll
+            $table->boolean('sudah_dibayar')->default(false); 
             
             $table->timestamps();
         });

@@ -32,9 +32,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cuti/ajukan', [PengajuanCutiController::class, 'create'])->name('cuti.create');
     Route::post('/cuti', [PengajuanCutiController::class, 'store'])->name('cuti.store');
 
-    Route::get('/lembur', [PengajuanLemburController::class, 'index'])->name('lembur.index');
-    Route::get('/lembur/ajukan', [PengajuanLemburController::class, 'create'])->name('lembur.create');
-    Route::post('/lembur', [PengajuanLemburController::class, 'store'])->name('lembur.store');
+    Route::get('/lembur', [App\Http\Controllers\PengajuanLemburController::class, 'index'])->name('lembur.index');
+    Route::get('/lembur/ajukan', [App\Http\Controllers\PengajuanLemburController::class, 'create'])->name('lembur.create');
+    Route::post('/lembur', [App\Http\Controllers\PengajuanLemburController::class, 'store'])->name('lembur.store');
 
     Route::get('/pinjaman', [PinjamanController::class, 'index'])->name('pinjaman.index');
     Route::get('/pinjaman/ajukan', [PinjamanController::class, 'create'])->name('pinjaman.create');
@@ -43,9 +43,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.index');
     Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.create');
     Route::post('/spj', [PengajuanSpjController::class, 'store'])->name('spj.store');
+    Route::post('/spj/{id}/laporan', [PengajuanSpjController::class, 'storeLaporan'])->name('spj.laporan');
 
     Route::get('/slip-gaji', [PayrollController::class, 'myPayslips'])->name('slip.index');
     Route::get('/slip-gaji/{id}', [PayrollController::class, 'show'])->name('slip.show');
+    Route::get('/slip-gaji/{id}/download', [PayrollController::class, 'downloadPdf'])->name('slip.download');
 
     Route::get('/it-ticket', [ItTicketController::class, 'index'])->name('ticket.index');
     Route::post('/it-ticket', [ItTicketController::class, 'store'])->name('ticket.store');
@@ -59,8 +61,8 @@ Route::middleware(['auth', 'role:1,3,5'])->group(function () {
     Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
     Route::post('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.update');
     
-    Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
-    Route::post('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
+    Route::get('/admin/lembur', [App\Http\Controllers\PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
+    Route::post('/admin/lembur/{id}/status', [App\Http\Controllers\PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.update');
 });
 
 // B. Akses Finance (4) & Admin (1) -> Modul Keuangan & Payroll

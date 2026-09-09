@@ -17,6 +17,7 @@ class PengajuanLemburController extends Controller
         $riwayatLembur = [];
         if ($karyawan) {
             $riwayatLembur = PengajuanLembur::where('karyawan_id', $karyawan->id)
+                ->orderBy('tanggal', 'desc') 
                 ->orderBy('created_at', 'desc')
                 ->get();
         }
@@ -35,11 +36,14 @@ class PengajuanLemburController extends Controller
     // Menyimpan data lembur yang dikirim karyawan
     public function store(Request $request)
     {
+        // Validasi ketat: jam_selesai wajib setelah jam_mulai
         $request->validate([
             'tanggal' => 'required|date',
-            'jam_mulai' => 'required',
-            'jam_selesai' => 'required',
-            'deskripsi_pekerjaan' => 'required|string',
+            'jam_mulai' => 'required|date_format:H:i',
+            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
+            'deskripsi_pekerjaan' => 'required|string|max:500',
+        ], [
+            'jam_selesai.after' => 'Jam selesai harus lebih besar dari jam mulai.',
         ]);
 
         $user = $request->user();
@@ -47,6 +51,15 @@ class PengajuanLemburController extends Controller
 
         if (!$karyawan) {
             return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
+        }
+
+        // Proteksi pencegahan lembur ganda di tanggal yang sama
+        $cekLembur = PengajuanLembur::where('karyawan_id', $karyawan->id)
+            ->where('tanggal', $request->tanggal)
+            ->exists();
+
+        if ($cekLembur) {
+            return redirect()->back()->withErrors(['error' => 'Anda sudah memiliki pengajuan lembur di tanggal tersebut.']);
         }
 
         PengajuanLembur::create([
@@ -58,22 +71,22 @@ class PengajuanLemburController extends Controller
             'status_approval' => 'Pending',
         ]);
 
-        return redirect()->route('lembur.index')->with('success', 'Pengajuan lembur berhasil dikirim.');
+        return redirect()->route('lembur.index')->with('success', 'Pengajuan lembur berhasil dikirim dan menunggu persetujuan.');
     }
 
-    // [ADMIN] Menampilkan daftar seluruh lembur untuk di-approve
+    // [SUPERVISOR/ADMIN] Menampilkan daftar seluruh lembur untuk di-approve
     public function adminIndex()
     {
         $lemburs = PengajuanLembur::with('karyawan.departemen')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(15);
 
         return Inertia::render('Lembur/AdminIndex', [
             'lemburs' => $lemburs
         ]);
     }
 
-    // [ADMIN] Mengubah status approval (Disetujui / Ditolak)
+    // [SUPERVISOR/ADMIN] Mengubah status approval (Disetujui / Ditolak)
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -81,6 +94,7 @@ class PengajuanLemburController extends Controller
         ]);
 
         $lembur = PengajuanLembur::findOrFail($id);
+        
         $lembur->update([
             'status_approval' => $request->status_approval
         ]);

@@ -33,14 +33,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Logika Pemisahan Arah (Redirect) Setelah Login
-        if ($request->user()->role_id == 1) {
-            // Jika Admin, arahkan ke Dashboard
-            return redirect()->intended(route('dashboard', absolute: false));
-        } else {
-            // Jika Karyawan (role_id 2), arahkan langsung ke Kamera Absensi
-            return redirect()->route('absensi.create');
-        }
+        // Pastikan ini mengarah ke dashboard, bukan ke rute lain
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**
