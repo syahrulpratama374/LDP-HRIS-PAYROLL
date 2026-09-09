@@ -1,21 +1,31 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react"; // 1. Ubah useForm menjadi router
+import { Head, router, usePage } from "@inertiajs/react";
 
 export default function AdminIndex({ pinjaman }) {
-    // 2. Hapus const { post } = useForm();
+    const { auth } = usePage().props;
+    const userRole = auth.user.role_id; // Ambil Role ID
 
     const handleAction = (id, status) => {
-        let confirmText =
-            status === "Disetujui"
-                ? "Setujui pengajuan ini? Sistem akan otomatis membuat jadwal pemotongan gaji (cicilan) sesuai tenor."
-                : "Tolak pengajuan kasbon ini?";
+        let confirmText = "Apakah Anda yakin?";
+
+        if (status === "Menunggu Pencairan")
+            confirmText =
+                "Setujui pengajuan ini? Dokumen akan diteruskan ke Finance untuk pencairan dana.";
+        if (status === "Berjalan")
+            confirmText =
+                "Cairkan dana kasbon ini? Sistem akan otomatis mentransfer ke rekening karyawan dan membuat jadwal pemotongan gaji sesuai tenor.";
+        if (status === "Ditolak")
+            confirmText = "Tolak pengajuan kasbon ini secara permanen?";
 
         if (confirm(confirmText)) {
-            // 3. Gunakan router.post agar data 'status' benar-benar terkirim
-            router.post(route("admin.pinjaman.update", id), {
-                status: status,
-            });
+            router.post(
+                route("admin.pinjaman.update", id),
+                {
+                    status: status,
+                },
+                { preserveScroll: true },
+            );
         }
     };
 
@@ -124,48 +134,108 @@ export default function AdminIndex({ pinjaman }) {
                                                             "Pending"
                                                                 ? "bg-yellow-100 text-yellow-800"
                                                                 : p.status ===
-                                                                    "Disetujui"
-                                                                  ? "bg-blue-100 text-blue-800"
+                                                                    "Menunggu Pencairan"
+                                                                  ? "bg-orange-100 text-orange-800"
                                                                   : p.status ===
-                                                                      "Lunas"
-                                                                    ? "bg-green-100 text-green-800"
-                                                                    : "bg-red-100 text-red-800"
+                                                                      "Berjalan"
+                                                                    ? "bg-blue-100 text-blue-800"
+                                                                    : p.status ===
+                                                                        "Lunas"
+                                                                      ? "bg-green-100 text-green-800"
+                                                                      : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {p.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
-                                                    {p.status === "Pending" ? (
-                                                        <div className="flex justify-center items-center space-x-2">
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleAction(
-                                                                        p.id,
-                                                                        "Disetujui",
-                                                                    )
-                                                                }
-                                                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                            >
-                                                                Setuju
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleAction(
-                                                                        p.id,
-                                                                        "Ditolak",
-                                                                    )
-                                                                }
-                                                                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                            >
-                                                                Tolak
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400 italic">
-                                                            Selesai
-                                                        </span>
-                                                    )}
+                                                    <div className="flex justify-center items-center space-x-2">
+                                                        {/* TIER-1: TOMBOL UNTUK SPV / MANAGER (Role 5 / 1) */}
+                                                        {p.status ===
+                                                            "Pending" &&
+                                                            [1, 5].includes(
+                                                                userRole,
+                                                            ) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Menunggu Pencairan",
+                                                                            )
+                                                                        }
+                                                                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        Setujui
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Ditolak",
+                                                                            )
+                                                                        }
+                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        Tolak
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                        {/* TIER-2: TOMBOL UNTUK FINANCE / ADMIN (Role 4 / 1) */}
+                                                        {p.status ===
+                                                            "Menunggu Pencairan" &&
+                                                            [1, 4].includes(
+                                                                userRole,
+                                                            ) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Berjalan",
+                                                                            )
+                                                                        }
+                                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        💸
+                                                                        Cairkan
+                                                                        Dana
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Ditolak",
+                                                                            )
+                                                                        }
+                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        Tolak
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                        {/* Indikator Jika Selesai/Berjalan */}
+                                                        {[
+                                                            "Berjalan",
+                                                            "Lunas",
+                                                            "Ditolak",
+                                                        ].includes(
+                                                            p.status,
+                                                        ) && (
+                                                            <span className="text-xs text-gray-400 italic">
+                                                                Selesai diproses
+                                                            </span>
+                                                        )}
+                                                        {p.status ===
+                                                            "Pending" &&
+                                                            userRole === 4 && (
+                                                                <span className="text-xs text-orange-400 font-semibold">
+                                                                    Menunggu SPV
+                                                                </span>
+                                                            )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

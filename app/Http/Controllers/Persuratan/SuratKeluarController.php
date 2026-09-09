@@ -8,12 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class SuratKeluarController extends Controller
 {
-    /**
-     * Menampilkan daftar surat keluar
-     */
     public function index()
     {
         $suratKeluars = SuratKeluar::with(['template', 'karyawan', 'pembuat'])
@@ -25,14 +23,10 @@ class SuratKeluarController extends Controller
         ]);
     }
 
-    /**
-     * Menampilkan form pembuatan surat (Draft)
-     */
     public function create()
     {
         $templates = \App\Models\MasterTemplateSurat::where('is_active', true)->get();
-        // UBAH BARIS INI:
-        $karyawans = \App\Models\Karyawan::select('id', 'nama_lengkap', 'nik_internal')->get();
+        $karyawans = \App\Models\Karyawan::select('id', 'nama_lengkap', 'nik_internal')->where('status_aktif', true)->get();
 
         return Inertia::render('Persuratan/Keluar/Create', [
             'templates' => $templates,
@@ -40,9 +34,6 @@ class SuratKeluarController extends Controller
         ]);
     }
 
-    /**
-     * Menyimpan data form sebagai Draft Surat
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -60,25 +51,21 @@ class SuratKeluarController extends Controller
         return redirect()->route('keluar.index')->with('success', 'Draft surat berhasil dibuat.');
     }
 
-    /**
-     * Logika Inti: Terbitkan Surat & Generate Nomor Otomatis (Anti-Bentrok)
-     */
     public function terbitkan($id)
     {
         $suratDraft = SuratKeluar::with('template')->findOrFail($id);
 
         if ($suratDraft->status !== 'Draft') {
-            return back()->with('error', 'Surat ini sudah diterbitkan atau dibatalkan.');
+            return back()->withErrors(['error' => 'Surat ini sudah diterbitkan atau dibatalkan.']);
         }
 
         try {
             DB::transaction(function () use ($suratDraft) {
-                
                 $tahunIni = date('Y');
                 $bulanIniRomawi = $this->getBulanRomawi(date('n'));
                 $kodeSurat = $suratDraft->template->kode_surat;
 
-                // 1. PESSIMISTIC LOCKING
+                // 1. PESSIMISTIC LOCKING: Kunci baris agar penomoran tidak bentrok
                 $suratTerakhir = SuratKeluar::whereNotNull('nomor_surat')
                     ->whereYear('tanggal_terbit', $tahunIni)
                     ->lockForUpdate() 
@@ -93,7 +80,7 @@ class SuratKeluarController extends Controller
                     $nomorBaru = 1;
                 }
 
-                // 3. Format Penomoran
+                // 3. Format Penomoran (001/SKK/LDP/IX/2026)
                 $formatNomor = sprintf("%03d/%s/LDP/%s/%s", $nomorBaru, $kodeSurat, $bulanIniRomawi, $tahunIni);
 
                 // 4. Simpan ke database
@@ -107,44 +94,39 @@ class SuratKeluarController extends Controller
             return back()->with('success', 'Surat berhasil diterbitkan dengan nomor resmi.');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menerbitkan surat: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Gagal menerbitkan surat: ' . $e->getMessage()]);
         }
     }
 
     private function getBulanRomawi($bulan)
     {
-        $map = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
-        ];
+        $map = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'];
         return $map[$bulan];
     }
 
-    /**
-     * Generate dan Unduh File PDF Surat Resmi
-     */
     public function unduhPdf($id)
     {
-        $surat = SuratKeluar::with(['template', 'karyawan'])->findOrFail($id);
+        $surat = SuratKeluar::with(['template', 'karyawan.jabatan', 'karyawan.departemen'])->findOrFail($id);
 
-        if ($surat->status !== 'Terbit') {
-            abort(403, 'Hanya surat yang sudah terbit yang bisa dicetak.');
-        }
+        if ($surat->status !== 'Terbit') abort(403, 'Hanya surat yang sudah terbit yang bisa dicetak.');
 
-        // 1. Ambil format HTML dari database
         $konten = $surat->template->konten;
 
-        // 2. Ganti kata kunci [NAMA_KARYAWAN] dan [NIK] dengan data asli
-        $konten = str_replace('[NAMA_KARYAWAN]', $surat->karyawan->nama_lengkap, $konten);
-        $konten = str_replace('[NIK]', $surat->karyawan->nik_internal, $konten);
+        // PARSER VARIABEL DINAMIS (Bisa ditambah sesuai kebutuhan HR)
+        $variabel = [
+            '[NOMOR_SURAT]' => $surat->nomor_surat,
+            '[NAMA_KARYAWAN]' => $surat->karyawan->nama_lengkap,
+            '[NIK]' => $surat->karyawan->nik_internal,
+            '[JABATAN]' => $surat->karyawan->jabatan->nama_jabatan ?? '-',
+            '[DEPARTEMEN]' => $surat->karyawan->departemen->nama_departemen ?? '-',
+            '[TANGGAL]' => Carbon::parse($surat->tanggal_terbit)->translatedFormat('d F Y'),
+        ];
 
-        // 3. Render HTML tersebut menjadi file PDF
-        $pdf = Pdf::loadView('pdf.surat', [
-            'surat' => $surat,
-            'konten' => $konten
-        ]);
+        foreach ($variabel as $key => $value) {
+            $konten = str_replace($key, $value, $konten);
+        }
 
-        // 4. Buat penamaan file otomatis (contoh: SKK_001_SKK_LDP_IX_2026.pdf)
+        $pdf = Pdf::loadView('pdf.surat', ['konten' => $konten]);
         $namaFile = $surat->template->kode_surat . '_' . str_replace('/', '_', $surat->nomor_surat) . '.pdf';
 
         return $pdf->download($namaFile);

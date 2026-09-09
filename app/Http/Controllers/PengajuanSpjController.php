@@ -23,16 +23,9 @@ class PengajuanSpjController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Cek apakah ada SPJ disetujui yang tanggal selesainya sudah lewat tapi belum lapor
             foreach ($spj as $item) {
-                if ($item->status_approval === 'Disetujui' && 
-                    date('Y-m-d') > $item->tgl_selesai && 
-                    empty($item->laporan_hasil)) {
-                    
-                    // Ubah status otomatis menjadi Menunggu Pelaporan
-                    $item->update(['status_approval' => 'Menunggu Pelaporan']);
-                    $adaUtangLaporan = true;
-                } elseif ($item->status_approval === 'Menunggu Pelaporan') {
+                // Jika SPV sudah ACC keberangkatan, dan tanggal sudah lewat, tagih laporannya
+                if ($item->status_approval === 'Menunggu Pelaporan' && date('Y-m-d') > $item->tgl_selesai && empty($item->laporan_hasil)) {
                     $adaUtangLaporan = true;
                 }
             }
@@ -40,7 +33,7 @@ class PengajuanSpjController extends Controller
 
         return Inertia::render('Spj/Index', [
             'spj' => $spj,
-            'adaUtangLaporan' => $adaUtangLaporan // Penanda di React untuk disable tombol ajukan baru
+            'adaUtangLaporan' => $adaUtangLaporan
         ]);
     }
 
@@ -62,13 +55,13 @@ class PengajuanSpjController extends Controller
         $spj->update([
             'laporan_hasil' => $request->laporan_hasil,
             'file_bukti_path' => $filePath,
-            'status_approval' => 'Menunggu Validasi Finance',
+            'status_approval' => 'Menunggu Validasi Finance', // Terlempar ke Dasbor Finance
         ]);
 
         return redirect()->route('spj.index')->with('success', 'Laporan perjalanan dinas dan bukti bon berhasil diunggah.');
     }
 
-    // [KARYAWAN] Menampilkan form pengajuan SPJ (Dinamis)
+    // [KARYAWAN] Menampilkan form pengajuan SPJ
     public function create()
     {
         return Inertia::render('Spj/Create');
@@ -85,26 +78,15 @@ class PengajuanSpjController extends Controller
             'komponen_biaya' => 'required|array|min:1',
             'komponen_biaya.*.jenis_biaya' => 'required|string',
             'komponen_biaya.*.nominal' => 'required|numeric|min:0',
-            'komponen_biaya.*.keterangan' => 'nullable|string',
         ]);
 
-        // Eager load relasi golongan untuk mengecek kode golongannya
         $karyawan = $request->user()->karyawan()->with('golongan')->first();
 
-        if (!$karyawan) {
-            return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
-        }
+        if (!$karyawan) return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
 
-        // 1. Kalkulasi total biaya secara otomatis dari array komponen
         $totalBiaya = collect($request->komponen_biaya)->sum('nominal');
-
-        // 2. Logika Plafon Dinamis Berdasarkan Golongan
         $kodeGolongan = $karyawan->golongan ? $karyawan->golongan->kode_golongan : 'DEFAULT';
-        
-        // Sistem mencari batas maksimal di tabel pengaturans (misal: kunci 'plafon_spj_G1A')
         $plafonSetting = Pengaturan::where('kunci', 'plafon_spj_' . $kodeGolongan)->value('nilai');
-        
-        // Jika HC/Finance belum mengatur plafon khusus golongan ini, gunakan default (contoh: Rp 1.500.000)
         $batasMaksimal = $plafonSetting ? (float) $plafonSetting : 1500000;
 
         if ($totalBiaya > $batasMaksimal) {
@@ -115,7 +97,6 @@ class PengajuanSpjController extends Controller
             ]);
         }
 
-        // 3. Simpan tabel induk (SPJ)
         $spj = PengajuanSpj::create([
             'karyawan_id' => $karyawan->id,
             'tujuan' => $request->tujuan,
@@ -127,7 +108,6 @@ class PengajuanSpjController extends Controller
             'sudah_dibayar' => false,
         ]);
 
-        // 4. Simpan tabel anak (Rincian Komponen Biaya) menggunakan perulangan
         foreach ($request->komponen_biaya as $komponen) {
             KomponenBiayaSpj::create([
                 'pengajuan_spj_id' => $spj->id,
@@ -139,11 +119,11 @@ class PengajuanSpjController extends Controller
 
         return redirect()->route('spj.index')->with('success', 'Pengajuan Perjalanan Dinas (SPJ) berhasil dikirim.');
     }
-// ==========================================
+
+    // ==========================================
     // AREA KHUSUS ADMIN / HC / SUPERVISOR / FINANCE
     // ==========================================
 
-    // [SUPERVISOR/ADMIN/FINANCE] Menampilkan daftar SPJ
     public function adminIndex(Request $request)
     {
         $user = $request->user();
@@ -151,33 +131,27 @@ class PengajuanSpjController extends Controller
 
         $query = PengajuanSpj::with(['karyawan.departemen', 'karyawan.jabatan', 'komponenBiaya']);
 
-        // Logika Hierarki & Eskalasi
+        // Logika Hierarki SPV
         if ($user->role_id == 5) {
-            if (!$karyawan) {
-                abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
-            }
+            if (!$karyawan) abort(403, 'Akses Ditolak');
             
             $karyawanId = $karyawan->id;
             $hariIni = \Carbon\Carbon::now()->toDateString();
-
             $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
 
             $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
                 ->where('status', 'Aktif')
-                ->whereDate('tgl_mulai', '<=', $hariIni)
-                ->whereDate('tgl_selesai', '>=', $hariIni)
-                ->pluck('pemberi_id')
-                ->toArray();
+                ->whereDate('tgl_mulai', '<=', $hariIni)->whereDate('tgl_selesai', '>=', $hariIni)
+                ->pluck('pemberi_id')->toArray();
 
             if (!empty($pemberiDelegasiIds)) {
                 $bawahanTitipanIds = \App\Models\Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)->pluck('id')->toArray();
                 $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
             }
-
             $query->whereIn('karyawan_id', $bawahanIds);
         }
 
-        $spj = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
+        $spj = $query->orderByRaw("FIELD(status_approval, 'Pending', 'Menunggu Validasi Finance', 'Menunggu Pelaporan', 'Selesai', 'Ditolak')")
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -186,23 +160,23 @@ class PengajuanSpjController extends Controller
         ]);
     }
 
-    // [SUPERVISOR/ADMIN/FINANCE] Mengubah status approval SPJ (Tier-1 / Pra-SPJ)
+    // [SUPERVISOR/FINANCE] Mengubah status approval SPJ (Tier-1 & Tier-2)
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status_approval' => 'required|in:Disetujui,Ditolak'
+            'status_approval' => 'required|in:Menunggu Pelaporan,Selesai,Ditolak'
         ]);
 
         $spj = PengajuanSpj::findOrFail($id);
-        
-        $spj->update([
-            'status_approval' => $request->status_approval
-        ]);
+        $spj->update(['status_approval' => $request->status_approval]);
 
-        $pesan = $request->status_approval === 'Disetujui' 
-            ? 'Anggaran Perjalanan Dinas (Pra-SPJ) berhasil disetujui.' 
-            : 'Pengajuan Perjalanan Dinas ditolak.';
+        $pesan = 'Status SPJ berhasil diperbarui.';
+        if ($request->status_approval === 'Menunggu Pelaporan') {
+            $pesan = 'Anggaran Perjalanan Dinas disetujui. Karyawan kini dapat berangkat dan harus mengunggah nota setelah kembali.';
+        } elseif ($request->status_approval === 'Selesai') {
+            $pesan = 'Bukti nota tervalidasi! Dana SPJ akan otomatis masuk ke perhitungan Payroll bulan ini.';
+        }
 
         return redirect()->back()->with('success', $pesan);
     }
-}
+}   

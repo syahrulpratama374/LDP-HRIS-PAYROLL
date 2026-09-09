@@ -31,13 +31,14 @@ export default function Index({ karyawans }) {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-4 border-b pb-4">
                             <h3 className="text-lg font-bold text-gray-700">
                                 Daftar Karyawan Terdaftar
                             </h3>
-                            {/* Tombol ini akan mengarahkan ke halaman form Create */}
                             <Link href={route("karyawan.create")}>
-                                <PrimaryButton>+ Tambah Karyawan</PrimaryButton>
+                                <PrimaryButton className="bg-indigo-600 hover:bg-indigo-700">
+                                    + Tambah Karyawan
+                                </PrimaryButton>
                             </Link>
                         </div>
 
@@ -55,7 +56,7 @@ export default function Index({ karyawans }) {
                                             Departemen
                                         </th>
                                         <th className="px-6 py-3 border-r">
-                                            Jabatan
+                                            Atasan Langsung
                                         </th>
                                         <th className="px-6 py-3 border-r text-center">
                                             Status
@@ -75,32 +76,42 @@ export default function Index({ karyawans }) {
                                                 <td className="px-6 py-4 border-r font-medium text-gray-900">
                                                     {karyawan.nik_internal}
                                                 </td>
-                                                <td className="px-6 py-4 border-r">
+                                                <td className="px-6 py-4 border-r font-bold text-indigo-600">
                                                     {karyawan.nama_lengkap}
                                                 </td>
-                                                {/* Mengambil nama departemen dan jabatan dari relasi tabel */}
                                                 <td className="px-6 py-4 border-r">
                                                     {
                                                         karyawan.departemen
-                                                            .nama_departemen
-                                                    }
+                                                            ?.nama_departemen
+                                                    }{" "}
+                                                    <br />
+                                                    <span className="text-xs text-gray-400">
+                                                        {
+                                                            karyawan.jabatan
+                                                                ?.nama_jabatan
+                                                        }
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 border-r">
-                                                    {
-                                                        karyawan.jabatan
-                                                            .nama_jabatan
-                                                    }
+                                                <td className="px-6 py-4 border-r text-gray-700 font-medium">
+                                                    {karyawan.atasan ? (
+                                                        karyawan.atasan
+                                                            .nama_lengkap
+                                                    ) : (
+                                                        <span className="text-red-400 italic">
+                                                            BOD (Highest)
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 border-r text-center">
                                                     <span
-                                                        className={`px-2 py-1 rounded text-xs text-white ${karyawan.status_aktif ? "bg-green-500" : "bg-red-500"}`}
+                                                        className={`px-2 py-1 rounded text-xs text-white font-bold ${karyawan.status_aktif ? "bg-green-500" : "bg-red-500"}`}
                                                     >
                                                         {karyawan.status_aktif
                                                             ? "Aktif"
-                                                            : "Non-aktif"}
+                                                            : "Resign"}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center space-x-2">
+                                                <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
                                                     <Link
                                                         href={route(
                                                             "karyawan.show",
@@ -111,7 +122,6 @@ export default function Index({ karyawans }) {
                                                             Detail
                                                         </PrimaryButton>
                                                     </Link>
-                                                    
                                                     <Link
                                                         href={route(
                                                             "karyawan.edit",
@@ -139,10 +149,9 @@ export default function Index({ karyawans }) {
                                         <tr>
                                             <td
                                                 colSpan="6"
-                                                className="px-6 py-4 text-center text-gray-500"
+                                                className="px-6 py-8 text-center text-gray-500"
                                             >
-                                                Belum ada data karyawan yang
-                                                terdaftar.
+                                                Belum ada data karyawan.
                                             </td>
                                         </tr>
                                     )}

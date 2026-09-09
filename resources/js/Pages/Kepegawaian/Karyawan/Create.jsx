@@ -12,6 +12,8 @@ export default function Create({
     jabatans,
     golongans,
     ptkps = [],
+    roles = [],
+    atasans = [],
 }) {
     const { data, setData, post, processing, errors } = useForm({
         nik_internal: "",
@@ -27,6 +29,8 @@ export default function Create({
         jabatan_id: "",
         golongan_id: "",
         ptkp_id: "",
+        role_id: "",
+        atasan_id: "",
         no_ktp: "",
         npwp: "",
         no_rek_bca: "",
@@ -53,8 +57,8 @@ export default function Create({
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                         {errors.error && (
-                            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-                                {errors.error}
+                            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md border border-red-200">
+                                <strong>Gagal!</strong> {errors.error}
                             </div>
                         )}
 
@@ -68,7 +72,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="NIK Internal (Otomatis jadi Password Akun)" />
                                         <TextInput
-                                            className="mt-1 block w-full"
+                                            className="mt-1 block w-full bg-gray-50"
                                             value={data.nik_internal}
                                             onChange={(e) =>
                                                 setData(
@@ -206,11 +210,11 @@ export default function Create({
                             {/* SECTION 2: Kontak & Relasi Perusahaan */}
                             <div>
                                 <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">
-                                    Penempatan & Kontak
+                                    Penempatan & Hak Akses
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <InputLabel value="Email Kantor" />
+                                        <InputLabel value="Email Kantor (Username Login)" />
                                         <TextInput
                                             type="email"
                                             className="mt-1 block w-full"
@@ -240,6 +244,63 @@ export default function Create({
                                         />
                                         <InputError message={errors.no_telp} />
                                     </div>
+
+                                    {/* --- MULAI INJEKSI RBAC & DIRECT REPORTING --- */}
+                                    <div>
+                                        <InputLabel value="Hak Akses Sistem (Role)" />
+                                        <select
+                                            className="mt-1 block w-full border-indigo-300 bg-indigo-50 rounded-md font-semibold text-indigo-900 focus:ring-indigo-500"
+                                            value={data.role_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "role_id",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                -- Tentukan Akses Login --
+                                            </option>
+                                            {roles.map((r) => (
+                                                <option key={r.id} value={r.id}>
+                                                    {r.nama_role}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError message={errors.role_id} />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Melapor Kepada (Atasan Langsung)" />
+                                        <select
+                                            className="mt-1 block w-full border-blue-300 bg-blue-50 rounded-md font-semibold text-blue-900 focus:ring-blue-500"
+                                            value={data.atasan_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "atasan_id",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                -- Kosongkan Jika CEO --
+                                            </option>
+                                            {atasans.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.nik_internal} -{" "}
+                                                    {a.nama_lengkap}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={errors.atasan_id}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Menentukan ke mana dokumen
+                                            SPJ/Cuti/Kasbon dikirim.
+                                        </p>
+                                    </div>
+                                    {/* --- AKHIR INJEKSI --- */}
+
                                     <div>
                                         <InputLabel value="Departemen" />
                                         <select
@@ -317,6 +378,30 @@ export default function Create({
                                         />
                                     </div>
                                     <div>
+                                        <InputLabel value="Status PTKP (Pajak PPh 21)" />
+                                        <select
+                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            value={data.ptkp_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "ptkp_id",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                -- Pilih PTKP --
+                                            </option>
+                                            {ptkps.map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.kode_ptkp} -{" "}
+                                                    {p.deskripsi}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError message={errors.ptkp_id} />
+                                    </div>
+                                    <div>
                                         <InputLabel value="Tanggal Bergabung" />
                                         <TextInput
                                             type="date"
@@ -333,40 +418,6 @@ export default function Create({
                                             message={errors.tgl_bergabung}
                                         />
                                     </div>
-                                    <div>
-                                        <InputLabel value="Status PTKP (Pajak)" />
-                                        <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
-                                            value={data.ptkp_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "ptkp_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                        >
-                                            <option value="">
-                                                -- Pilih PTKP --
-                                            </option>
-                                            {ptkps &&
-                                                ptkps.map((p) => (
-                                                    <option
-                                                        key={p.id}
-                                                        value={p.id}
-                                                    >
-                                                        {p.kode_ptkp} -{" "}
-                                                        {p.deskripsi} (Rp{" "}
-                                                        {new Intl.NumberFormat(
-                                                            "id-ID",
-                                                        ).format(
-                                                            p.nominal_neto_tahunan,
-                                                        )}
-                                                        )
-                                                    </option>
-                                                ))}
-                                        </select>
-                                        <InputError message={errors.ptkp_id} />
-                                    </div>
                                 </div>
                             </div>
 
@@ -379,7 +430,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="No. KTP" />
                                         <TextInput
-                                            className="mt-1 block w-full"
+                                            className="mt-1 block w-full border-red-300"
                                             value={data.no_ktp}
                                             onChange={(e) =>
                                                 setData(
@@ -393,7 +444,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="NPWP" />
                                         <TextInput
-                                            className="mt-1 block w-full"
+                                            className="mt-1 block w-full border-red-300"
                                             value={data.npwp}
                                             onChange={(e) =>
                                                 setData("npwp", e.target.value)
@@ -404,7 +455,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="No. Rekening BCA" />
                                         <TextInput
-                                            className="mt-1 block w-full"
+                                            className="mt-1 block w-full border-red-300"
                                             value={data.no_rek_bca}
                                             onChange={(e) =>
                                                 setData(
@@ -420,7 +471,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="No. BPJS Kesehatan" />
                                         <TextInput
-                                            className="mt-1 block w-full"
+                                            className="mt-1 block w-full border-red-300"
                                             value={data.no_bpjs_kesehatan}
                                             onChange={(e) =>
                                                 setData(
@@ -433,17 +484,38 @@ export default function Create({
                                             message={errors.no_bpjs_kesehatan}
                                         />
                                     </div>
+                                    <div>
+                                        <InputLabel value="No. BPJS Ketenagakerjaan" />
+                                        <TextInput
+                                            className="mt-1 block w-full border-red-300"
+                                            value={data.no_bpjs_ketenagakerjaan}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "no_bpjs_ketenagakerjaan",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={
+                                                errors.no_bpjs_ketenagakerjaan
+                                            }
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-4 border-t">
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                                 <Link href={route("karyawan.index")}>
                                     <SecondaryButton>Batal</SecondaryButton>
                                 </Link>
-                                <PrimaryButton disabled={processing}>
+                                <PrimaryButton
+                                    disabled={processing}
+                                    className="bg-indigo-600 hover:bg-indigo-700"
+                                >
                                     {processing
-                                        ? "Menyimpan..."
-                                        : "Simpan Karyawan & Buat Akun"}
+                                        ? "Memproses..."
+                                        : "Simpan Data & Buat Akun"}
                                 </PrimaryButton>
                             </div>
                         </form>

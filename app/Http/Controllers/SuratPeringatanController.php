@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class SuratPeringatanController extends Controller
 {
-    // [HC / ADMIN] Menampilkan daftar Surat Peringatan
     public function index()
     {
         $suratPeringatans = SuratPeringatan::with('karyawan.departemen')
+            ->orderBy('tgl_selesai', 'desc') // Urutkan berdasarkan masa berlaku terlama
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -22,10 +22,8 @@ class SuratPeringatanController extends Controller
         ]);
     }
 
-    // [HC / ADMIN] Menampilkan form pembuatan SP baru
     public function create()
     {
-        // Hanya ambil karyawan yang masih aktif
         $karyawans = Karyawan::with('departemen')->where('status_aktif', true)->get();
 
         return Inertia::render('Kepegawaian/SuratPeringatan/Create', [
@@ -33,7 +31,6 @@ class SuratPeringatanController extends Controller
         ]);
     }
 
-    // [HC / ADMIN] Menyimpan data SP dan mengunggah file
     public function store(Request $request)
     {
         $request->validate([
@@ -42,12 +39,11 @@ class SuratPeringatanController extends Controller
             'tgl_mulai' => 'required|date',
             'tgl_selesai' => 'required|date|after_or_equal:tgl_mulai',
             'keterangan' => 'required|string',
-            'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Maks 5MB
+            'file_surat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', 
         ]);
 
         $path = null;
         if ($request->hasFile('file_surat')) {
-            // Simpan file ke folder storage/app/public/surat_peringatan
             $path = $request->file('file_surat')->store('surat_peringatan', 'public');
         }
 
@@ -63,12 +59,10 @@ class SuratPeringatanController extends Controller
         return redirect()->route('admin.sp.index')->with('success', 'Surat Peringatan berhasil diterbitkan dan diarsipkan.');
     }
 
-    // [HC / ADMIN] Menghapus data SP
     public function destroy($id)
     {
         $sp = SuratPeringatan::findOrFail($id);
         
-        // Hapus file fisik jika ada
         if ($sp->file_surat_path) {
             Storage::disk('public')->delete($sp->file_surat_path);
         }

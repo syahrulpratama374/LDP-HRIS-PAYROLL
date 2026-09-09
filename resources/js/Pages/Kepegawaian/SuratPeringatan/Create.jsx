@@ -12,6 +12,25 @@ export default function Create({ karyawans }) {
         file_surat: null,
     });
 
+    // OTOMASI: Hitung Tanggal Selesai (+6 Bulan dari Tanggal Mulai)
+    const handleTglMulaiChange = (e) => {
+        const startDate = e.target.value;
+
+        if (startDate) {
+            const dateObj = new Date(startDate);
+            dateObj.setMonth(dateObj.getMonth() + 6); // Tambah 6 Bulan
+            const endDate = dateObj.toISOString().split("T")[0]; // Format YYYY-MM-DD
+
+            setData((prevData) => ({
+                ...prevData,
+                tgl_mulai: startDate,
+                tgl_selesai: endDate,
+            }));
+        } else {
+            setData("tgl_mulai", "");
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route("admin.sp.store"), {
@@ -31,37 +50,40 @@ export default function Create({ karyawans }) {
 
             <div className="py-12">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-8">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-8 border-t-4 border-red-600">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Karyawan yang Melanggar
-                                </label>
-                                <select
-                                    value={data.karyawan_id}
-                                    onChange={(e) =>
-                                        setData("karyawan_id", e.target.value)
-                                    }
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    required
-                                >
-                                    <option value="">
-                                        -- Pilih Karyawan --
-                                    </option>
-                                    {karyawans.map((k) => (
-                                        <option key={k.id} value={k.id}>
-                                            {k.nik_internal} - {k.nama_lengkap}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.karyawan_id && (
-                                    <span className="text-red-500 text-xs">
-                                        {errors.karyawan_id}
-                                    </span>
-                                )}
-                            </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Karyawan yang Melanggar
+                                    </label>
+                                    <select
+                                        value={data.karyawan_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                "karyawan_id",
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                                        required
+                                    >
+                                        <option value="">
+                                            -- Pilih Karyawan --
+                                        </option>
+                                        {karyawans.map((k) => (
+                                            <option key={k.id} value={k.id}>
+                                                {k.nik_internal} -{" "}
+                                                {k.nama_lengkap}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.karyawan_id && (
+                                        <span className="text-red-500 text-xs">
+                                            {errors.karyawan_id}
+                                        </span>
+                                    )}
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">
                                         Tingkat Peringatan
@@ -71,7 +93,7 @@ export default function Create({ karyawans }) {
                                         onChange={(e) =>
                                             setData("jenis_sp", e.target.value)
                                         }
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm font-bold text-red-600 focus:border-red-500 focus:ring-red-500"
                                         required
                                     >
                                         <option value="SP 1">
@@ -87,7 +109,7 @@ export default function Create({ karyawans }) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded border">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">
                                         Tanggal Mulai Berlaku
@@ -95,16 +117,17 @@ export default function Create({ karyawans }) {
                                     <input
                                         type="date"
                                         value={data.tgl_mulai}
-                                        onChange={(e) =>
-                                            setData("tgl_mulai", e.target.value)
-                                        }
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        onChange={handleTglMulaiChange}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Tanggal Berakhir Berlaku
+                                    <label className="block text-sm font-medium text-gray-700 flex justify-between">
+                                        Tanggal Berakhir{" "}
+                                        <span className="text-xs text-gray-400 font-normal">
+                                            (Otomatis +6 Bulan)
+                                        </span>
                                     </label>
                                     <input
                                         type="date"
@@ -115,7 +138,7 @@ export default function Create({ karyawans }) {
                                                 e.target.value,
                                             )
                                         }
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                                         required
                                     />
                                     {errors.tgl_selesai && (
@@ -136,7 +159,7 @@ export default function Create({ karyawans }) {
                                     onChange={(e) =>
                                         setData("keterangan", e.target.value)
                                     }
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                                     placeholder="Jelaskan secara detail bentuk pelanggaran yang dilakukan..."
                                     required
                                 ></textarea>
@@ -155,7 +178,7 @@ export default function Create({ karyawans }) {
                                     onChange={(e) =>
                                         setData("file_surat", e.target.files[0])
                                     }
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
                                 />
                                 {errors.file_surat && (
                                     <span className="text-red-500 text-xs">

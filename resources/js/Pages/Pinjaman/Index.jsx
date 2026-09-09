@@ -12,7 +12,6 @@ export default function Index({ pinjaman }) {
             }
         >
             <Head title="Kasbon Karyawan" />
-
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="mb-6 flex justify-end">
@@ -93,12 +92,15 @@ export default function Index({ pinjaman }) {
                                                             "Pending"
                                                                 ? "bg-yellow-100 text-yellow-800"
                                                                 : p.status ===
-                                                                    "Berjalan"
-                                                                  ? "bg-blue-100 text-blue-800"
+                                                                    "Menunggu Pencairan"
+                                                                  ? "bg-orange-100 text-orange-800"
                                                                   : p.status ===
-                                                                      "Lunas"
-                                                                    ? "bg-green-100 text-green-800"
-                                                                    : "bg-red-100 text-red-800"
+                                                                      "Berjalan"
+                                                                    ? "bg-blue-100 text-blue-800"
+                                                                    : p.status ===
+                                                                        "Lunas"
+                                                                      ? "bg-green-100 text-green-800"
+                                                                      : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {p.status}

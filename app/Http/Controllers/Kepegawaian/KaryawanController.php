@@ -7,6 +7,7 @@ use App\Models\Karyawan;
 use App\Models\Departemen;
 use App\Models\Jabatan;
 use App\Models\Golongan;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +19,8 @@ class KaryawanController extends Controller
 {
     public function index()
     {
-        $karyawans = Karyawan::with(['departemen', 'jabatan', 'golongan'])->latest()->get();
+        // Menambahkan relasi 'atasan' agar tampil di tabel
+        $karyawans = Karyawan::with(['departemen', 'jabatan', 'golongan', 'atasan'])->latest()->get();
         return Inertia::render('Kepegawaian/Karyawan/Index', [
             'karyawans' => $karyawans
         ]);
@@ -26,7 +28,6 @@ class KaryawanController extends Controller
 
     public function create()
     {
-        // Pastikan tabel master_ptkps sudah ada isinya atau minimal tidak error saat dipanggil
         $ptkps = DB::table('master_ptkps')->get();
 
         return Inertia::render('Kepegawaian/Karyawan/Create', [
@@ -34,12 +35,14 @@ class KaryawanController extends Controller
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
             'ptkps' => $ptkps,
+            'roles' => Role::orderBy('id')->get(), // Suntikan RBAC
+            'atasans' => Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get(), // Suntikan Direct Reporting
         ]);
     }
 
     public function store(Request $request)
     {
-        // 1. Validasi Input Super Ketat
+        // 1. Validasi Input Super Ketat (Ditambah atasan_id dan role_id)
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans',
             'nama_lengkap' => 'required|string|max:150',
@@ -55,6 +58,8 @@ class KaryawanController extends Controller
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
+            'role_id' => 'required|exists:roles,id', // Validasi RBAC
+            'atasan_id' => 'nullable|exists:karyawans,id', // Validasi Direct Reporting (Nullable untuk CEO)
 
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
@@ -67,13 +72,13 @@ class KaryawanController extends Controller
         // 2. Pelindung Kegagalan (Database Transaction)
         DB::beginTransaction();
         try {
-            // A. Buat Akun Login Otomatis (Password default = NIK)
+            // A. Buat Akun Login Otomatis dengan Role yang dipilih
             $user = User::create([
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
-                'password' => Hash::make($validated['nik_internal']),
-                'role_id' => 2, // Asumsi Role ID 2 adalah Karyawan Biasa
+                'password' => Hash::make($validated['nik_internal']), // Default Password = NIK
+                'role_id' => $validated['role_id'], 
             ]);
 
             // B. Simpan Data Karyawan & Enkripsi Data Sensitif
@@ -83,6 +88,7 @@ class KaryawanController extends Controller
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
+                'atasan_id' => $validated['atasan_id'], // Injeksi Atasan
 
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
@@ -104,18 +110,19 @@ class KaryawanController extends Controller
                 'status_aktif' => true,
             ]);
 
-            DB::commit(); // Kunci data jika semua sukses
+            DB::commit();
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan Akun Login berhasil dibuat!');
         } catch (\Exception $e) {
-            DB::rollBack(); // Batalkan semua jika ada yang gagal
+            DB::rollBack();
             return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()]);
         }
     }
+
     public function edit($id)
     {
-        $karyawan = Karyawan::findOrFail($id);
+        $karyawan = Karyawan::with('user')->findOrFail($id);
 
-        // 1. Dekripsi data sensitif agar bisa dibaca oleh HRD di form Edit
+        // 1. Dekripsi data sensitif agar bisa dibaca oleh HC di form Edit
         $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
         $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '';
         $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '';
@@ -126,6 +133,8 @@ class KaryawanController extends Controller
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
             'ptkps' => DB::table('master_ptkps')->get(),
+            'roles' => Role::orderBy('id')->get(),
+            'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(), // Mencegah atasan ke dirinya sendiri
         ]);
     }
 
@@ -133,7 +142,7 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
 
-        // 2. Pengecualian Validasi: Abaikan pengecekan 'unique' jika itu adalah ID karyawan ini sendiri
+        // 2. Pengecualian Validasi untuk Unique Rule
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans,nik_internal,' . $karyawan->id,
             'nama_lengkap' => 'required|string|max:150',
@@ -149,6 +158,8 @@ class KaryawanController extends Controller
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
+            'role_id' => 'required|exists:roles,id',
+            'atasan_id' => 'nullable|exists:karyawans,id|different:id', // Tidak boleh lapor ke diri sendiri
 
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
@@ -167,6 +178,7 @@ class KaryawanController extends Controller
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
+                'role_id' => $validated['role_id'],
             ]);
 
             // B. Simpan Pembaruan Karyawan & Enkripsi Ulang KTP/Rekening
@@ -175,6 +187,7 @@ class KaryawanController extends Controller
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
+                'atasan_id' => $validated['atasan_id'],
 
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
@@ -210,9 +223,9 @@ class KaryawanController extends Controller
             $karyawan = Karyawan::findOrFail($id);
             $userId = $karyawan->user_id;
 
-            // 3. Pembersihan Menyeluruh (Soft Delete atau Hard Delete)
+            // 3. Pembersihan Menyeluruh
             $karyawan->delete();
-            User::where('id', $userId)->delete(); // Hapus juga akun loginnya
+            User::where('id', $userId)->delete(); 
 
             DB::commit();
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan akun loginnya berhasil dihapus.');
@@ -224,12 +237,12 @@ class KaryawanController extends Controller
 
     public function show($id)
     {
-        // Tambahkan 'riwayatGajis' dan 'riwayatJabatans.jabatan' ke dalam array with()
         $karyawan = Karyawan::with([
             'departemen',
             'jabatan',
             'golongan',
             'user',
+            'atasan', // Pastikan atasan juga diload untuk UI Show
             'riwayatGajis',
             'riwayatJabatans.jabatan'
         ])->findOrFail($id);
@@ -238,7 +251,6 @@ class KaryawanController extends Controller
         $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : 'Belum Tersedia';
         $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : 'Belum Tersedia';
 
-        // Pastikan Anda mem-passing data master jabatan untuk keperluan dropdown form riwayat
         return Inertia::render('Kepegawaian/Karyawan/Show', [
             'karyawan' => $karyawan,
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
@@ -254,19 +266,16 @@ class KaryawanController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Cari riwayat gaji yang masih aktif (belum punya tanggal akhir)
             $riwayatAktif = \App\Models\RiwayatGaji::where('karyawan_id', $id)
                 ->whereNull('effective_date_end')
                 ->orderBy('effective_date_start', 'desc')
                 ->first();
 
-            // 2. Jika ada, tutup riwayat lama pada H-1 sebelum riwayat baru berlaku
             if ($riwayatAktif) {
                 $tanggalTutup = \Carbon\Carbon::parse($request->effective_date_start)->subDay()->toDateString();
                 $riwayatAktif->update(['effective_date_end' => $tanggalTutup]);
             }
 
-            // 3. Buat riwayat gaji baru
             \App\Models\RiwayatGaji::create([
                 'karyawan_id' => $id,
                 'nominal_gaji_pokok' => $request->nominal_gaji_pokok,
@@ -290,7 +299,6 @@ class KaryawanController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Tutup riwayat jabatan lama (SCD Logic)
             $riwayatAktif = \App\Models\RiwayatJabatan::where('karyawan_id', $id)
                 ->whereNull('effective_date_end')
                 ->orderBy('effective_date_start', 'desc')
@@ -301,14 +309,12 @@ class KaryawanController extends Controller
                 $riwayatAktif->update(['effective_date_end' => $tanggalTutup]);
             }
 
-            // 2. Buat riwayat jabatan baru
             \App\Models\RiwayatJabatan::create([
                 'karyawan_id' => $id,
                 'jabatan_id' => $request->jabatan_id,
                 'effective_date_start' => $request->effective_date_start,
             ]);
 
-            // 3. Sinkronisasi jabatan_id di tabel utama karyawans
             $karyawan = Karyawan::findOrFail($id);
             $karyawan->update(['jabatan_id' => $request->jabatan_id]);
 

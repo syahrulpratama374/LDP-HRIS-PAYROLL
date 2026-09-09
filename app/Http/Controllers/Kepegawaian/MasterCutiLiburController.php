@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Kepegawaian;
 use App\Http\Controllers\Controller;
 use App\Models\HariLibur;
 use App\Models\Pengaturan;
+use App\Models\Karyawan;
+use App\Models\SaldoCuti;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class MasterCutiLiburController extends Controller
 {
-    // Menampilkan halaman pengaturan cuti dan daftar hari libur
     public function index()
     {
         $hariLiburs = HariLibur::orderBy('tanggal', 'asc')->get();
@@ -22,7 +24,6 @@ class MasterCutiLiburController extends Controller
         ]);
     }
 
-    // Menyimpan atau memperbarui jatah cuti default perusahaan
     public function updateDefaultCuti(Request $request)
     {
         $request->validate([
@@ -37,7 +38,6 @@ class MasterCutiLiburController extends Controller
         return back()->with('success', 'Jatah cuti default perusahaan berhasil diperbarui!');
     }
 
-    // Menambah Hari Libur Nasional / Cuti Bersama baru
     public function storeLibur(Request $request)
     {
         $request->validate([
@@ -46,21 +46,54 @@ class MasterCutiLiburController extends Controller
             'is_cuti_bersama' => 'boolean',
         ]);
 
-        HariLibur::create([
-            'tanggal' => $request->tanggal,
-            'keterangan' => $request->keterangan,
-            'is_cuti_bersama' => $request->is_cuti_bersama ?? false,
-        ]);
+        DB::beginTransaction();
+        try {
+            // 1. Simpan Kalender Libur
+            $libur = HariLibur::create([
+                'tanggal' => $request->tanggal,
+                'keterangan' => $request->keterangan,
+                'is_cuti_bersama' => $request->is_cuti_bersama ?? false,
+            ]);
 
-        return back()->with('success', 'Hari libur berhasil ditambahkan ke kalender perusahaan!');
+            // 2. OTOMASI: Jika Cuti Bersama, potong saldo semua karyawan aktif
+            if ($libur->is_cuti_bersama) {
+                $tahun = date('Y', strtotime($libur->tanggal));
+                $defaultCuti = Pengaturan::where('kunci', 'hak_cuti_default')->value('nilai') ?? 12;
+                
+                $karyawans = Karyawan::where('status_aktif', true)->get();
+
+                foreach ($karyawans as $karyawan) {
+                    // Cek apakah karyawan sudah punya record saldo cuti tahun ini
+                    $saldo = SaldoCuti::firstOrCreate(
+                        ['karyawan_id' => $karyawan->id, 'tahun_periode' => $tahun],
+                        ['hak_cuti_tahunan' => $defaultCuti, 'cuti_terpakai' => 0]
+                    );
+
+                    // Tambahkan 1 ke cuti terpakai
+                    $saldo->increment('cuti_terpakai');
+                }
+            }
+
+            DB::commit();
+            $pesan = $libur->is_cuti_bersama 
+                ? 'Cuti Bersama ditambahkan! Saldo cuti tahunan SELURUH karyawan aktif otomatis dipotong 1 hari.' 
+                : 'Hari Libur Nasional berhasil ditambahkan ke kalender tanpa memotong saldo cuti.';
+
+            return back()->with('success', $pesan);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Gagal menyimpan hari libur: ' . $e->getMessage()]);
+        }
     }
 
-    // Menghapus Hari Libur
     public function destroyLibur($id)
     {
         $libur = HariLibur::findOrFail($id);
+        
+        // Catatan: Idealnya jika Cuti Bersama dihapus, saldo di-refund. 
+        // Untuk fase ini kita fokus pada penghapusan kalendernya saja.
         $libur->delete();
 
-        return back()->with('success', 'Hari libur berhasil dihapus.');
+        return back()->with('success', 'Hari libur berhasil dihapus dari kalender.');
     }
 }

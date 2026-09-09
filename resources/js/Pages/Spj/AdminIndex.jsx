@@ -1,28 +1,29 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 
 export default function AdminIndex({ spj }) {
-    // Fungsi eksekusi persetujuan dengan konfirmasi
+    const { auth } = usePage().props;
+    const userRole = auth.user.role_id;
+
     const handleApproval = (id, status, namaKaryawan) => {
-        if (
-            confirm(
-                `Apakah Anda yakin ingin ${status.toUpperCase()} pengajuan Pra-SPJ dari ${namaKaryawan}?`,
-            )
-        ) {
+        let textConfirm = `Apakah Anda yakin ingin menolak pengajuan ini?`;
+        if (status === "Menunggu Pelaporan")
+            textConfirm = `Setujui Pra-SPJ dari ${namaKaryawan}? Karyawan dapat berangkat dan wajib lapor nota setelah pulang.`;
+        if (status === "Selesai")
+            textConfirm = `Validasi nota SPJ dari ${namaKaryawan}? Dana akan otomatis masuk ke mesin Payroll bulan ini.`;
+
+        if (confirm(textConfirm)) {
             router.patch(
                 route("admin.spj.status", id),
                 {
                     status_approval: status,
                 },
-                {
-                    preserveScroll: true,
-                },
+                { preserveScroll: true },
             );
         }
     };
 
-    // Fungsi format Rupiah
     const formatRupiah = (angka) => {
         return new Intl.NumberFormat("id-ID", {
             style: "currency",
@@ -35,7 +36,7 @@ export default function AdminIndex({ spj }) {
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Approval Perjalanan Dinas (Pra-SPJ Tier-1)
+                    Approval Perjalanan Dinas (Tier 1 & 2)
                 </h2>
             }
         >
@@ -44,35 +45,24 @@ export default function AdminIndex({ spj }) {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        <div className="mb-6 border-b pb-4">
-                            <h3 className="text-lg font-bold text-gray-800">
-                                Daftar Pengajuan SPJ Bawahan
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Validasi rencana perjalanan dan estimasi
-                                anggaran (Pra-SPJ) tim Anda sebelum diproses
-                                oleh Finance.
-                            </p>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="min-w-full bg-white border border-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
-                                            Nama & Jabatan
+                                            Nama Karyawan
                                         </th>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
                                             Tujuan & Tanggal
                                         </th>
                                         <th className="px-6 py-3 border-b text-left text-xs font-semibold text-gray-600 uppercase">
-                                            Total Estimasi Biaya
+                                            Total Biaya & Bukti Nota
                                         </th>
                                         <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
                                             Status
                                         </th>
                                         <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
-                                            Aksi (Tier-1)
+                                            Aksi
                                         </th>
                                     </tr>
                                 </thead>
@@ -83,8 +73,7 @@ export default function AdminIndex({ spj }) {
                                                 colSpan="5"
                                                 className="px-6 py-8 text-center text-gray-500"
                                             >
-                                                Belum ada pengajuan SPJ yang
-                                                masuk dari tim Anda.
+                                                Belum ada pengajuan SPJ.
                                             </td>
                                         </tr>
                                     ) : (
@@ -97,7 +86,7 @@ export default function AdminIndex({ spj }) {
                                                     <div className="font-bold text-gray-800">
                                                         {item.karyawan
                                                             ?.nama_lengkap ||
-                                                            "Tidak Diketahui"}
+                                                            "N/A"}
                                                     </div>
                                                     <div className="text-xs text-gray-500">
                                                         {
@@ -124,12 +113,6 @@ export default function AdminIndex({ spj }) {
                                                             "id-ID",
                                                         )}
                                                     </div>
-                                                    <div
-                                                        className="text-xs text-gray-400 mt-1 truncate max-w-[200px]"
-                                                        title={item.keperluan}
-                                                    >
-                                                        {item.keperluan}
-                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 border-b">
                                                     <div className="font-bold text-gray-800">
@@ -137,11 +120,20 @@ export default function AdminIndex({ spj }) {
                                                             item.total_biaya,
                                                         )}
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1">
-                                                        {item.komponen_biaya
-                                                            ?.length || 0}{" "}
-                                                        Item Rincian
-                                                    </div>
+                                                    {item.file_bukti_path ? (
+                                                        <a
+                                                            href={`/storage/${item.file_bukti_path}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-blue-600 hover:underline mt-1 block font-semibold"
+                                                        >
+                                                            📄 Lihat Bukti Nota
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-xs text-red-500 italic mt-1 block">
+                                                            Belum ada nota
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <span
@@ -151,54 +143,120 @@ export default function AdminIndex({ spj }) {
                                                             "Pending"
                                                                 ? "bg-yellow-100 text-yellow-800"
                                                                 : item.status_approval ===
-                                                                    "Disetujui"
-                                                                  ? "bg-green-100 text-green-800"
-                                                                  : "bg-red-100 text-red-800"
+                                                                    "Menunggu Pelaporan"
+                                                                  ? "bg-blue-100 text-blue-800"
+                                                                  : item.status_approval ===
+                                                                      "Menunggu Validasi Finance"
+                                                                    ? "bg-purple-100 text-purple-800"
+                                                                    : item.status_approval ===
+                                                                        "Selesai"
+                                                                      ? "bg-green-100 text-green-800"
+                                                                      : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {item.status_approval}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
-                                                    {item.status_approval ===
-                                                    "Pending" ? (
-                                                        <div className="flex justify-center items-center space-x-2">
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleApproval(
-                                                                        item.id,
-                                                                        "Disetujui",
-                                                                        item
-                                                                            .karyawan
-                                                                            ?.nama_lengkap,
-                                                                    )
-                                                                }
-                                                                className="bg-green-500 hover:bg-green-600 text-white p-2 rounded shadow transition"
-                                                                title="Setujui Pra-SPJ"
-                                                            >
-                                                                ✅
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleApproval(
-                                                                        item.id,
-                                                                        "Ditolak",
-                                                                        item
-                                                                            .karyawan
-                                                                            ?.nama_lengkap,
-                                                                    )
-                                                                }
-                                                                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded shadow transition"
-                                                                title="Tolak SPJ"
-                                                            >
-                                                                ❌
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400 italic">
-                                                            Sudah Diproses
-                                                        </span>
-                                                    )}
+                                                    <div className="flex justify-center items-center space-x-2">
+                                                        {/* TIER-1: SPV APPROVAL */}
+                                                        {item.status_approval ===
+                                                            "Pending" &&
+                                                            [1, 5].includes(
+                                                                userRole,
+                                                            ) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleApproval(
+                                                                                item.id,
+                                                                                "Menunggu Pelaporan",
+                                                                                item
+                                                                                    .karyawan
+                                                                                    ?.nama_lengkap,
+                                                                            )
+                                                                        }
+                                                                        className="bg-green-500 hover:bg-green-600 text-white p-2 rounded shadow transition text-xs font-bold"
+                                                                    >
+                                                                        Setujui
+                                                                        Berangkat
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleApproval(
+                                                                                item.id,
+                                                                                "Ditolak",
+                                                                                item
+                                                                                    .karyawan
+                                                                                    ?.nama_lengkap,
+                                                                            )
+                                                                        }
+                                                                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded shadow transition text-xs font-bold"
+                                                                    >
+                                                                        Tolak
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                        {/* TIER-2: FINANCE VALIDATION */}
+                                                        {item.status_approval ===
+                                                            "Menunggu Validasi Finance" &&
+                                                            [1, 4].includes(
+                                                                userRole,
+                                                            ) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleApproval(
+                                                                                item.id,
+                                                                                "Selesai",
+                                                                                item
+                                                                                    .karyawan
+                                                                                    ?.nama_lengkap,
+                                                                            )
+                                                                        }
+                                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded shadow transition text-xs font-bold"
+                                                                    >
+                                                                        Validasi
+                                                                        &
+                                                                        Cairkan
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleApproval(
+                                                                                item.id,
+                                                                                "Ditolak",
+                                                                                item
+                                                                                    .karyawan
+                                                                                    ?.nama_lengkap,
+                                                                            )
+                                                                        }
+                                                                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded shadow transition text-xs font-bold"
+                                                                    >
+                                                                        Tolak
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                        {/* INDICATORS */}
+                                                        {[
+                                                            "Selesai",
+                                                            "Ditolak",
+                                                        ].includes(
+                                                            item.status_approval,
+                                                        ) && (
+                                                            <span className="text-xs text-gray-400 italic">
+                                                                Selesai Diproses
+                                                            </span>
+                                                        )}
+                                                        {item.status_approval ===
+                                                            "Menunggu Pelaporan" && (
+                                                            <span className="text-xs text-blue-500 italic font-semibold">
+                                                                Menunggu
+                                                                Karyawan Lapor
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
