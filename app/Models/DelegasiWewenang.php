@@ -1,68 +1,30 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Models;
 
-use App\Models\DelegasiWewenang;
-use App\Models\Karyawan;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class DelegasiWewenangController extends Controller
+class DelegasiWewenang extends Model
 {
-    // Menampilkan daftar delegasi wewenang yang aktif maupun riwayat
-    public function index()
+    use HasFactory;
+
+    protected $fillable = [
+        'pemberi_id',
+        'penerima_id',
+        'tgl_mulai',
+        'tgl_selesai',
+        'alasan',
+        'status'
+    ];
+
+    public function pemberi()
     {
-        $delegasis = DelegasiWewenang::with(['pemberi.departemen', 'penerima.departemen'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $karyawans = Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get();
-
-        return Inertia::render('Kepegawaian/Delegasi/Index', [
-            'delegasis' => $delegasis,
-            'karyawans' => $karyawans
-        ]);
+        return $this->belongsTo(Karyawan::class, 'pemberi_id');
     }
 
-    // Menyimpan pendelegasian baru
-    public function store(Request $request)
+    public function penerima()
     {
-        $request->validate([
-            'pemberi_id' => 'required|exists:karyawans,id',
-            'penerima_id' => 'required|exists:karyawans,id|different:pemberi_id',
-            'tgl_mulai' => 'required|date',
-            'tgl_selesai' => 'required|date|after_or_equal:tgl_mulai',
-            'alasan' => 'nullable|string',
-        ]);
-
-        DelegasiWewenang::create([
-            'pemberi_id' => $request->pemberi_id,
-            'penerima_id' => $request->penerima_id,
-            'tgl_mulai' => $request->tgl_mulai,
-            'tgl_selesai' => $request->tgl_selesai,
-            'alasan' => $request->alasan,
-            'status' => 'Aktif',
-        ]);
-
-        return redirect()->back()->with('success', 'Wewenang approval berhasil didelegasikan.');
-    }
-
-    // Mencabut atau mengubah status delegasi
-    public function updateStatus($id)
-    {
-        $delegasi = DelegasiWewenang::findOrFail($id);
-        $delegasi->update([
-            'status' => $delegasi->status === 'Aktif' ? 'Dicabut' : 'Aktif'
-        ]);
-
-        return redirect()->back()->with('success', 'Status delegasi wewenang diperbarui.');
-    }
-
-    // Menghapus data delegasi
-    public function destroy($id)
-    {
-        DelegasiWewenang::findOrFail($id)->delete();
-        return redirect()->back()->with('success', 'Arsip delegasi dihapus.');
+        return $this->belongsTo(Karyawan::class, 'penerima_id');
     }
 }

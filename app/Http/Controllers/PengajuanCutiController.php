@@ -98,23 +98,38 @@ class PengajuanCutiController extends Controller
 
         $query = PengajuanCuti::with(['karyawan.departemen', 'karyawan.jabatan']);
 
-        // Logika Hierarki: Jika user adalah Supervisor (Role 5), filter hanya bawaan langsungnya
+        // Logika Hierarki & Eskalasi
         if ($user->role_id == 5) {
             if (!$karyawan) {
                 abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
             }
-            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+            
+            $karyawanId = $karyawan->id;
+            $hariIni = \Carbon\Carbon::now()->toDateString();
+
+            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
+
+            $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
+                ->where('status', 'Aktif')
+                ->whereDate('tgl_mulai', '<=', $hariIni)
+                ->whereDate('tgl_selesai', '>=', $hariIni)
+                ->pluck('pemberi_id')
+                ->toArray();
+
+            if (!empty($pemberiDelegasiIds)) {
+                $bawahanTitipanIds = \App\Models\Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)->pluck('id')->toArray();
+                $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
+            }
+
             $query->whereIn('karyawan_id', $bawahanIds);
         }
-        // Jika user adalah HC / Direktur / Admin, query tidak difilter (bisa melihat semua)
 
-        // Tarik data dengan memprioritaskan yang berstatus 'Pending' di urutan teratas
         $pengajuan = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
             ->orderBy('created_at', 'desc')
-            ->get(); // Menggunakan get() agar tidak bentrok dengan mapping di React
+            ->get();
 
         return Inertia::render('Kepegawaian/Cuti/AdminIndex', [
-            'pengajuan' => $pengajuan // Menggunakan nama variabel 'pengajuan' agar sesuai dengan React AdminIndex.jsx kita
+            'pengajuan' => $pengajuan
         ]);
     }
 

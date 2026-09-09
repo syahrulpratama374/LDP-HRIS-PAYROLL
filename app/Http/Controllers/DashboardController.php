@@ -53,16 +53,38 @@ class DashboardController extends Controller
                 return Inertia::render('Dashboard/HC');
             case 4: 
                 return Inertia::render('Dashboard/Finance');
-           case 5: // Supervisor / Manager
+            case 5: // Supervisor / Manager
                 $pendingCuti = [];
                 $pendingLembur = [];
                 $pendingSpj = [];
 
                 if ($karyawan) {
-                    // REVISI: Tarik ID karyawan yang atasan langsungnya adalah user ini
-                    $bawahanIds = Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+                    // --- LOGIKA ESKALASI DELEGASI WEWENANG (Plt/Pjs) ---
+                    $karyawanId = $karyawan->id;
+                    $hariIni = \Carbon\Carbon::now()->toDateString();
 
-                    // Sisa query tetap sama, menarik data berdasarkan $bawahanIds
+                    // 1. Ambil ID bawahan asli
+                    $bawahanIds = Karyawan::where('atasan_id', $karyawanId)
+                        ->pluck('id')
+                        ->toArray();
+
+                    // 2. Cek apakah Supervisor ini ditunjuk sebagai Plt oleh atasan lain hari ini
+                    $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
+                        ->where('status', 'Aktif')
+                        ->whereDate('tgl_mulai', '<=', $hariIni)
+                        ->whereDate('tgl_selesai', '>=', $hariIni)
+                        ->pluck('pemberi_id')
+                        ->toArray();
+
+                    // 3. Jika menjadi Plt, gabungkan ID bawahan titipan
+                    if (!empty($pemberiDelegasiIds)) {
+                        $bawahanTitipanIds = Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)
+                            ->pluck('id')
+                            ->toArray();
+                        $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
+                    }
+                    // --- SELESAI LOGIKA ESKALASI ---
+
                     $pendingCuti = PengajuanCuti::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingLembur = PengajuanLembur::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingSpj = PengajuanSpj::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
@@ -72,8 +94,8 @@ class DashboardController extends Controller
                     'pendingCuti' => $pendingCuti,
                     'pendingLembur' => $pendingLembur,
                     'pendingSpj' => $pendingSpj,
-                    'sisaCuti' => $sisaCuti,      // <--- Kirim variabel dinamis
-                    'sisaKasbon' => $sisaKasbon,  // <--- Kirim variabel dinamis
+                    'sisaCuti' => $sisaCuti,
+                    'sisaKasbon' => $sisaKasbon,
                 ]);
 
             case 6: // Karyawan 

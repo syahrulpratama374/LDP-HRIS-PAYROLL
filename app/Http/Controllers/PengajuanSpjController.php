@@ -151,16 +151,32 @@ class PengajuanSpjController extends Controller
 
         $query = PengajuanSpj::with(['karyawan.departemen', 'karyawan.jabatan', 'komponenBiaya']);
 
-        // Logika Hierarki: Jika user adalah Supervisor (Role 5), filter hanya bawahan langsungnya
+        // Logika Hierarki & Eskalasi
         if ($user->role_id == 5) {
             if (!$karyawan) {
                 abort(403, 'Akses Ditolak: Anda tidak terdaftar sebagai Karyawan.');
             }
-            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawan->id)->pluck('id');
+            
+            $karyawanId = $karyawan->id;
+            $hariIni = \Carbon\Carbon::now()->toDateString();
+
+            $bawahanIds = \App\Models\Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
+
+            $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
+                ->where('status', 'Aktif')
+                ->whereDate('tgl_mulai', '<=', $hariIni)
+                ->whereDate('tgl_selesai', '>=', $hariIni)
+                ->pluck('pemberi_id')
+                ->toArray();
+
+            if (!empty($pemberiDelegasiIds)) {
+                $bawahanTitipanIds = \App\Models\Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)->pluck('id')->toArray();
+                $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
+            }
+
             $query->whereIn('karyawan_id', $bawahanIds);
         }
 
-        // Tarik data dengan memprioritaskan yang berstatus 'Pending' di urutan teratas
         $spj = $query->orderByRaw("FIELD(status_approval, 'Pending') DESC")
             ->orderBy('created_at', 'desc')
             ->get();

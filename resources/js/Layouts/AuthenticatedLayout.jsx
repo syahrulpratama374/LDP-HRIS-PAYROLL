@@ -19,26 +19,114 @@ export default function AuthenticatedLayout({ header, children }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
-                            {/* Logo: Selalu mengarah ke Dashboard untuk semua Role */}
+                            {/* Logo */}
                             <div className="shrink-0 flex items-center">
                                 <Link href={route("dashboard")}>
                                     <ApplicationLogo className="block h-9 w-auto fill-current text-indigo-600" />
                                 </Link>
                             </div>
 
-                            {/* Menu Navigasi Desktop */}
+                            {/* ============================================== */}
+                            {/* MENU NAVIGASI DESKTOP                          */}
+                            {/* ============================================== */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                {/* === MENU KHUSUS ADMIN === */}
-                                {user.role_id === 1 && (
+                                {/* 1. MENU UMUM (Semua Role) */}
+                                <NavLink
+                                    href={route("dashboard")}
+                                    active={route().current("dashboard")}
+                                >
+                                    Dashboard
+                                </NavLink>
+
+                                {/* 2. MENU SELF-SERVICE (Role 2 s/d 6) */}
+                                {[2, 3, 4, 5, 6].includes(user.role_id) && (
                                     <>
                                         <NavLink
-                                            href={route("dashboard")}
+                                            href={route("absensi.create")}
                                             active={route().current(
-                                                "dashboard",
+                                                "absensi.create",
                                             )}
                                         >
-                                            Dashboard
+                                            Absensi
                                         </NavLink>
+                                        <NavLink
+                                            href={route("cuti.index")}
+                                            active={route().current("cuti.*")}
+                                        >
+                                            Pengajuan Cuti
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("lembur.index")}
+                                            active={route().current("lembur.*")}
+                                        >
+                                            Lembur
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("spj.index")}
+                                            active={route().current("spj.*")}
+                                        >
+                                            SPJ
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("pinjaman.index")}
+                                            active={route().current(
+                                                "pinjaman.*",
+                                            )}
+                                        >
+                                            Kasbon
+                                        </NavLink>
+                                    </>
+                                )}
+
+                                {/* 3. MENU MANAJERIAL / APPROVER (Role 1 s/d 5) */}
+                                {[1, 2, 3, 4, 5].includes(user.role_id) && (
+                                    <>
+                                        <NavLink
+                                            href={route("admin.cuti.index")}
+                                            active={route().current(
+                                                "admin.cuti.*",
+                                            )}
+                                        >
+                                            Apprv Cuti
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.lembur.index")}
+                                            active={route().current(
+                                                "admin.lembur.*",
+                                            )}
+                                        >
+                                            Apprv Lembur
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.spj.index")}
+                                            active={route().current(
+                                                "admin.spj.*",
+                                            )}
+                                        >
+                                            Apprv SPJ
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.delegasi.index")}
+                                            active={route().current(
+                                                "admin.delegasi.*",
+                                            )}
+                                        >
+                                            Delegasi (Plt)
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.kinerja.index")}
+                                            active={route().current(
+                                                "admin.kinerja.*",
+                                            )}
+                                        >
+                                            KPI Kinerja
+                                        </NavLink>
+                                    </>
+                                )}
+
+                                {/* 4. MENU HC & ADMIN (Role 1 & 3) */}
+                                {[1, 3].includes(user.role_id) && (
+                                    <>
                                         <NavLink
                                             href={route("karyawan.index")}
                                             active={route().current(
@@ -56,82 +144,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Monitor Absensi
                                         </NavLink>
                                         <NavLink
-                                            href={route("admin.cuti.index")}
-                                            active={route().current(
-                                                "admin.cuti.*",
-                                            )}
-                                        >
-                                            Approval Cuti
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.lembur.index")}
-                                            active={route().current(
-                                                "admin.lembur.*",
-                                            )}
-                                        >
-                                            Approval Lembur
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.pinjaman.index")}
-                                            active={route().current(
-                                                "admin.pinjaman.*",
-                                            )}
-                                        >
-                                            Approval Kasbon
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.spj.index")}
-                                            active={route().current(
-                                                "admin.spj.*",
-                                            )}
-                                        >
-                                            Approval SPJ
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.payroll.index")}
-                                            active={route().current(
-                                                "admin.payroll.*",
-                                            )}
-                                        >
-                                            Kalkulator Payroll
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.ticket.index")}
-                                            active={route().current(
-                                                "admin.ticket.*",
-                                            )}
-                                        >
-                                            IT Helpdesk
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.sp.index")}
-                                            active={route().current(
-                                                "admin.sp.*",
-                                            )}
-                                        >
-                                            Data Pelanggaran (SP)
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.kinerja.index")}
-                                            active={route().current(
-                                                "admin.kinerja.*",
-                                            )}
-                                        >
-                                            Penilaian Kinerja (KPI)
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.delegasi.index")}
-                                            active={route().current(
-                                                "admin.delegasi.*",
-                                            )}
-                                        >
-                                            Delegasi Wewenang (Plt)
-                                        </NavLink>
-                                        <NavLink
                                             href={route("keluar.index")}
                                             active={route().current("keluar.*")}
                                         >
-                                            Persuratan HC
+                                            Persuratan
                                         </NavLink>
 
                                         {/* Dropdown Master Data */}
@@ -187,62 +203,24 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </>
                                 )}
 
-                                {/* === MENU KHUSUS KARYAWAN (SELF-SERVICE) === */}
-                                {[2, 3, 4, 5, 6].includes(user.role_id) && (
+                                {/* 5. MENU FINANCE & ADMIN (Role 1 & 4) */}
+                                {[1, 4].includes(user.role_id) && (
                                     <>
                                         <NavLink
-                                            href={route("dashboard")}
+                                            href={route("admin.pinjaman.index")}
                                             active={route().current(
-                                                "dashboard",
+                                                "admin.pinjaman.*",
                                             )}
                                         >
-                                            Dashboard
+                                            Apprv Kasbon
                                         </NavLink>
                                         <NavLink
-                                            href={route("absensi.create")}
+                                            href={route("admin.payroll.index")}
                                             active={route().current(
-                                                "absensi.create",
+                                                "admin.payroll.*",
                                             )}
                                         >
-                                            Absensi Kehadiran
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("cuti.index")}
-                                            active={route().current("cuti.*")}
-                                        >
-                                            Pengajuan Cuti & Izin
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("lembur.index")}
-                                            active={route().current("lembur.*")}
-                                        >
-                                            Pengajuan Lembur
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("pinjaman.index")}
-                                            active={route().current(
-                                                "pinjaman.*",
-                                            )}
-                                        >
-                                            Kasbon & Pinjaman
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("spj.index")}
-                                            active={route().current("spj.*")}
-                                        >
-                                            Perjalanan Dinas (SPJ)
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("slip.index")}
-                                            active={route().current("slip.*")}
-                                        >
-                                            Slip Gaji Saya
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("ticket.index")}
-                                            active={route().current("ticket.*")}
-                                        >
-                                            IT Ticket
+                                            Payroll
                                         </NavLink>
                                     </>
                                 )}
@@ -276,6 +254,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </span>
                                     </Dropdown.Trigger>
                                     <Dropdown.Content>
+                                        <Dropdown.Link
+                                            href={route("slip.index")}
+                                        >
+                                            Slip Gaji Saya
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
+                                            href={route("ticket.index")}
+                                        >
+                                            IT Helpdesk
+                                        </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route("profile.edit")}
                                         >
@@ -337,7 +325,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </div>
 
-                {/* Menu Responsive (Mobile) */}
+                {/* ============================================== */}
+                {/* MENU RESPONSIVE (MOBILE)                       */}
+                {/* ============================================== */}
                 <div
                     className={
                         (showingNavigationDropdown ? "block" : "hidden") +
@@ -345,15 +335,94 @@ export default function AuthenticatedLayout({ header, children }) {
                     }
                 >
                     <div className="pt-2 pb-3 space-y-1">
-                        {/* === MENU KHUSUS ADMIN (MOBILE) === */}
-                        {user.role_id === 1 && (
+                        <ResponsiveNavLink
+                            href={route("dashboard")}
+                            active={route().current("dashboard")}
+                        >
+                            Dashboard
+                        </ResponsiveNavLink>
+
+                        {/* SELF-SERVICE MOBILE */}
+                        {[2, 3, 4, 5, 6].includes(user.role_id) && (
                             <>
                                 <ResponsiveNavLink
-                                    href={route("dashboard")}
-                                    active={route().current("dashboard")}
+                                    href={route("absensi.create")}
+                                    active={route().current("absensi.create")}
                                 >
-                                    Dashboard
+                                    Absensi Kehadiran
                                 </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("cuti.index")}
+                                    active={route().current("cuti.*")}
+                                >
+                                    Pengajuan Cuti
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("lembur.index")}
+                                    active={route().current("lembur.*")}
+                                >
+                                    Pengajuan Lembur
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("spj.index")}
+                                    active={route().current("spj.*")}
+                                >
+                                    Perjalanan Dinas
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("pinjaman.index")}
+                                    active={route().current("pinjaman.*")}
+                                >
+                                    Kasbon & Pinjaman
+                                </ResponsiveNavLink>
+                            </>
+                        )}
+
+                        {/* APPROVAL MOBILE */}
+                        {[1, 2, 3, 4, 5].includes(user.role_id) && (
+                            <>
+                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                    Approve & Manajerial
+                                </div>
+                                <ResponsiveNavLink
+                                    href={route("admin.cuti.index")}
+                                    active={route().current("admin.cuti.*")}
+                                >
+                                    Approval Cuti
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.lembur.index")}
+                                    active={route().current("admin.lembur.*")}
+                                >
+                                    Approval Lembur
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.spj.index")}
+                                    active={route().current("admin.spj.*")}
+                                >
+                                    Approval SPJ
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.delegasi.index")}
+                                    active={route().current("admin.delegasi.*")}
+                                >
+                                    Delegasi Wewenang (Plt)
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.kinerja.index")}
+                                    active={route().current("admin.kinerja.*")}
+                                >
+                                    Penilaian KPI
+                                </ResponsiveNavLink>
+                            </>
+                        )}
+
+                        {/* HC & ADMIN MOBILE */}
+                        {[1, 3].includes(user.role_id) && (
+                            <>
+                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                    HC & Admin
+                                </div>
                                 <ResponsiveNavLink
                                     href={route("karyawan.index")}
                                     active={route().current("karyawan.*")}
@@ -365,54 +434,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current("absensi.index")}
                                 >
                                     Monitor Absensi
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.lembur.index")}
-                                    active={route().current("admin.lembur.*")}
-                                >
-                                    Approval Lembur
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.cuti.index")}
-                                    active={route().current("admin.cuti.*")}
-                                >
-                                    Approval Cuti
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.spj.index")}
-                                    active={route().current("admin.spj.*")}
-                                >
-                                    Approval SPJ
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.pinjaman.index")}
-                                    active={route().current("admin.pinjaman.*")}
-                                >
-                                    Approval Kasbon
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.payroll.index")}
-                                    active={route().current("admin.payroll.*")}
-                                >
-                                    Kalkulator Payroll
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.ticket.index")}
-                                    active={route().current("admin.ticket.*")}
-                                >
-                                    IT Helpdesk
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.kinerja.index")}
-                                    active={route().current("admin.kinerja.*")}
-                                >
-                                    Penilaian Kinerja (KPI)
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.delegasi.index")}
-                                    active={route().current("admin.delegasi.*")}
-                                >
-                                    Delegasi Wewenang (Plt)
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
                                     href={route("keluar.index")}
@@ -442,65 +463,26 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Golongan
                                 </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.sp.index")}
-                                    active={route().current("admin.sp.*")}
-                                >
-                                    Data Pelanggaran (SP)
-                                </ResponsiveNavLink>
                             </>
                         )}
 
-                        {/* === MENU KHUSUS KARYAWAN (MOBILE) === */}
-                        {[2, 3, 4, 5, 6].includes(user.role_id) && (
+                        {/* FINANCE MOBILE */}
+                        {[1, 4].includes(user.role_id) && (
                             <>
+                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                    Finance & Payroll
+                                </div>
                                 <ResponsiveNavLink
-                                    href={route("dashboard")}
-                                    active={route().current("dashboard")}
+                                    href={route("admin.pinjaman.index")}
+                                    active={route().current("admin.pinjaman.*")}
                                 >
-                                    Dashboard
+                                    Approval Kasbon
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
-                                    href={route("absensi.create")}
-                                    active={route().current("absensi.create")}
+                                    href={route("admin.payroll.index")}
+                                    active={route().current("admin.payroll.*")}
                                 >
-                                    Absensi Kehadiran
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("cuti.index")}
-                                    active={route().current("cuti.*")}
-                                >
-                                    Pengajuan Cuti & Izin
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("lembur.index")}
-                                    active={route().current("lembur.*")}
-                                >
-                                    Pengajuan Lembur
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("pinjaman.index")}
-                                    active={route().current("pinjaman.*")}
-                                >
-                                    Kasbon & Pinjaman
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("spj.index")}
-                                    active={route().current("spj.*")}
-                                >
-                                    Perjalanan Dinas (SPJ)
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("slip.index")}
-                                    active={route().current("slip.*")}
-                                >
-                                    Slip Gaji Saya
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("ticket.index")}
-                                    active={route().current("ticket.*")}
-                                >
-                                    IT Ticket
+                                    Kalkulator Payroll
                                 </ResponsiveNavLink>
                             </>
                         )}
@@ -516,6 +498,12 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
                         <div className="mt-3 space-y-1">
+                            <ResponsiveNavLink href={route("slip.index")}>
+                                Slip Gaji Saya
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink href={route("ticket.index")}>
+                                IT Helpdesk
+                            </ResponsiveNavLink>
                             <ResponsiveNavLink href={route("profile.edit")}>
                                 Profile
                             </ResponsiveNavLink>

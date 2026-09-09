@@ -6,15 +6,47 @@ use App\Models\PenilaianKinerja;
 use App\Models\Karyawan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class PenilaianKinerjaController extends Controller
 {
-    // [HC / SUPERVISOR] Menampilkan riwayat penilaian
-    public function index()
+    // Mengambil Array ID Bawahan (Termasuk Eskalasi Delegasi/Plt)
+    private function getBawahanIds($karyawan)
     {
-        // Tarik data penilaian beserta relasi karyawan dan atasan penilainya
-        $penilaians = PenilaianKinerja::with(['karyawan', 'penilai'])
-            ->orderBy('periode_tahun', 'desc')
+        $karyawanId = $karyawan->id;
+        $hariIni = Carbon::now()->toDateString();
+
+        $bawahanIds = Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
+
+        // Cek jika SPV ini adalah Plt dari SPV lain
+        $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
+            ->where('status', 'Aktif')
+            ->whereDate('tgl_mulai', '<=', $hariIni)
+            ->whereDate('tgl_selesai', '>=', $hariIni)
+            ->pluck('pemberi_id')
+            ->toArray();
+
+        if (!empty($pemberiDelegasiIds)) {
+            $bawahanTitipanIds = Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)->pluck('id')->toArray();
+            $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
+        }
+
+        return $bawahanIds;
+    }
+
+    // [HC / SUPERVISOR] Menampilkan riwayat penilaian
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $query = PenilaianKinerja::with(['karyawan', 'penilai']);
+
+        // Jika Role SPV, hanya tampilkan hasil penilaian staf bawahannya
+        if ($user->role_id == 5 && $user->karyawan) {
+            $bawahanIds = $this->getBawahanIds($user->karyawan);
+            $query->whereIn('karyawan_id', $bawahanIds);
+        }
+
+        $penilaians = $query->orderBy('periode_tahun', 'desc')
             ->orderBy('periode_bulan', 'desc')
             ->get();
 
@@ -24,10 +56,18 @@ class PenilaianKinerjaController extends Controller
     }
 
     // [HC / SUPERVISOR] Menampilkan form input KPI
-    public function create()
+    public function create(Request $request)
     {
-        // Ambil daftar karyawan aktif untuk pilihan dropdown
-        $karyawans = Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get();
+        $user = $request->user();
+        $query = Karyawan::where('status_aktif', true);
+
+        // Jika Role SPV, batasi dropdown HANYA untuk staf bawahannya
+        if ($user->role_id == 5 && $user->karyawan) {
+            $bawahanIds = $this->getBawahanIds($user->karyawan);
+            $query->whereIn('id', $bawahanIds);
+        }
+
+        $karyawans = $query->orderBy('nama_lengkap')->get();
 
         return Inertia::render('Kepegawaian/PenilaianKinerja/Create', [
             'karyawans' => $karyawans
@@ -37,18 +77,36 @@ class PenilaianKinerjaController extends Controller
     // [HC / SUPERVISOR] Menyimpan skor KPI ke database
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        // AUTO-ASSIGN: Jika SPV yang input, paksa ID penilai pakai ID dia. Jika Admin, ambil dari form.
+        $penilaiId = ($user->role_id == 5) ? $user->karyawan->id : $request->penilai_id;
+
         $request->validate([
             'karyawan_id' => 'required|exists:karyawans,id',
-            'penilai_id' => 'required|exists:karyawans,id|different:karyawan_id', // Penilai tidak boleh menilai dirinya sendiri
             'periode_bulan' => 'required|integer|min:1|max:12',
             'periode_tahun' => 'required|integer|min:2020|max:2040',
             'skor_kpi' => 'required|numeric|min:0|max:100',
             'catatan_evaluasi' => 'required|string',
         ]);
 
+        if ($request->karyawan_id == $penilaiId) {
+            return back()->withErrors(['error' => 'Anda tidak bisa menilai diri sendiri.']);
+        }
+
+        // Mencegah input ganda di bulan & tahun yang sama untuk karyawan yang sama
+        $cekExisting = PenilaianKinerja::where('karyawan_id', $request->karyawan_id)
+            ->where('periode_bulan', $request->periode_bulan)
+            ->where('periode_tahun', $request->periode_tahun)
+            ->exists();
+
+        if ($cekExisting) {
+            return back()->withErrors(['error' => 'Karyawan ini sudah dinilai pada periode tersebut.']);
+        }
+
         PenilaianKinerja::create([
             'karyawan_id' => $request->karyawan_id,
-            'penilai_id' => $request->penilai_id,
+            'penilai_id' => $penilaiId,
             'periode_bulan' => $request->periode_bulan,
             'periode_tahun' => $request->periode_tahun,
             'skor_kpi' => $request->skor_kpi,

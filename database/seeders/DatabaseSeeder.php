@@ -23,8 +23,8 @@ class DatabaseSeeder extends Seeder
             PengaturanSeeder::class,
 
             // 3. Setelah Master Data siap, barulah User & Profil Karyawan dibuat
-            // UserSeeder akan otomatis memakai Master Data yang sudah terbuat di atas
-            UserSeeder::class,
+            // Kita menggunakan LdpStrukturSeeder menggantikan UserSeeder lama
+            LdpStrukturSeeder::class,
         ]);
     }
 }

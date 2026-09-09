@@ -60,6 +60,11 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'role:1,3,5'])->group(function () {
     Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
     Route::patch('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.status');
+
+    Route::get('/admin/delegasi', [DelegasiWewenangController::class, 'index'])->name('admin.delegasi.index');
+    Route::post('/admin/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
+    Route::patch('/admin/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
+    Route::delete('/admin/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
     
     Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
     Route::patch('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');
