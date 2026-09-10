@@ -95,12 +95,15 @@ export default function Index({ pinjaman }) {
                                                                     "Menunggu Pencairan"
                                                                   ? "bg-orange-100 text-orange-800"
                                                                   : p.status ===
-                                                                      "Berjalan"
-                                                                    ? "bg-blue-100 text-blue-800"
+                                                                      "Menunggu Approval Direktur"
+                                                                    ? "bg-purple-100 text-purple-800"
                                                                     : p.status ===
-                                                                        "Lunas"
-                                                                      ? "bg-green-100 text-green-800"
-                                                                      : "bg-red-100 text-red-800"
+                                                                        "Berjalan"
+                                                                      ? "bg-blue-100 text-blue-800"
+                                                                      : p.status ===
+                                                                          "Lunas"
+                                                                        ? "bg-green-100 text-green-800"
+                                                                        : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {p.status}

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Absensi;
 use App\Models\Pengaturan;
-use App\Models\PengajuanSpj; // Impor model SPJ
+use App\Models\PengajuanSpj;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +31,7 @@ class AbsensiController extends Controller
         $karyawan = $user->karyawan;
 
         if (!$karyawan) {
-            abort(403, 'Akses Ditolak: Halaman absensi ini khusus untuk Karyawan. Akun Anda tidak terikat dengan profil kepegawaian mana pun.');
+            abort(403, 'Akses Ditolak: Halaman absensi ini khusus untuk Karyawan.');
         }
 
         $hariIni = Carbon::today('Asia/Jakarta')->toDateString();
@@ -55,7 +55,6 @@ class AbsensiController extends Controller
             return back()->withErrors(['error' => 'Akses Ditolak: Akun Anda tidak memiliki profil karyawan.']);
         }
 
-        // Tambahkan validasi catatan_logbook (Opsional, khusus saat clock-out)
         $request->validate([
             'image' => 'required|string',
             'koordinat' => 'required|string',
@@ -66,9 +65,9 @@ class AbsensiController extends Controller
         $waktuSekarang = Carbon::now('Asia/Jakarta');
         $tanggal = $waktuSekarang->toDateString();
 
-        // --- MULAI BLOK VALIDASI GEOFENCING (RADIUS GPS) ---
-        $titikKantor = Pengaturan::where('kunci', 'koordinat_kantor')->value('nilai');
-        $radiusMaksimal = (int) Pengaturan::where('kunci', 'radius_absensi')->value('nilai');
+        // --- MULAI BLOK VALIDASI GEOFENCING (KUNCI SUDAH DISINKRONKAN) ---
+        $titikKantor = Pengaturan::where('kunci', 'titik_koordinat_kantor')->value('nilai') ?? '-7.8014,110.3644';
+        $radiusMaksimal = (int) (Pengaturan::where('kunci', 'radius_absensi_meter')->value('nilai') ?? 50);
         
         $koorKantor = explode(',', str_replace(' ', '', $titikKantor));
         $koorUser = explode(',', str_replace(' ', '', $request->koordinat));
@@ -78,20 +77,18 @@ class AbsensiController extends Controller
             (float) $koorUser[0], (float) $koorUser[1]
         );
 
-        // 4. Deteksi Real-time Cek SPJ (Bypass Radius)
         $sedangSPJ = PengajuanSpj::where('karyawan_id', $karyawan->id)
-            ->where('status_approval', 'Disetujui')
+            ->where('status_approval', 'Selesai') // Pastikan statusnya Selesai (sudah cair/tervalidasi) atau sesuai aturan main Anda
             ->where('tgl_mulai', '<=', $tanggal)
             ->where('tgl_selesai', '>=', $tanggal)
             ->exists();
 
-        // 5. Tolak jika di luar radius (dan Karyawan TIDAK sedang SPJ)
         if (!$sedangSPJ && $jarakMeter > $radiusMaksimal) {
             return back()->withErrors(['error' => "Gagal: Anda di luar jangkauan kantor. Jarak Anda " . round($jarakMeter) . "m (Batas: {$radiusMaksimal}m)."]);
         }
         // --- SELESAI BLOK VALIDASI GEOFENCING ---
 
-        // --- MULAI BLOK PROSES GAMBAR BASE64 ---
+        // PROSES GAMBAR BASE64
         $image_parts = explode(";base64,", $request->image);
         $image_base64 = base64_decode($image_parts[1]);
 
@@ -99,7 +96,6 @@ class AbsensiController extends Controller
         $filePath = 'absensi/' . $fileName;
 
         Storage::disk('public')->put($filePath, $image_base64);
-        // --- SELESAI BLOK PROSES GAMBAR ---
 
         $absensi = Absensi::where('karyawan_id', $karyawan->id)->where('tanggal', $tanggal)->first();
 
@@ -107,15 +103,15 @@ class AbsensiController extends Controller
         if ($request->tipe === 'masuk') {
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
-            $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai');
-            $toleransiMenit = (int) Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai');
+            // SINKRONISASI KUNCI PENGATURAN WAKTU
+            $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_default')->value('nilai') ?? '08:00';
+            $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15); // Fallback 15 menit
             
             $batasWaktuMasuk = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta')->addMinutes($toleransiMenit);
             
             $status = 'Hadir';
             $catatan = null;
 
-            // Jika sedang SPJ, status langsung diset Dinas Luar
             if ($sedangSPJ) {
                 $status = 'Dinas Luar';
                 $catatan = 'Bypass Radius: SPJ Aktif';
@@ -138,12 +134,11 @@ class AbsensiController extends Controller
             return back()->with('success', 'Clock In berhasil! Status: ' . $status);
         } 
         
-        // LOGIKA CLOCK OUT (KELUAR) & SHIFT HANDOVER LOGBOOK
+        // LOGIKA CLOCK OUT (KELUAR)
         else if ($request->tipe === 'keluar') {
             if (!$absensi) return back()->withErrors(['error' => 'Anda belum melakukan Clock In.']);
             if ($absensi->waktu_keluar) return back()->withErrors(['error' => 'Anda sudah melakukan Clock Out hari ini.']);
 
-            // Menggabungkan catatan pagi (seperti info terlambat) dengan Logbook kepulangan
             $catatanKeluar = $absensi->catatan;
             if ($request->filled('catatan_logbook')) {
                 $tambahanLogbook = 'Logbook Handover: ' . $request->catatan_logbook;

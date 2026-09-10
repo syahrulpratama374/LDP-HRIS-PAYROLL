@@ -140,6 +140,10 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
 Route::middleware(['auth', 'role:1'])->group(function () {
     Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
     Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
+
+    // BARU: Rute untuk Modul Dynamic Settings (Pengaturan Sistem Terpusat)
+    Route::get('/admin/pengaturan', [App\Http\Controllers\PengaturanController::class, 'index'])->name('admin.pengaturan.index');
+    Route::post('/admin/pengaturan', [App\Http\Controllers\PengaturanController::class, 'store'])->name('admin.pengaturan.store');
 });
 
 require __DIR__ . '/auth.php';

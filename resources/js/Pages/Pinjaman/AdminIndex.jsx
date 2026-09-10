@@ -2,9 +2,8 @@ import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage } from "@inertiajs/react";
 
-export default function AdminIndex({ pinjaman }) {
-    const { auth } = usePage().props;
-    const userRole = auth.user.role_id; // Ambil Role ID
+export default function AdminIndex({ pinjaman, userRole }) {
+    const { flash, errors } = usePage().props;
 
     const handleAction = (id, status) => {
         let confirmText = "Apakah Anda yakin?";
@@ -14,16 +13,14 @@ export default function AdminIndex({ pinjaman }) {
                 "Setujui pengajuan ini? Dokumen akan diteruskan ke Finance untuk pencairan dana.";
         if (status === "Berjalan")
             confirmText =
-                "Cairkan dana kasbon ini? Sistem akan otomatis mentransfer ke rekening karyawan dan membuat jadwal pemotongan gaji sesuai tenor.";
+                "Cairkan dana kasbon ini? Sistem akan otomatis mentransfer ke rekening karyawan dan membuat jadwal pemotongan gaji.";
         if (status === "Ditolak")
             confirmText = "Tolak pengajuan kasbon ini secara permanen?";
 
         if (confirm(confirmText)) {
             router.post(
                 route("admin.pinjaman.update", id),
-                {
-                    status: status,
-                },
+                { status: status },
                 { preserveScroll: true },
             );
         }
@@ -40,7 +37,19 @@ export default function AdminIndex({ pinjaman }) {
             <Head title="Approval Kasbon" />
 
             <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
+                    {/* Notifikasi Flash Message */}
+                    {flash?.success && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm">
+                            {flash.success}
+                        </div>
+                    )}
+                    {errors?.error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-sm">
+                            {errors.error}
+                        </div>
+                    )}
+
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                         <div className="overflow-x-auto">
                             <table className="min-w-full bg-white border border-gray-200">
@@ -73,8 +82,7 @@ export default function AdminIndex({ pinjaman }) {
                                                 colSpan="6"
                                                 className="px-6 py-8 text-center text-gray-500"
                                             >
-                                                Belum ada pengajuan kasbon dari
-                                                karyawan.
+                                                Belum ada pengajuan kasbon.
                                             </td>
                                         </tr>
                                     ) : (
@@ -106,7 +114,7 @@ export default function AdminIndex({ pinjaman }) {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-800">
-                                                    <span className="font-bold">
+                                                    <span className="font-bold text-indigo-600">
                                                         Rp{" "}
                                                         {Number(
                                                             p.total_pinjaman,
@@ -137,12 +145,15 @@ export default function AdminIndex({ pinjaman }) {
                                                                     "Menunggu Pencairan"
                                                                   ? "bg-orange-100 text-orange-800"
                                                                   : p.status ===
-                                                                      "Berjalan"
-                                                                    ? "bg-blue-100 text-blue-800"
+                                                                      "Menunggu Approval Direktur"
+                                                                    ? "bg-purple-100 text-purple-800"
                                                                     : p.status ===
-                                                                        "Lunas"
-                                                                      ? "bg-green-100 text-green-800"
-                                                                      : "bg-red-100 text-red-800"
+                                                                        "Berjalan"
+                                                                      ? "bg-blue-100 text-blue-800"
+                                                                      : p.status ===
+                                                                          "Lunas"
+                                                                        ? "bg-green-100 text-green-800"
+                                                                        : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {p.status}
@@ -150,7 +161,7 @@ export default function AdminIndex({ pinjaman }) {
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <div className="flex justify-center items-center space-x-2">
-                                                        {/* TIER-1: TOMBOL UNTUK SPV / MANAGER (Role 5 / 1) */}
+                                                        {/* TIER-1: SPV / MANAGER (Role 5 / 1) */}
                                                         {p.status ===
                                                             "Pending" &&
                                                             [1, 5].includes(
@@ -182,7 +193,7 @@ export default function AdminIndex({ pinjaman }) {
                                                                 </>
                                                             )}
 
-                                                        {/* TIER-2: TOMBOL UNTUK FINANCE / ADMIN (Role 4 / 1) */}
+                                                        {/* TIER-2: FINANCE (Role 4 / 1) */}
                                                         {p.status ===
                                                             "Menunggu Pencairan" &&
                                                             [1, 4].includes(
@@ -216,7 +227,39 @@ export default function AdminIndex({ pinjaman }) {
                                                                 </>
                                                             )}
 
-                                                        {/* Indikator Jika Selesai/Berjalan */}
+                                                        {/* TIER-3: DIREKTUR VETO (Role 2) */}
+                                                        {p.status ===
+                                                            "Menunggu Approval Direktur" &&
+                                                            userRole === 2 && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Berjalan",
+                                                                            )
+                                                                        }
+                                                                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        ✅ ACC &
+                                                                        Cairkan
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleAction(
+                                                                                p.id,
+                                                                                "Ditolak",
+                                                                            )
+                                                                        }
+                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                    >
+                                                                        Veto
+                                                                        Tolak
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                        {/* INDIKATOR SELESAI */}
                                                         {[
                                                             "Berjalan",
                                                             "Lunas",
@@ -233,6 +276,14 @@ export default function AdminIndex({ pinjaman }) {
                                                             userRole === 4 && (
                                                                 <span className="text-xs text-orange-400 font-semibold">
                                                                     Menunggu SPV
+                                                                </span>
+                                                            )}
+                                                        {p.status ===
+                                                            "Menunggu Approval Direktur" &&
+                                                            userRole === 4 && (
+                                                                <span className="text-xs text-purple-600 font-semibold italic">
+                                                                    Di Meja
+                                                                    Direktur
                                                                 </span>
                                                             )}
                                                     </div>
