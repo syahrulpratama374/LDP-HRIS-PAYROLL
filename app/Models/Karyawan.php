@@ -10,36 +10,15 @@ class Karyawan extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // "Daftar Putih" kolom yang diizinkan untuk diisi otomatis (Mass Assignment)
     protected $fillable = [
-        'user_id',
-        'departemen_id',
-        'jabatan_id',
-        'golongan_id',
-        'ptkp_id',
-
-        'nik_internal',
-        'nama_lengkap',
-        'tempat_lahir',
-        'tgl_lahir',
-        'agama',
-        'status_pernikahan',
-        'email_kantor',
-        'no_telp',
-        'tgl_bergabung',
-
-        'no_ktp_encrypted',
-        'npwp_encrypted',
-        'no_rek_bca_encrypted',
-
-        'no_bpjs_kesehatan',
-        'no_bpjs_ketenagakerjaan',
-        'status_aktif',
+        'user_id', 'departemen_id', 'jabatan_id', 'golongan_id', 'ptkp_id',
+        'nik_internal', 'nama_lengkap', 'tempat_lahir', 'tgl_lahir',
+        'agama', 'status_pernikahan', 'email_kantor', 'no_telp', 'tgl_bergabung',
+        'no_ktp_encrypted', 'npwp_encrypted', 'no_rek_bca_encrypted',
+        'no_bpjs_kesehatan', 'no_bpjs_ketenagakerjaan', 'status_aktif',
+        'atasan_id'
     ];
 
-    // ==========================================
-    // Jembatan Relasi (Foreign Keys)
-    // ==========================================
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -56,31 +35,30 @@ class Karyawan extends Model
     {
         return $this->belongsTo(Golongan::class);
     }
-    // ... relasi sebelumnya (user, departemen, jabatan, golongan)
-
     public function riwayatGajis()
     {
-        // Mengurutkan dari tanggal berlakunya yang paling baru (descending)
         return $this->hasMany(RiwayatGaji::class)->orderBy('effective_date_start', 'desc');
     }
-
     public function riwayatJabatans()
     {
         return $this->hasMany(RiwayatJabatan::class)->orderBy('effective_date_start', 'desc');
     }
-    // Relasi ke Atasan Langsung (Satu Karyawan punya Satu Atasan)
     public function atasan()
     {
         return $this->belongsTo(Karyawan::class, 'atasan_id');
     }
-
-    // Relasi ke Bawahan (Satu Atasan bisa punya Banyak Bawahan)
     public function bawahan()
     {
         return $this->hasMany(Karyawan::class, 'atasan_id');
     }
-    // Jika Anda membuat Model untuk PTKP, Anda bisa membuka komentar ini:
-    // public function ptkp() { 
-    //     return $this->belongsTo(MasterPtkp::class, 'ptkp_id'); 
-    // }
+    
+    // --- TAMBAHAN EXIT CLEARANCE ---
+    public function pinjamans()
+    {
+        return $this->hasMany(PinjamanKaryawan::class, 'karyawan_id');
+    }
+    public function asets()
+    {
+        return $this->hasMany(Aset::class, 'penanggung_jawab_id');
+    }
 }

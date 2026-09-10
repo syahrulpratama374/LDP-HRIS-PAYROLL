@@ -38,6 +38,28 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Dashboard
                                 </NavLink>
 
+                                {/* Menu Desktop (Biasanya di bagian atas layout) */}
+                                {[1].includes(auth.user.role_id) && (
+                                    <>
+                                        <NavLink
+                                            href={route("admin.audit.index")}
+                                            active={route().current(
+                                                "admin.audit.*",
+                                            )}
+                                        >
+                                            Audit Trail
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.aset.index")}
+                                            active={route().current(
+                                                "admin.aset.*",
+                                            )}
+                                        >
+                                            Aset & QR Code
+                                        </NavLink>
+                                    </>
+                                )}
+
                                 {/* 2. MENU SELF-SERVICE (Role 2 s/d 6) */}
                                 {[2, 3, 4, 5, 6].includes(user.role_id) && (
                                     <>
@@ -75,7 +97,25 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Kasbon
                                         </NavLink>
+                                        <NavLink
+                                            href={route("logbook.index")}
+                                            active={route().current(
+                                                "logbook.*",
+                                            )}
+                                        >
+                                            Logbook Shift
+                                        </NavLink>
                                     </>
+                                )}
+
+                                {/* menu ini khusus untuk Role 1, 2, dan 3 */}
+                                {[1, 2, 3].includes(auth.user.role_id) && (
+                                    <NavLink
+                                        href={route("pengumuman.index")}
+                                        active={route().current("pengumuman.*")}
+                                    >
+                                        Broadcast
+                                    </NavLink>
                                 )}
 
                                 {/* 3. MENU MANAJERIAL / APPROVER (Role 1 s/d 5) */}
@@ -197,6 +237,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                                     >
                                                         Golongan
                                                     </Dropdown.Link>
+                                                    <Dropdown.Link
+                                                        href={route(
+                                                            "shift.index",
+                                                        )}
+                                                    >
+                                                        Jam Shift
+                                                    </Dropdown.Link>
                                                 </Dropdown.Content>
                                             </Dropdown>
                                         </div>
@@ -221,6 +268,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                             )}
                                         >
                                             Payroll
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("admin.komponen.index")}
+                                            active={route().current(
+                                                "admin.komponen.*",
+                                            )}
+                                        >
+                                            Master Komponen Gaji
                                         </NavLink>
                                     </>
                                 )}
@@ -342,6 +397,30 @@ export default function AuthenticatedLayout({ header, children }) {
                             Dashboard
                         </ResponsiveNavLink>
 
+                        {/* Menu Mobile */}
+                        {[1].includes(auth.user.role_id) && (
+                            <>
+                                <ResponsiveNavLink
+                                    href={route("admin.audit.index")}
+                                    active={route().current("admin.audit.*")}
+                                >
+                                    Audit Trail
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.aset.index")}
+                                    active={route().current("admin.aset.*")}
+                                >
+                                    Aset & QR Code
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("logbook.index")}
+                                    active={route().current("logbook.*")}
+                                >
+                                    Logbook Shift
+                                </ResponsiveNavLink>
+                            </>
+                        )}
+
                         {/* SELF-SERVICE MOBILE */}
                         {[2, 3, 4, 5, 6].includes(user.role_id) && (
                             <>
@@ -375,7 +454,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Kasbon & Pinjaman
                                 </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("logbook.index")}
+                                    active={route().current("logbook.*")}
+                                >
+                                    Logbook Shift
+                                </ResponsiveNavLink>
                             </>
+                        )}
+
+                        {/* menu ini khusus untuk Role 1, 2, dan 3 */}
+                        {[1, 2, 3].includes(auth.user.role_id) && (
+                            <ResponsiveNavLink
+                                href={route("pengumuman.index")}
+                                active={route().current("pengumuman.*")}
+                            >
+                                Broadcast
+                            </ResponsiveNavLink>
                         )}
 
                         {/* APPROVAL MOBILE */}
@@ -463,6 +558,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Golongan
                                 </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("shift.index")}
+                                    active={route().current("shift.*")}
+                                >
+                                    Jam Shift
+                                </ResponsiveNavLink>
                             </>
                         )}
 
@@ -483,6 +584,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current("admin.payroll.*")}
                                 >
                                     Kalkulator Payroll
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("admin.komponen.index")}
+                                    active={route().current("admin.komponen.*")}
+                                >
+                                    Master Komponen Gaji
                                 </ResponsiveNavLink>
                             </>
                         )}

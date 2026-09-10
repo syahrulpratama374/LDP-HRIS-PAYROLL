@@ -125,9 +125,16 @@ class DashboardController extends Controller
                 ]);
 
             case 6: // Karyawan 
+                // Ambil ID Departemen Karyawan untuk filter pengumuman spesifik
+                $deptId = $karyawan ? $karyawan->departemen_id : null;
+                
+                // Tarik pengumuman aktif dari mesin Broadcast
+                $pengumumanAktif = \App\Http\Controllers\PengumumanController::getPengumumanAktif($deptId);
+
                 return Inertia::render('Dashboard/Karyawan', [
                     'sisaCuti' => $sisaCuti,
                     'sisaKasbon' => $sisaKasbon,
+                    'pengumuman' => $pengumumanAktif // Lemparkan ke Frontend React
                 ]);
                 
             default:

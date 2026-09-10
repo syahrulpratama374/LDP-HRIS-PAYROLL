@@ -2,134 +2,171 @@ import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 
-export default function Karyawan({
-    auth,
-    pengumuman,
-    sisaCuti = 12,
-    sisaKasbon = 5000000,
-}) {
-    // Fallback data pengumuman sementara (jika controller belum mengirimkan prop)
-    const listPengumuman = pengumuman || [
-        {
-            id: 1,
-            judul: "Pencairan SPJ & Kasbon Dipercepat",
-            isi: "Menjelang libur panjang, cut-off pengajuan SPJ dan Kasbon dimajukan ke hari Kamis pukul 14:00 WIB.",
-            tipe: "info",
-        },
-        {
-            id: 2,
-            judul: "Maintenance Server Internal",
-            isi: "Aplikasi LDP HRIS mungkin mengalami gangguan sementara pada Sabtu tengah malam karena ada update sistem database.",
-            tipe: "warning",
-        },
-    ];
+export default function Karyawan({ auth, sisaCuti, sisaKasbon, pengumuman }) {
+    const formatRupiah = (angka) => {
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(angka);
+    };
 
     return (
         <AuthenticatedLayout
+            user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Dashboard Karyawan
+                    Beranda Karyawan
                 </h2>
             }
         >
-            <Head title="Dashboard Karyawan" />
+            <Head title="Dasbor Karyawan" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    {/* 1. IN-APP NOTIFICATION / BANNER PENGUMUMAN */}
-                    {listPengumuman.length > 0 && (
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-lg shadow-sm">
-                            <div className="flex items-center mb-3">
-                                <span className="text-2xl mr-2">📢</span>
-                                <h3 className="text-lg font-bold text-blue-900 tracking-wide uppercase">
-                                    Papan Pengumuman Internal
-                                </h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {listPengumuman.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="bg-white p-4 rounded-lg shadow-sm border border-blue-100 relative overflow-hidden"
-                                    >
-                                        <div
-                                            className={`absolute top-0 left-0 w-1 h-full ${item.tipe === "warning" ? "bg-orange-500" : "bg-blue-500"}`}
-                                        ></div>
-                                        <h4 className="font-bold text-gray-800 mb-1">
-                                            {item.judul}
-                                        </h4>
-                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                            {item.isi}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 2. WELCOME & QUICK ACTION (CLOCK-IN) */}
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-8 flex flex-col md:flex-row justify-between items-center border-t-4 border-indigo-500">
-                        <div className="text-center md:text-left mb-6 md:mb-0">
-                            <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                                Halo, {auth.user.name}!
+                    {/* WELCOME SECTION */}
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex justify-between items-center border-l-4 border-indigo-500">
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-800">
+                                Halo, {auth.user.name}! 👋
                             </h3>
-                            <p className="text-gray-500 mt-2 text-lg">
-                                Selamat bekerja. Jangan lupa untuk melakukan
-                                presensi hari ini.
+                            <p className="text-gray-500 mt-1">
+                                Selamat datang di portal HRIS & Self-Service PT
+                                LDP.
                             </p>
                         </div>
-                        <div>
-                            <Link
-                                href={route("absensi.create")}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg transition-transform transform hover:scale-105 inline-block text-center text-lg"
-                            >
-                                ⏱️ Terminal Clock-In / Out
-                            </Link>
+                        <div className="hidden md:block text-right">
+                            <p className="text-sm font-semibold text-gray-600">
+                                Tanggal Hari Ini
+                            </p>
+                            <p className="text-lg font-bold text-indigo-600">
+                                {new Date().toLocaleDateString("id-ID", {
+                                    weekday: "long",
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                })}
+                            </p>
                         </div>
                     </div>
 
-                    {/* 3. SUMMARY WIDGETS (SISA CUTI & KASBON) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Widget Cuti */}
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex items-center border-l-4 border-green-500 hover:shadow-md transition">
-                            <div className="p-4 rounded-full bg-green-100 text-green-600 mr-5 text-3xl">
-                                🌴
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                                    Sisa Saldo Cuti Tahunan
-                                </p>
-                                <p className="text-3xl font-extrabold text-gray-800 my-1">
-                                    {sisaCuti}{" "}
-                                    <span className="text-lg font-medium text-gray-500">
-                                        Hari
-                                    </span>
-                                </p>
-                                <Link
-                                    href={route("cuti.index")}
-                                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 mt-1 inline-block"
+                    {/* PAPAN PENGUMUMAN (BROADCAST BANNER) */}
+                    {pengumuman && pengumuman.length > 0 && (
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                                📢 Informasi Terbaru
+                            </h4>
+                            {pengumuman.map((p) => (
+                                <div
+                                    key={p.id}
+                                    className={`p-4 rounded-lg shadow-sm border-l-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
+                                    ${
+                                        p.tipe_banner === "Info"
+                                            ? "bg-blue-50 border-blue-500"
+                                            : p.tipe_banner === "Peringatan"
+                                              ? "bg-orange-50 border-orange-500"
+                                              : "bg-green-50 border-green-500"
+                                    }`}
                                 >
-                                    Ajukan Cuti &rarr;
-                                </Link>
-                            </div>
+                                    <div>
+                                        <h4
+                                            className={`text-lg font-bold 
+                                            ${
+                                                p.tipe_banner === "Info"
+                                                    ? "text-blue-800"
+                                                    : p.tipe_banner ===
+                                                        "Peringatan"
+                                                      ? "text-orange-800"
+                                                      : "text-green-800"
+                                            }`}
+                                        >
+                                            {p.judul}
+                                        </h4>
+                                        <p className="text-gray-700 mt-1 text-sm">
+                                            {p.konten}
+                                        </p>
+                                    </div>
+                                    <div className="text-xs text-gray-500 font-semibold whitespace-nowrap">
+                                        Dari: {p.pembuat?.name || "Manajemen"}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* QUICK ACTION & TERMINAL ABSENSI */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-lg shadow-lg p-8 text-white flex flex-col justify-center items-center text-center">
+                            <h3 className="text-2xl font-bold mb-2">
+                                Terminal Kehadiran
+                            </h3>
+                            <p className="text-indigo-200 mb-6 text-sm">
+                                Pastikan Anda berada di area kantor untuk
+                                melakukan absen masuk dan pulang.
+                            </p>
+                            <Link
+                                href={route("absensi.create")}
+                                className="bg-white text-indigo-900 font-bold py-3 px-8 rounded-full shadow hover:bg-gray-100 transition transform hover:scale-105"
+                            >
+                                📍 CLOCK IN / OUT SEKARANG
+                            </Link>
                         </div>
 
-                        {/* Widget Kasbon */}
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex items-center border-l-4 border-orange-500 hover:shadow-md transition">
-                            <div className="p-4 rounded-full bg-orange-100 text-orange-600 mr-5 text-3xl">
-                                💰
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                                    Sisa Limit Kasbon
-                                </p>
-                                <p className="text-3xl font-extrabold text-gray-800 my-1">
-                                    Rp {sisaKasbon.toLocaleString("id-ID")}
-                                </p>
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* CARD SISA CUTI */}
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <div>
+                                    <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">
+                                        Sisa Cuti Tahunan
+                                    </div>
+                                    <div className="text-3xl font-black text-gray-800">
+                                        {sisaCuti}{" "}
+                                        <span className="text-lg text-gray-500 font-medium">
+                                            Hari
+                                        </span>
+                                    </div>
+                                </div>
                                 <Link
-                                    href={route("pinjaman.index")}
-                                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 mt-1 inline-block"
+                                    href={route("cuti.create")}
+                                    className="text-indigo-600 text-sm font-bold hover:underline mt-4"
                                 >
-                                    Ajukan Kasbon &rarr;
+                                    Ajukan Cuti ➔
+                                </Link>
+                            </div>
+
+                            {/* CARD SISA LIMIT KASBON */}
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <div>
+                                    <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">
+                                        Sisa Limit Kasbon
+                                    </div>
+                                    <div className="text-2xl font-black text-green-600">
+                                        {formatRupiah(sisaKasbon)}
+                                    </div>
+                                </div>
+                                <Link
+                                    href={route("pinjaman.create")}
+                                    className="text-green-600 text-sm font-bold hover:underline mt-4"
+                                >
+                                    Ajukan Pinjaman ➔
+                                </Link>
+                            </div>
+
+                            {/* CARD SLIP GAJI */}
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 col-span-2 flex justify-between items-center hover:bg-gray-50 transition">
+                                <div>
+                                    <div className="text-gray-800 font-bold">
+                                        Slip Gaji & Pendapatan
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        Unduh slip gaji bulanan Anda
+                                    </div>
+                                </div>
+                                <Link
+                                    href={route("slip.index")}
+                                    className="bg-gray-800 text-white px-4 py-2 rounded text-sm font-bold shadow hover:bg-black transition"
+                                >
+                                    Lihat Slip
                                 </Link>
                             </div>
                         </div>

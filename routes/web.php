@@ -9,6 +9,7 @@ use App\Http\Controllers\{
     JabatanController, GolonganController
 };
 use App\Http\Controllers\MasterData\DepartemenController;
+Route::get('/scan-aset/{kode_aset}', [App\Http\Controllers\AsetController::class, 'showPublic'])->name('aset.scan');
 
 // 1. Redirect Utama
 Route::get('/', function () {
@@ -51,6 +52,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/it-ticket', [ItTicketController::class, 'index'])->name('ticket.index');
     Route::post('/it-ticket', [ItTicketController::class, 'store'])->name('ticket.store');
+
+    // --- BARU: LOGBOOK SHIFT NOC ---
+    Route::get('/logbook-shift', [App\Http\Controllers\ItTicket\LogbookController::class, 'index'])->name('logbook.index');
+    Route::post('/logbook-shift', [App\Http\Controllers\ItTicket\LogbookController::class, 'store'])->name('logbook.store');
 });
 
 
@@ -78,6 +83,10 @@ Route::middleware(['auth', 'role:1,4'])->group(function () {
     Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
     Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
     Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
+
+    Route::resource('/admin/komponen-gaji', App\Http\Controllers\Payroll\MasterKomponenPayrollController::class)
+        ->names('admin.komponen')
+        ->except(['create', 'show', 'edit']);
 });
 
 // C. Akses SPV (5), Finance (4), Direktur (2), Admin (1) -> Modul Multi-Tier Approval
@@ -95,6 +104,8 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
         Route::resource('departemen', DepartemenController::class)->except(['create', 'show', 'edit']);
         Route::resource('jabatan', JabatanController::class)->except(['create', 'show', 'edit']);
         Route::resource('golongan', GolonganController::class)->except(['create', 'show', 'edit']);
+
+        Route::resource('shift', App\Http\Controllers\MasterData\MasterShiftController::class)->except(['create', 'show', 'edit']);
 
         // Master Cuti & Kalender Libur (HC & Admin)
     Route::get('/hc/master-cuti', [App\Http\Controllers\Kepegawaian\MasterCutiLiburController::class, 'index'])->name('hc.cuti.index');
@@ -135,15 +146,30 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
         Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
     });
 });
-
-// E. Akses Eksklusif Super Admin (1) -> Master IT
+// E. Akses Eksklusif Super Admin (1) -> Master IT & GA
 Route::middleware(['auth', 'role:1'])->group(function () {
     Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
     Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
 
-    // BARU: Rute untuk Modul Dynamic Settings (Pengaturan Sistem Terpusat)
+    
+    // Modul Dynamic Settings (Pengaturan Sistem Terpusat)
     Route::get('/admin/pengaturan', [App\Http\Controllers\PengaturanController::class, 'index'])->name('admin.pengaturan.index');
     Route::post('/admin/pengaturan', [App\Http\Controllers\PengaturanController::class, 'store'])->name('admin.pengaturan.store');
+
+    // Audit Trail (Log Forensik)
+    Route::get('/admin/audit-trails', [App\Http\Controllers\AuditTrailController::class, 'index'])->name('admin.audit.index');
+
+    // Modul General Affairs (Manajemen Aset & QR Code)
+    Route::resource('/admin/aset', App\Http\Controllers\AsetController::class)->names([
+        'index' => 'admin.aset.index',
+        'create' => 'admin.aset.create',
+        'store' => 'admin.aset.store',
+    ])->except(['show', 'edit', 'update', 'destroy']);
+}); 
+
+// F. Modul Broadcast & Pengumuman Internal (Hak Akses: Admin, Direktur, HC)
+Route::middleware(['auth', 'role:1,2,3'])->group(function () {
+    Route::resource('/pengumuman', App\Http\Controllers\PengumumanController::class)->except(['show', 'edit', 'update']);
 });
 
 require __DIR__ . '/auth.php';

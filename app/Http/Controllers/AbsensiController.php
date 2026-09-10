@@ -66,8 +66,8 @@ class AbsensiController extends Controller
         $tanggal = $waktuSekarang->toDateString();
 
         // --- MULAI BLOK VALIDASI GEOFENCING (KUNCI SUDAH DISINKRONKAN) ---
-        $titikKantor = Pengaturan::where('kunci', 'titik_koordinat_kantor')->value('nilai') ?? '-7.8014,110.3644';
-        $radiusMaksimal = (int) (Pengaturan::where('kunci', 'radius_absensi_meter')->value('nilai') ?? 50);
+        $titikKantor = Pengaturan::where('kunci', 'koordinat_kantor')->value('nilai') ?? '-7.8014,110.3644';
+        $radiusMaksimal = (int) (Pengaturan::where('kunci', 'radius_absensi')->value('nilai') ?? 50);
         
         $koorKantor = explode(',', str_replace(' ', '', $titikKantor));
         $koorUser = explode(',', str_replace(' ', '', $request->koordinat));
@@ -104,7 +104,7 @@ class AbsensiController extends Controller
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
             // SINKRONISASI KUNCI PENGATURAN WAKTU
-            $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_default')->value('nilai') ?? '08:00';
+            $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai') ?? '08:00';
             $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15); // Fallback 15 menit
             
             $batasWaktuMasuk = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta')->addMinutes($toleransiMenit);

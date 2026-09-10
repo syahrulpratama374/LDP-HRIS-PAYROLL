@@ -19,7 +19,6 @@ class KaryawanController extends Controller
 {
     public function index()
     {
-        // Menambahkan relasi 'atasan' agar tampil di tabel
         $karyawans = Karyawan::with(['departemen', 'jabatan', 'golongan', 'atasan'])->latest()->get();
         return Inertia::render('Kepegawaian/Karyawan/Index', [
             'karyawans' => $karyawans
@@ -28,21 +27,18 @@ class KaryawanController extends Controller
 
     public function create()
     {
-        $ptkps = DB::table('master_ptkps')->get();
-
         return Inertia::render('Kepegawaian/Karyawan/Create', [
             'departemens' => Departemen::orderBy('nama_departemen')->get(),
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
-            'ptkps' => $ptkps,
-            'roles' => Role::orderBy('id')->get(), // Suntikan RBAC
-            'atasans' => Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get(), // Suntikan Direct Reporting
+            'ptkps' => DB::table('master_ptkps')->get(),
+            'roles' => Role::orderBy('id')->get(),
+            'atasans' => Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get(),
         ]);
     }
 
     public function store(Request $request)
     {
-        // 1. Validasi Input Super Ketat (Ditambah atasan_id dan role_id)
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans',
             'nama_lengkap' => 'required|string|max:150',
@@ -53,43 +49,36 @@ class KaryawanController extends Controller
             'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
-
             'departemen_id' => 'required|exists:departemens,id',
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            'role_id' => 'required|exists:roles,id', // Validasi RBAC
-            'atasan_id' => 'nullable|exists:karyawans,id', // Validasi Direct Reporting (Nullable untuk CEO)
-
+            'role_id' => 'required|exists:roles,id', 
+            'atasan_id' => 'nullable|exists:karyawans,id', 
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
-
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
         ]);
 
-        // 2. Pelindung Kegagalan (Database Transaction)
         DB::beginTransaction();
         try {
-            // A. Buat Akun Login Otomatis dengan Role yang dipilih
             $user = User::create([
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
-                'password' => Hash::make($validated['nik_internal']), // Default Password = NIK
+                'password' => Hash::make($validated['nik_internal']), 
                 'role_id' => $validated['role_id'], 
             ]);
 
-            // B. Simpan Data Karyawan & Enkripsi Data Sensitif
             Karyawan::create([
                 'user_id' => $user->id,
                 'departemen_id' => $validated['departemen_id'],
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
-                'atasan_id' => $validated['atasan_id'], // Injeksi Atasan
-
+                'atasan_id' => $validated['atasan_id'], 
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'tempat_lahir' => $validated['tempat_lahir'],
@@ -99,12 +88,9 @@ class KaryawanController extends Controller
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
-
-                // Proses Enkripsi Tingkat Militer
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
                 'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
                 'status_aktif' => true,
@@ -122,7 +108,6 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::with('user')->findOrFail($id);
 
-        // 1. Dekripsi data sensitif agar bisa dibaca oleh HC di form Edit
         $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
         $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '';
         $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '';
@@ -134,7 +119,7 @@ class KaryawanController extends Controller
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
             'ptkps' => DB::table('master_ptkps')->get(),
             'roles' => Role::orderBy('id')->get(),
-            'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(), // Mencegah atasan ke dirinya sendiri
+            'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(),
         ]);
     }
 
@@ -142,7 +127,6 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
 
-        // 2. Pengecualian Validasi untuk Unique Rule
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans,nik_internal,' . $karyawan->id,
             'nama_lengkap' => 'required|string|max:150',
@@ -153,26 +137,44 @@ class KaryawanController extends Controller
             'email_kantor' => 'required|email|unique:karyawans,email_kantor,' . $karyawan->id,
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
-
             'departemen_id' => 'required|exists:departemens,id',
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
             'role_id' => 'required|exists:roles,id',
-            'atasan_id' => 'nullable|exists:karyawans,id|different:id', // Tidak boleh lapor ke diri sendiri
-
+            'atasan_id' => 'nullable|exists:karyawans,id|different:id',
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
-
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
             'status_aktif' => 'required|boolean',
         ]);
 
+        // ====================================================================
+        // GATEKEEPER EXIT CLEARANCE (Pencegat Non-Aktif / Resign)
+        // ====================================================================
+        if ($karyawan->status_aktif == true && $validated['status_aktif'] == false) {
+            
+            // Cek Aset
+            $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)
+                ->where('status', 'Dipakai')
+                ->count();
+            
+            // Cek Hutang Kasbon
+            $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)
+                ->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])
+                ->count();
+
+            if ($asetDitahan > 0 || $hutangKasbon > 0) {
+                return back()->withErrors([
+                    'error' => "EXIT CLEARANCE DITOLAK: Karyawan ini tidak bisa dinon-aktifkan karena masih memegang {$asetDitahan} Aset Perusahaan dan memiliki {$hutangKasbon} tunggakan Kasbon. Lakukan serah terima aset dan pelunasan di Finance terlebih dahulu!"
+                ]);
+            }
+        }
+
         DB::beginTransaction();
         try {
-            // A. Sinkronisasi perubahan data ke tabel User
             $user = User::findOrFail($karyawan->user_id);
             $user->update([
                 'name' => $validated['nama_lengkap'],
@@ -181,14 +183,12 @@ class KaryawanController extends Controller
                 'role_id' => $validated['role_id'],
             ]);
 
-            // B. Simpan Pembaruan Karyawan & Enkripsi Ulang KTP/Rekening
             $karyawan->update([
                 'departemen_id' => $validated['departemen_id'],
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
                 'atasan_id' => $validated['atasan_id'],
-
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'tempat_lahir' => $validated['tempat_lahir'],
@@ -198,11 +198,9 @@ class KaryawanController extends Controller
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
-
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
                 'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
                 'status_aktif' => $validated['status_aktif'],
@@ -218,12 +216,26 @@ class KaryawanController extends Controller
 
     public function destroy($id)
     {
+        $karyawan = Karyawan::findOrFail($id);
+        
+        // ====================================================================
+        // GATEKEEPER EXIT CLEARANCE (Pencegat Penghapusan Paksa)
+        // ====================================================================
+        $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)->count();
+        $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)
+            ->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])
+            ->count();
+
+        if ($asetDitahan > 0 || $hutangKasbon > 0) {
+            return back()->withErrors([
+                'error' => "PENGHAPUSAN DITOLAK: Karyawan ini masih terikat dengan {$asetDitahan} Aset Perusahaan dan {$hutangKasbon} tunggakan Kasbon. Pindahkan kepemilikan aset dan lunasi kasbon sebelum menghapus data karyawan."
+            ]);
+        }
+
         DB::beginTransaction();
         try {
-            $karyawan = Karyawan::findOrFail($id);
             $userId = $karyawan->user_id;
-
-            // 3. Pembersihan Menyeluruh
+            
             $karyawan->delete();
             User::where('id', $userId)->delete(); 
 
@@ -238,13 +250,8 @@ class KaryawanController extends Controller
     public function show($id)
     {
         $karyawan = Karyawan::with([
-            'departemen',
-            'jabatan',
-            'golongan',
-            'user',
-            'atasan', // Pastikan atasan juga diload untuk UI Show
-            'riwayatGajis',
-            'riwayatJabatans.jabatan'
+            'departemen', 'jabatan', 'golongan', 'user', 'atasan',
+            'riwayatGajis', 'riwayatJabatans.jabatan'
         ])->findOrFail($id);
 
         $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
