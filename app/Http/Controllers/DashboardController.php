@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\Absensi;
 use App\Models\Karyawan;
 use App\Models\PengajuanCuti;
 use App\Models\PengajuanLembur;
@@ -124,17 +125,100 @@ class DashboardController extends Controller
                     'sisaKasbon' => $sisaKasbon,
                 ]);
 
-            case 6: // Karyawan 
-                // Ambil ID Departemen Karyawan untuk filter pengumuman spesifik
+            case 6: // Karyawan
                 $deptId = $karyawan ? $karyawan->departemen_id : null;
-                
-                // Tarik pengumuman aktif dari mesin Broadcast
+
                 $pengumumanAktif = \App\Http\Controllers\PengumumanController::getPengumumanAktif($deptId);
+
+                $absensiHariIni = null;
+                $statistikBulanIni = [
+                    'hadir' => 0,
+                    'terlambat' => 0,
+                    'izin' => 0,
+                    'alpha' => 0,
+                ];
+                $absensiMingguIni = [];
+
+                if ($karyawan) {
+                    $hariIni = Carbon::now('Asia/Jakarta')->startOfDay();
+
+                    // =====================================================
+                    // ABSENSI HARI INI
+                    // =====================================================
+
+                    $absensiHariIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereDate('tanggal', $hariIni->toDateString())
+                        ->first();
+
+                    // =====================================================
+                    // ABSENSI BULAN INI
+                    // =====================================================
+
+                    $awalBulan = $hariIni->copy()->startOfMonth();
+                    $akhirBulan = $hariIni->copy()->endOfMonth();
+
+                    $absensiBulanIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereBetween('tanggal', [
+                            $awalBulan->toDateString(),
+                            $akhirBulan->toDateString()
+                        ])
+                        ->get([
+                            'tanggal',
+                            'status',
+                            'waktu_masuk',
+                            'waktu_keluar'
+                        ]);
+
+                    // =====================================================
+                    // STATISTIK BULAN INI
+                    // =====================================================
+
+                    $statistikBulanIni = [
+                        // Dinas Luar tetap dihitung sebagai hari hadir
+                        'hadir' => $absensiBulanIni
+                            ->whereIn('status', ['Hadir', 'Dinas Luar'])
+                            ->count(),
+
+                        'terlambat' => $absensiBulanIni
+                            ->where('status', 'Terlambat')
+                            ->count(),
+
+                        'izin' => $absensiBulanIni
+                            ->where('status', 'Izin')
+                            ->count(),
+
+                        'alpha' => $absensiBulanIni
+                            ->where('status', 'Alpha')
+                            ->count(),
+                    ];
+
+                    // =====================================================
+                    // ABSENSI 7 HARI TERAKHIR
+                    // =====================================================
+
+                    $awal7Hari = $hariIni->copy()->subDays(6);
+
+                    $absensiMingguIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereBetween('tanggal', [
+                            $awal7Hari->toDateString(),
+                            $hariIni->toDateString()
+                        ])
+                        ->orderBy('tanggal')
+                        ->get([
+                            'tanggal',
+                            'status',
+                            'waktu_masuk',
+                            'waktu_keluar'
+                        ]);
+                }
 
                 return Inertia::render('Dashboard/Karyawan', [
                     'sisaCuti' => $sisaCuti,
                     'sisaKasbon' => $sisaKasbon,
-                    'pengumuman' => $pengumumanAktif // Lemparkan ke Frontend React
+                    'pengumuman' => $pengumumanAktif,
+                    'absensiHariIni' => $absensiHariIni,
+                    'statistikBulanIni' => $statistikBulanIni,
+                    'absensiMingguIni' => $absensiMingguIni,
                 ]);
                 
             default:

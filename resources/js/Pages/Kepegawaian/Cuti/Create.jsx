@@ -1,6 +1,6 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, useForm, Link } from "@inertiajs/react";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
@@ -175,7 +175,7 @@ export default function CreateCuti({ auth, saldoCuti }) {
                                     />
                                 </div>
 
-                                {/* Dokumen Bukti (Opsional) */}
+                                {/* Dokumen Bukti */}
                                 <div>
                                     <InputLabel
                                         htmlFor="dokumen_bukti"
@@ -202,10 +202,17 @@ export default function CreateCuti({ auth, saldoCuti }) {
                                     />
                                 </div>
 
-                                <div className="flex items-center justify-end mt-4">
+                                {/* TOMBOL AKSI */}
+                                <div className="flex items-center justify-end mt-6 space-x-3 pt-4 border-t border-gray-100">
+                                    <Link
+                                        href={route("cuti.index")}
+                                        className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition"
+                                    >
+                                        Batal
+                                    </Link>
                                     <PrimaryButton
-                                        className="ml-4"
                                         disabled={processing}
+                                        className="px-6 py-2"
                                     >
                                         {processing
                                             ? "Memproses..."

@@ -18,10 +18,18 @@ class Absensi extends Model
         'waktu_keluar',
         'koordinat_keluar',
         'foto_keluar_path',
-        'status_kehadiran'
+        'status',
+        'catatan',
     ];
 
-    // Relasi balik ke Karyawan
+// UBAH BAGIAN INI SAJA
+    protected $casts = [
+        'tanggal' => 'date',
+        // Tambahkan format khusus Y-m-d H:i:s agar Laravel tidak mengubahnya jadi UTC (Z)
+        'waktu_masuk' => 'datetime:Y-m-d H:i:s',
+        'waktu_keluar' => 'datetime:Y-m-d H:i:s',
+    ];
+
     public function karyawan()
     {
         return $this->belongsTo(Karyawan::class);

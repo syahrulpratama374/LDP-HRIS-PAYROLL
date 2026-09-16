@@ -9,12 +9,14 @@ class LogbookShift extends Model
 {
     use HasFactory;
 
+    // --- TAMBAHKAN BARIS INI ---
     protected $fillable = [
         'karyawan_id',
         'shift_id',
         'tanggal',
-        'catatan_handover'
+        'catatan_handover',
     ];
+    // ---------------------------
 
     public function karyawan()
     {
