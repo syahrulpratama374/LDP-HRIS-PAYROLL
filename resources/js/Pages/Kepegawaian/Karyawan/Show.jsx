@@ -7,7 +7,7 @@ import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 
-export default function Show({ karyawan, jabatans = [] }) {
+export default function Show({ karyawan, jabatans = [], bawahans = [] }) {
     const [activeTab, setActiveTab] = useState("biodata");
     const [showFormJabatan, setShowFormJabatan] = useState(false);
     const [showFormGaji, setShowFormGaji] = useState(false);
@@ -118,6 +118,7 @@ export default function Show({ karyawan, jabatans = [] }) {
                     {/* PANEL KANAN: Data Detail (Tabs) */}
                     <div className="w-full md:w-2/3">
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            {/* Kumpulan Tombol Tab */}
                             <div className="flex border-b overflow-x-auto">
                                 <button
                                     onClick={() => setActiveTab("biodata")}
@@ -137,11 +138,19 @@ export default function Show({ karyawan, jabatans = [] }) {
                                 >
                                     Riwayat Karir & Gaji
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab("tim")}
+                                    className={`px-6 py-4 text-sm font-medium whitespace-nowrap ${activeTab === "tim" ? "border-b-2 border-blue-500 text-blue-600 font-bold" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    Struktur Tim & Bawahan
+                                </button>
                             </div>
 
+                            {/* Isi Konten Tab */}
                             <div className="p-6">
+                                {/* ---------------- TAB 1: BIODATA ---------------- */}
                                 {activeTab === "biodata" && (
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 animate-in fade-in duration-300">
                                         <h4 className="text-lg font-bold text-gray-800 mb-4">
                                             Informasi Pribadi & Penempatan
                                         </h4>
@@ -208,8 +217,9 @@ export default function Show({ karyawan, jabatans = [] }) {
                                     </div>
                                 )}
 
+                                {/* ---------------- TAB 2: SENSITIF ---------------- */}
                                 {activeTab === "sensitif" && (
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 animate-in fade-in duration-300">
                                         <h4 className="text-lg font-bold text-red-600 mb-4">
                                             Data Rahasia (Terenkripsi)
                                         </h4>
@@ -260,8 +270,9 @@ export default function Show({ karyawan, jabatans = [] }) {
                                     </div>
                                 )}
 
+                                {/* ---------------- TAB 3: RIWAYAT JABATAN & GAJI ---------------- */}
                                 {activeTab === "riwayat" && (
-                                    <div className="space-y-10">
+                                    <div className="space-y-10 animate-in fade-in duration-300">
                                         {/* BAGIAN RIWAYAT JABATAN */}
                                         <div>
                                             <div className="flex justify-between items-center mb-4">
@@ -578,6 +589,88 @@ export default function Show({ karyawan, jabatans = [] }) {
                                                 </tbody>
                                             </table>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* ---------------- TAB 4: STRUKTUR TIM & BAWAHAN ---------------- */}
+                                {activeTab === "tim" && (
+                                    <div className="space-y-4 animate-in fade-in duration-300">
+                                        <h4 className="text-lg font-bold text-gray-800 mb-4">
+                                            Daftar Pasukan / Bawahan Langsung
+                                        </h4>
+
+                                        {bawahans.length === 0 ? (
+                                            <div className="bg-gray-50 border border-dashed border-gray-300 p-8 text-center rounded-xl">
+                                                <p className="text-gray-500 font-medium">
+                                                    Karyawan ini tidak memiliki
+                                                    bawahan atau bukan seorang
+                                                    Supervisor/Manager.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                                <table className="min-w-full divide-y divide-gray-200">
+                                                    <thead className="bg-blue-50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase border-r border-blue-100">
+                                                                NIK
+                                                            </th>
+                                                            <th className="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase border-r border-blue-100">
+                                                                Nama Lengkap
+                                                            </th>
+                                                            <th className="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase border-r border-blue-100">
+                                                                Jabatan
+                                                            </th>
+                                                            <th className="px-6 py-3 text-center text-xs font-bold text-blue-800 uppercase">
+                                                                Aksi
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {bawahans.map(
+                                                            (bawahan) => (
+                                                                <tr
+                                                                    key={
+                                                                        bawahan.id
+                                                                    }
+                                                                    className="hover:bg-gray-50 transition"
+                                                                >
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-r">
+                                                                        {
+                                                                            bawahan.nik_internal
+                                                                        }
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 border-r">
+                                                                        {
+                                                                            bawahan.nama_lengkap
+                                                                        }
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r">
+                                                                        {
+                                                                            bawahan
+                                                                                .jabatan
+                                                                                ?.nama_jabatan
+                                                                        }
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                                                        <Link
+                                                                            href={route(
+                                                                                "karyawan.show",
+                                                                                bawahan.id,
+                                                                            )}
+                                                                            className="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded font-bold transition"
+                                                                        >
+                                                                            Lihat
+                                                                            Profil
+                                                                        </Link>
+                                                                    </td>
+                                                                </tr>
+                                                            ),
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
