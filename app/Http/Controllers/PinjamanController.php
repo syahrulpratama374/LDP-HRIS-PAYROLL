@@ -12,29 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class PinjamanController extends Controller
 {
-    // Fungsi Helper Hierarki & Eskalasi Delegasi 
-    private function getBawahanIds($karyawan)
-    {
-        $karyawanId = $karyawan->id;
-        $hariIni = Carbon::now()->toDateString();
-
-        $bawahanIds = Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
-
-        $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
-            ->where('status', 'Aktif')
-            ->whereDate('tgl_mulai', '<=', $hariIni)
-            ->whereDate('tgl_selesai', '>=', $hariIni)
-            ->pluck('pemberi_id')
-            ->toArray();
-
-        if (!empty($pemberiDelegasiIds)) {
-            $bawahanTitipanIds = Karyawan::whereIn('atasan_id', $pemberiDelegasiIds)->pluck('id')->toArray();
-            $bawahanIds = array_unique(array_merge($bawahanIds, $bawahanTitipanIds));
-        }
-
-        return $bawahanIds;
-    }
-
     // [KARYAWAN] Menampilkan riwayat kasbon/pinjaman
     public function index(Request $request)
     {
@@ -78,65 +55,52 @@ class PinjamanController extends Controller
             'total_pinjaman' => $request->total_pinjaman,
             'tenor_bulan' => $request->tenor_bulan,
             'sisa_pinjaman' => $request->total_pinjaman,
-            'status' => 'Pending', // Menunggu SPV
+            // STATUS LANGSUNG "PENDING" UNTUK DIEKSEKUSI FINANCE
+            'status' => 'Pending', 
         ]);
 
-        return redirect()->route('pinjaman.index')->with('success', 'Pengajuan kasbon berhasil dikirim ke atasan Anda.');
+        return redirect()->route('pinjaman.index')->with('success', 'Pengajuan kasbon berhasil dikirim ke Departemen Finance.');
     }
 
-    // [ADMIN/FINANCE/SPV/DIREKTUR] Menampilkan daftar pengajuan sesuai hierarki
+    // [FINANCE/ADMIN] Menampilkan seluruh daftar pengajuan Kasbon 1 Pintu
     public function adminIndex(Request $request)
     {
         $user = $request->user();
-        $query = PinjamanKaryawan::with(['karyawan.departemen', 'cicilans']);
-
-        // Filter SPV (Role 5)
-        if ($user->role_id == 5 && $user->karyawan) {
-            $bawahanIds = $this->getBawahanIds($user->karyawan);
-            $query->whereIn('karyawan_id', $bawahanIds);
-        } 
-        // Filter Direktur (Role 2) - Hanya melihat yang sudah dilempar Finance
-        elseif ($user->role_id == 2) {
-            $query->where('status', 'Menunggu Approval Direktur');
+        
+        // Hanya Admin(1) dan Finance(4) yang boleh mengakses halaman ini
+        if (!in_array($user->role_id, [1, 4])) {
+            abort(403, 'Akses Ditolak. Halaman ini khusus untuk Departemen Finance.');
         }
 
-        $pinjaman = $query->orderByRaw("FIELD(status, 'Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan', 'Lunas', 'Ditolak')")
+        $query = PinjamanKaryawan::with(['karyawan.departemen', 'cicilans']);
+
+        $pinjaman = $query->orderByRaw("FIELD(status, 'Pending', 'Berjalan', 'Lunas', 'Ditolak')")
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('Pinjaman/AdminIndex', [
             'pinjaman' => $pinjaman,
-            'userRole' => $user->role_id // Kirim Role ID ke React
+            'userRole' => $user->role_id
         ]);
     }
 
-    // [ADMIN/FINANCE/SPV/DIREKTUR] Mengubah status & Generate jadwal cicilan otomatis
+    // [FINANCE/ADMIN] Mengubah status (Approve/Reject) 1 Pintu & Generate jadwal cicilan
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Menunggu Pencairan,Berjalan,Ditolak,Lunas'
+            // Finance hanya punya 2 opsi: Setuju (Berjalan) atau Tolak (Ditolak)
+            'status' => 'required|in:Berjalan,Ditolak,Lunas'
         ]);
 
         $pinjaman = PinjamanKaryawan::findOrFail($id);
-        $userRole = $request->user()->role_id;
         $targetStatus = $request->status;
 
         DB::beginTransaction();
         try {
-            // LOGIKA THRESHOLD: Jika Finance (Role 4) mencoba mencairkan dana > 5 Juta
-            if ($userRole == 4 && $targetStatus === 'Berjalan') {
-                $threshold = 5000000; // Rp 5.000.000
-                if ($pinjaman->total_pinjaman > $threshold) {
-                    // Paksa status berubah menjadi menunggu Direktur, jangan cairkan dulu
-                    $targetStatus = 'Menunggu Approval Direktur';
-                }
-            }
-
             // Update status ke DB
             $pinjaman->update(['status' => $targetStatus]);
 
-            // GENERATE CICILAN JIKA STATUS FIX 'BERJALAN' 
-            // (Artinya sudah di-ACC Finance untuk <5jt, ATAU sudah di-ACC Direktur untuk >5jt)
+            // GENERATE CICILAN JIKA FINANCE KLIK "SETUJUI & CAIRKAN" (Berjalan)
             if ($targetStatus === 'Berjalan' && $pinjaman->cicilans()->count() === 0) {
                 $nominalCicilan = $pinjaman->total_pinjaman / $pinjaman->tenor_bulan;
                 $jatuhTempo = Carbon::now()->addMonth(); // Pemotongan gaji dimulai bulan depan
@@ -153,12 +117,12 @@ class PinjamanController extends Controller
 
             DB::commit();
 
-            // Set Pesan Balasan yang Dinamis
+            // Pesan Balasan
             $pesan = 'Status pinjaman berhasil diperbarui.';
-            if ($targetStatus === 'Menunggu Approval Direktur') {
-                $pesan = 'Pengajuan melampaui wewenang (Rp 5 Juta). Dokumen otomatis diteruskan ke Direktur untuk Final Approval.';
-            } elseif ($targetStatus === 'Berjalan') {
-                $pesan = 'Dana berhasil dicairkan dan jadwal pemotongan gaji (cicilan) otomatis telah dibuat.';
+            if ($targetStatus === 'Berjalan') {
+                $pesan = 'Kasbon Disetujui! Dana berhasil dicairkan dan jadwal pemotongan gaji (cicilan) otomatis telah dibuat.';
+            } elseif ($targetStatus === 'Ditolak') {
+                $pesan = 'Pengajuan Kasbon berhasil ditolak permanen.';
             }
 
             return redirect()->back()->with('success', $pesan);

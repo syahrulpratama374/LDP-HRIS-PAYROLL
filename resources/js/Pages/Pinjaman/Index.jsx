@@ -1,8 +1,30 @@
-import React from "react";
+import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 
 export default function Index({ pinjaman }) {
+    // State untuk Detail Modal
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedDetail, setSelectedDetail] = useState(null);
+
+    const formatRupiah = (angka) => {
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(angka);
+    };
+
+    const openDetailModal = (item) => {
+        setSelectedDetail(item);
+        setShowDetailModal(true);
+    };
+
+    const closeDetailModal = () => {
+        setShowDetailModal(false);
+        setSelectedDetail(null);
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -43,13 +65,16 @@ export default function Index({ pinjaman }) {
                                         <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
                                             Status
                                         </th>
+                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
+                                            Aksi
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {pinjaman.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan="5"
+                                                colSpan="6"
                                                 className="px-6 py-8 text-center text-gray-500"
                                             >
                                                 Anda belum memiliki riwayat
@@ -70,19 +95,17 @@ export default function Index({ pinjaman }) {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm font-bold text-gray-800">
-                                                    Rp{" "}
-                                                    {Number(
+                                                    {formatRupiah(
                                                         p.total_pinjaman,
-                                                    ).toLocaleString("id-ID")}
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-700">
                                                     {p.tenor_bulan} Bulan
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-red-600 font-semibold">
-                                                    Rp{" "}
-                                                    {Number(
+                                                    {formatRupiah(
                                                         p.sisa_pinjaman,
-                                                    ).toLocaleString("id-ID")}
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <span
@@ -109,6 +132,17 @@ export default function Index({ pinjaman }) {
                                                         {p.status}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4 border-b text-center">
+                                                    {/* TOMBOL DETAIL DITAMBAHKAN DI SINI */}
+                                                    <button
+                                                        onClick={() =>
+                                                            openDetailModal(p)
+                                                        }
+                                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded shadow transition text-xs font-bold"
+                                                    >
+                                                        Detail
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -118,6 +152,99 @@ export default function Index({ pinjaman }) {
                     </div>
                 </div>
             </div>
+
+            {/* Modal Detail Kasbon */}
+            {showDetailModal && selectedDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                        <div className="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">
+                                Rincian Kasbon / Pinjaman
+                            </h3>
+                            <button
+                                onClick={closeDetailModal}
+                                className="text-gray-500 hover:text-red-500 font-bold text-xl"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 text-sm">
+                            <div className="bg-gray-50 p-3 rounded border">
+                                <span className="block text-gray-500 font-medium text-xs mb-1">
+                                    Total Pinjaman Disetujui:
+                                </span>
+                                <span className="font-bold text-xl text-gray-900">
+                                    {formatRupiah(
+                                        selectedDetail.total_pinjaman,
+                                    )}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="block text-gray-500 font-medium text-xs">
+                                        Tenor (Lama Cicilan):
+                                    </span>
+                                    <span className="font-bold text-gray-800">
+                                        {selectedDetail.tenor_bulan} Bulan
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="block text-gray-500 font-medium text-xs">
+                                        Potongan Per Bulan:
+                                    </span>
+                                    <span className="font-bold text-red-600">
+                                        {formatRupiah(
+                                            selectedDetail.total_pinjaman /
+                                                selectedDetail.tenor_bulan,
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                                <span className="block text-blue-800 font-medium text-xs mb-1">
+                                    Sisa Hutang Saat Ini:
+                                </span>
+                                <span className="font-bold text-lg text-blue-900">
+                                    {formatRupiah(selectedDetail.sisa_pinjaman)}
+                                </span>
+                            </div>
+
+                            <div>
+                                <span className="block text-gray-500 font-medium text-xs">
+                                    Status Saat Ini:
+                                </span>
+                                <span
+                                    className={`inline-flex font-bold mt-1
+                                    ${
+                                        selectedDetail.status === "Pending"
+                                            ? "text-yellow-600"
+                                            : selectedDetail.status === "Lunas"
+                                              ? "text-green-600"
+                                              : selectedDetail.status ===
+                                                  "Ditolak"
+                                                ? "text-red-600"
+                                                : "text-blue-600"
+                                    }`}
+                                >
+                                    {selectedDetail.status}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={closeDetailModal}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

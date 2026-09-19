@@ -10,10 +10,12 @@ use App\Models\PengajuanSpj;
 use App\Models\CicilanPinjaman;
 use App\Models\Absensi;
 use App\Models\PenilaianKinerja;
+use App\Models\Pengaturan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class PayrollController extends Controller
 {
@@ -26,6 +28,7 @@ class PayrollController extends Controller
         $payrolls = Payroll::with(['karyawan.departemen', 'detailPayrolls'])
             ->where('periode_bulan', $bulan)
             ->where('periode_tahun', $tahun)
+            ->orderByRaw("FIELD(status, 'Draft', 'Disetujui')")
             ->get();
 
         return Inertia::render('Payroll/Index', [
@@ -45,8 +48,10 @@ class PayrollController extends Controller
         $bulan = $request->periode_bulan;
         $tahun = $request->periode_tahun;
 
-        // Ambil semua karyawan aktif beserta relasi yang dibutuhkan untuk hitung pajak & gaji
+        // Ambil karyawan aktif
         $karyawans = Karyawan::with(['jabatan', 'golongan', 'ptkp'])->where('status_aktif', true)->get();
+        $tarifTelat = Pengaturan::where('kunci', 'denda_terlambat')->value('nilai') ?? 50000;
+        $tarifLembur = Pengaturan::where('kunci', 'tarif_lembur_per_jam')->value('nilai') ?? 25000;
 
         DB::beginTransaction();
         try {
@@ -56,7 +61,7 @@ class PayrollController extends Controller
                     ['status' => 'Draft']
                 );
 
-                // Immutability: Tolak generate ulang jika sudah disetujui/dibayar
+                // Immutability: Jika sudah final, lewati
                 if ($payroll->status !== 'Draft') continue;
 
                 DetailPayroll::where('payroll_id', $payroll->id)->delete();
@@ -65,9 +70,17 @@ class PayrollController extends Controller
                 $totalPotongan = 0;
 
                 // ==========================================
-                // 1. PEMASUKAN TETAP (Gaji Pokok & Tunjangan)
+                // 1. PEMASUKAN TETAP (Gaji Pokok Dinamis & Tunjangan)
                 // ==========================================
-                $gajiPokok = $karyawan->jabatan->gaji_pokok ?? ($karyawan->golongan->gaji_pokok ?? 0);
+                
+                // Cari riwayat gaji aktif saat ini
+                $riwayatGaji = \App\Models\RiwayatGaji::where('karyawan_id', $karyawan->id)
+                    ->whereNull('effective_date_end')
+                    ->orderBy('effective_date_start', 'desc')
+                    ->first();
+                
+                // Jika punya riwayat gaji, pakai itu. Jika tidak, pakai standar Golongan
+                $gajiPokok = $riwayatGaji ? $riwayatGaji->nominal_gaji_pokok : ($karyawan->golongan->gaji_pokok ?? 0);
                 $tunjanganJabatan = $karyawan->jabatan->tunjangan ?? 0;
                 
                 $totalPemasukan += ($gajiPokok + $tunjanganJabatan);
@@ -75,9 +88,8 @@ class PayrollController extends Controller
                 DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Gaji Pokok', 'jenis' => 'Pemasukan', 'nominal' => $gajiPokok]);
                 if ($tunjanganJabatan > 0) DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Tunjangan Jabatan', 'jenis' => 'Pemasukan', 'nominal' => $tunjanganJabatan]);
 
-
                 // ==========================================
-                // 2. PEMASUKAN VARIABEL (Lembur, SPJ, Bonus KPI)
+                // 2. PEMASUKAN VARIABEL (Lembur, SPJ, KPI)
                 // ==========================================
                 
                 // A. LEMBUR
@@ -87,7 +99,7 @@ class PayrollController extends Controller
                     $jamMulai = strtotime($lembur->jam_mulai);
                     $jamSelesai = strtotime($lembur->jam_selesai);
                     $durasiJam = max(1, round(($jamSelesai - $jamMulai) / 3600));
-                    $totalUangLembur += ($durasiJam * 25000); // Tarif statis Rp 25.000/jam
+                    $totalUangLembur += ($durasiJam * $tarifLembur); 
                 }
                 if ($totalUangLembur > 0) {
                     $totalPemasukan += $totalUangLembur;
@@ -95,33 +107,32 @@ class PayrollController extends Controller
                 }
 
                 // B. REIMBURSEMENT SPJ
-            // UBAH 'Disetujui' MENJADI 'Selesai'
-        $spjs = PengajuanSpj::where('karyawan_id', $karyawan->id)
-            ->where('status_approval', 'Selesai')
-            ->where('sudah_dibayar', false)
-            ->whereMonth('tgl_selesai', $bulan)
-            ->whereYear('tgl_selesai', $tahun)->get();
+                $spjs = PengajuanSpj::where('karyawan_id', $karyawan->id)
+                    ->where('status_approval', 'Selesai')
+                    ->where('sudah_dibayar', false)
+                    ->whereMonth('tgl_selesai', $bulan)
+                    ->whereYear('tgl_selesai', $tahun)->get();
                 $totalSpj = $spjs->sum('total_biaya');
+                
                 if ($totalSpj > 0) {
                     $totalPemasukan += $totalSpj;
                     DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Pencairan SPJ', 'jenis' => 'Pemasukan', 'nominal' => $totalSpj]);
                     foreach ($spjs as $spj) $spj->update(['sudah_dibayar' => true]);
                 }
 
-                // C. BONUS KPI (Jika skor >= 90 dapat bonus 10% dari Gaji Pokok)
+                // C. BONUS KPI (Skor >= 90)
                 $kpi = PenilaianKinerja::where('karyawan_id', $karyawan->id)->where('periode_bulan', $bulan)->where('periode_tahun', $tahun)->first();
                 if ($kpi && $kpi->skor_kpi >= 90) {
-                    $bonusKpi = $gajiPokok * 0.10; // Bonus 10%
+                    $bonusKpi = $gajiPokok * 0.10; 
                     $totalPemasukan += $bonusKpi;
                     DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Bonus Kinerja (Skor: '.$kpi->skor_kpi.')', 'jenis' => 'Pemasukan', 'nominal' => $bonusKpi]);
                 }
 
-
                 // ==========================================
-                // 3. POTONGAN (Kehadiran, Kasbon, BPJS, PPh21)
+                // 3. POTONGAN (Absensi, Kasbon, BPJS, PPh21)
                 // ==========================================
                 
-                // A. POTONGAN KEHADIRAN (Alpha / Terlambat)
+                // A. POTONGAN ABSENSI
                 $absensiBuruk = Absensi::where('karyawan_id', $karyawan->id)
                     ->whereIn('status', ['Alpha', 'Terlambat'])
                     ->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->get();
@@ -130,8 +141,8 @@ class PayrollController extends Controller
                 $jmlAlpha = $absensiBuruk->where('status', 'Alpha')->count();
                 $jmlTelat = $absensiBuruk->where('status', 'Terlambat')->count();
 
-                if ($jmlAlpha > 0) $potonganAbsen += ($jmlAlpha * ($gajiPokok / 22)); // Potong gaji harian (asumsi 22 hr kerja)
-                if ($jmlTelat > 0) $potonganAbsen += ($jmlTelat * 50000); // Denda telat Rp 50.000/hari
+                if ($jmlAlpha > 0) $potonganAbsen += ($jmlAlpha * ($gajiPokok / 22)); 
+                if ($jmlTelat > 0) $potonganAbsen += ($jmlTelat * $tarifTelat); 
                 
                 if ($potonganAbsen > 0) {
                     $totalPotongan += $potonganAbsen;
@@ -158,19 +169,18 @@ class PayrollController extends Controller
                     DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Cicilan Kasbon', 'jenis' => 'Potongan', 'nominal' => $totalCicilanKasbon]);
                 }
 
-                // C. BPJS (3% dari Gaji Pokok: 1% Kes, 2% JHT)
+                // C. BPJS (3%)
                 $potonganBpjs = $gajiPokok * 0.03;
                 $totalPotongan += $potonganBpjs;
                 DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Iuran BPJS (Kes & JHT 3%)', 'jenis' => 'Potongan', 'nominal' => $potonganBpjs]);
 
-                // D. PAJAK PPh 21 (Estimasi Tahunan Sederhana berdasar PTKP)
-                // Setahunkan Gaji - PTKP * 5% (Jika lebih dari 0)
+                // D. PPh 21
                 $estimasiGajiTahunan = ($gajiPokok + $tunjanganJabatan) * 12;
                 $ptkpTahunan = $karyawan->ptkp->nominal_neto_tahunan ?? 54000000; 
                 $pkp = $estimasiGajiTahunan - $ptkpTahunan;
                 
                 if ($pkp > 0) {
-                    $pph21Sebulan = ($pkp * 0.05) / 12; // Tarif dasar 5% dibagi 12 bulan
+                    $pph21Sebulan = ($pkp * 0.05) / 12; 
                     $totalPotongan += $pph21Sebulan;
                     DetailPayroll::create(['payroll_id' => $payroll->id, 'nama_komponen_snapshot' => 'Pajak PPh 21', 'jenis' => 'Potongan', 'nominal' => $pph21Sebulan]);
                 }
@@ -189,14 +199,14 @@ class PayrollController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Kalkulasi perhitungan payroll periode ini berhasil digenerate, mencakup KPI, BPJS, PPh21, dan Absensi.');
+            return redirect()->back()->with('success', 'Kalkulasi perhitungan payroll periode ini berhasil digenerate, mencakup Lembur, Kasbon, BPJS, dan Absensi.');
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->withErrors(['error' => 'Gagal menghitung payroll: ' . $e->getMessage()]);
         }
     }
 
-    // [ADMIN / FINANCE] Finalisasi Status Payroll (Draft -> Selesai)
+    // [ADMIN / FINANCE] Finalisasi Status Payroll
     public function finalize($id)
     {
         $payroll = Payroll::findOrFail($id);

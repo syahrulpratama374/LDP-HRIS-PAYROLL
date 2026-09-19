@@ -61,4 +61,10 @@ class Karyawan extends Model
     {
         return $this->hasMany(Aset::class, 'penanggung_jawab_id');
     }
+    
+    // Relasi ke Master PTKP (Pajak PPh 21)
+    public function ptkp()
+    {
+        return $this->belongsTo(MasterPtkp::class, 'ptkp_id');
+    }
 }

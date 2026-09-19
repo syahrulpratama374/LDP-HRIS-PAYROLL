@@ -1,6 +1,6 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Create() {
     const { data, setData, post, processing, errors } = useForm({
@@ -26,6 +26,21 @@ export default function Create() {
             <div className="py-12">
                 <div className="max-w-xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        {/* Menangkap Error dari Backend (Misal: Limit Habis) */}
+                        {errors.error && (
+                            <div
+                                className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                                role="alert"
+                            >
+                                <strong className="font-bold">
+                                    Pengajuan Ditolak!{" "}
+                                </strong>
+                                <span className="block sm:inline">
+                                    {errors.error}
+                                </span>
+                            </div>
+                        )}
+
                         <form onSubmit={submit} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">
@@ -86,9 +101,9 @@ export default function Create() {
                                         Estimasi Pemotongan Gaji: <br />
                                         <span className="font-bold text-lg">
                                             Rp{" "}
-                                            {Number(
+                                            {(
                                                 data.total_pinjaman /
-                                                    data.tenor_bulan,
+                                                data.tenor_bulan
                                             ).toLocaleString("id-ID")}{" "}
                                             / bulan
                                         </span>
@@ -96,7 +111,14 @@ export default function Create() {
                                 </div>
                             )}
 
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                {/* TOMBOL BATAL DITAMBAHKAN DI SINI */}
+                                <Link
+                                    href={route("pinjaman.index")}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow transition-all"
+                                >
+                                    Batal
+                                </Link>
                                 <button
                                     type="submit"
                                     disabled={processing}
