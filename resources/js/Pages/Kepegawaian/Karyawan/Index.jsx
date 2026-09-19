@@ -1,12 +1,13 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link, useForm } from "@inertiajs/react";
+import { Head, Link, useForm, usePage } from "@inertiajs/react"; // Tambahkan usePage
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import DangerButton from "@/Components/DangerButton";
 
 export default function Index({ karyawans }) {
     const { delete: destroy } = useForm();
+    const { errors, flash } = usePage().props; // Menangkap error global dari Controller
 
     const handleDelete = (id) => {
         if (
@@ -31,6 +32,22 @@ export default function Index({ karyawans }) {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        {/* ==================================================== */}
+                        {/* BLOK PENANGKAP ERROR (EXIT CLEARANCE GATEKEEPER)     */}
+                        {/* ==================================================== */}
+                        {errors && errors.error && (
+                            <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md border border-red-300 font-bold shadow-sm">
+                                🚨 {errors.error}
+                            </div>
+                        )}
+
+                        {flash?.success && (
+                            <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-md border border-green-300 font-bold shadow-sm">
+                                ✅ {flash.success}
+                            </div>
+                        )}
+                        {/* ==================================================== */}
+
                         <div className="flex justify-between items-center mb-4 border-b pb-4">
                             <h3 className="text-lg font-bold text-gray-700">
                                 Daftar Karyawan Terdaftar

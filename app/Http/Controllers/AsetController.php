@@ -87,4 +87,50 @@ class AsetController extends Controller
         ]);
     }
 
+    public function edit($id)
+    {
+        $aset = Aset::findOrFail($id);
+        $karyawans = Karyawan::with('departemen')->where('status_aktif', true)->get();
+        
+        return Inertia::render('Aset/Edit', [
+            'aset' => $aset,
+            'karyawans' => $karyawans
+        ]);
+    }
+
+    // [ADMIN / GA] Memperbarui Data Aset
+    public function update(Request $request, $id)
+    {
+        $aset = Aset::findOrFail($id);
+
+        $request->validate([
+            'nama_aset' => 'required|string|max:150',
+            'kategori' => 'required|in:Elektronik,Kendaraan,Furniture,Lisensi',
+            'tgl_beli' => 'nullable|date',
+            'harga_beli' => 'nullable|numeric|min:0',
+            'tgl_expired_pajak' => 'nullable|date',
+            'penanggung_jawab_id' => 'nullable|exists:karyawans,id',
+            'status' => 'required|in:Tersedia,Dipakai,Rusak,Maintenance',
+        ]);
+
+        $aset->update($request->all());
+
+        return redirect()->route('admin.aset.index')->with('success', 'Data Aset berhasil diperbarui!');
+    }
+
+    // [ADMIN / GA] Menghapus Data Aset & File QR Code
+    public function destroy($id)
+    {
+        $aset = Aset::findOrFail($id);
+        
+        // Hapus file SVG dari storage agar server tidak penuh
+        if ($aset->qr_code_path) {
+            Storage::disk('public')->delete($aset->qr_code_path);
+        }
+        
+        $aset->delete();
+
+        return redirect()->route('admin.aset.index')->with('success', 'Aset dan QR Code berhasil dihapus permanen!');
+    }
+
 }

@@ -26,8 +26,8 @@ export default function Index({ shifts }) {
     } = useForm({
         kode_shift: "",
         nama_shift: "",
-        jam_masuk: "",
-        jam_keluar: "",
+        jam_masuk: "08:00",
+        jam_keluar: "16:00",
         lintas_hari: false,
     });
 
@@ -120,35 +120,145 @@ export default function Index({ shifts }) {
                                     className="mt-1"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-6">
+                                {/* CUSTOM JAM MASUK */}
                                 <div>
-                                    <InputLabel value="Jam Masuk" />
-                                    <TextInput
-                                        type="time"
-                                        className="w-full mt-1"
-                                        value={data.jam_masuk}
-                                        onChange={(e) =>
-                                            setData("jam_masuk", e.target.value)
-                                        }
-                                    />
+                                    <InputLabel value="Jam Masuk (24 Jam)" />
+                                    <div className="flex items-center space-x-2 mt-1">
+                                        <select
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center"
+                                            value={
+                                                data.jam_masuk
+                                                    ? data.jam_masuk.split(
+                                                          ":",
+                                                      )[0]
+                                                    : "08"
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    "jam_masuk",
+                                                    `${e.target.value}:${data.jam_masuk ? data.jam_masuk.split(":")[1] : "00"}`,
+                                                )
+                                            }
+                                        >
+                                            {[...Array(24)].map((_, i) => (
+                                                <option
+                                                    key={i}
+                                                    value={i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                >
+                                                    {i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="font-bold text-gray-500">
+                                            :
+                                        </span>
+                                        <select
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center"
+                                            value={
+                                                data.jam_masuk
+                                                    ? data.jam_masuk.split(
+                                                          ":",
+                                                      )[1]
+                                                    : "00"
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    "jam_masuk",
+                                                    `${data.jam_masuk ? data.jam_masuk.split(":")[0] : "08"}:${e.target.value}`,
+                                                )
+                                            }
+                                        >
+                                            {[...Array(60)].map((_, i) => (
+                                                <option
+                                                    key={i}
+                                                    value={i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                >
+                                                    {i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <InputError
                                         message={errors.jam_masuk}
                                         className="mt-1"
                                     />
                                 </div>
+
+                                {/* CUSTOM JAM KELUAR */}
                                 <div>
-                                    <InputLabel value="Jam Keluar" />
-                                    <TextInput
-                                        type="time"
-                                        className="w-full mt-1"
-                                        value={data.jam_keluar}
-                                        onChange={(e) =>
-                                            setData(
-                                                "jam_keluar",
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
+                                    <InputLabel value="Jam Keluar (24 Jam)" />
+                                    <div className="flex items-center space-x-2 mt-1">
+                                        <select
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center"
+                                            value={
+                                                data.jam_keluar
+                                                    ? data.jam_keluar.split(
+                                                          ":",
+                                                      )[0]
+                                                    : "16"
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    "jam_keluar",
+                                                    `${e.target.value}:${data.jam_keluar ? data.jam_keluar.split(":")[1] : "00"}`,
+                                                )
+                                            }
+                                        >
+                                            {[...Array(24)].map((_, i) => (
+                                                <option
+                                                    key={i}
+                                                    value={i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                >
+                                                    {i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="font-bold text-gray-500">
+                                            :
+                                        </span>
+                                        <select
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center"
+                                            value={
+                                                data.jam_keluar
+                                                    ? data.jam_keluar.split(
+                                                          ":",
+                                                      )[1]
+                                                    : "00"
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    "jam_keluar",
+                                                    `${data.jam_keluar ? data.jam_keluar.split(":")[0] : "16"}:${e.target.value}`,
+                                                )
+                                            }
+                                        >
+                                            {[...Array(60)].map((_, i) => (
+                                                <option
+                                                    key={i}
+                                                    value={i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                >
+                                                    {i
+                                                        .toString()
+                                                        .padStart(2, "0")}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <InputError
                                         message={errors.jam_keluar}
                                         className="mt-1"

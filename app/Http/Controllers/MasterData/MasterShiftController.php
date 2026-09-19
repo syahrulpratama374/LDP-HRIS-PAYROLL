@@ -20,12 +20,17 @@ class MasterShiftController extends Controller
         $request->validate([
             'kode_shift' => 'required|string|max:20|unique:master_shifts,kode_shift',
             'nama_shift' => 'required|string|max:50',
-            'jam_masuk' => 'required|date_format:H:i',
-            'jam_keluar' => 'required|date_format:H:i',
+            'jam_masuk' => 'required|string', // Validasi dilonggarkan
+            'jam_keluar' => 'required|string', // Validasi dilonggarkan
             'lintas_hari' => 'boolean',
         ]);
 
-        MasterShift::create($request->all());
+        // Memastikan format jam selalu konsisten sebelum disimpan (H:i)
+        $data = $request->all();
+        $data['jam_masuk'] = substr($request->jam_masuk, 0, 5);
+        $data['jam_keluar'] = substr($request->jam_keluar, 0, 5);
+
+        MasterShift::create($data);
         return redirect()->back()->with('success', 'Master Shift berhasil ditambahkan.');
     }
 
@@ -36,12 +41,17 @@ class MasterShiftController extends Controller
         $request->validate([
             'kode_shift' => 'required|string|max:20|unique:master_shifts,kode_shift,' . $id,
             'nama_shift' => 'required|string|max:50',
-            'jam_masuk' => 'required|date_format:H:i',
-            'jam_keluar' => 'required|date_format:H:i',
+            'jam_masuk' => 'required|string', // Validasi dilonggarkan
+            'jam_keluar' => 'required|string', // Validasi dilonggarkan
             'lintas_hari' => 'boolean',
         ]);
 
-        $shift->update($request->all());
+        // Memastikan format jam selalu konsisten sebelum disimpan (H:i)
+        $data = $request->all();
+        $data['jam_masuk'] = substr($request->jam_masuk, 0, 5);
+        $data['jam_keluar'] = substr($request->jam_keluar, 0, 5);
+
+        $shift->update($data);
         return redirect()->back()->with('success', 'Master Shift berhasil diperbarui.');
     }
 

@@ -161,10 +161,13 @@ Route::middleware(['auth', 'role:1'])->group(function () {
 
     // Modul General Affairs (Manajemen Aset & QR Code)
     Route::resource('/admin/aset', App\Http\Controllers\AsetController::class)->names([
-        'index' => 'admin.aset.index',
-        'create' => 'admin.aset.create',
-        'store' => 'admin.aset.store',
-    ])->except(['show', 'edit', 'update', 'destroy']);
+    'index' => 'admin.aset.index',
+    'create' => 'admin.aset.create',
+    'store' => 'admin.aset.store',
+    'edit' => 'admin.aset.edit',
+    'update' => 'admin.aset.update',
+    'destroy' => 'admin.aset.destroy',
+])->except(['show']);
 }); 
 
 // F. Modul Broadcast & Pengumuman Internal (Hak Akses: Admin, Direktur, HC)

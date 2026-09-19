@@ -35,8 +35,8 @@ export default function Index({ auth, asets, filters }) {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     {flash?.success && (
-                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm">
-                            {flash.success}
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm font-bold">
+                            ✅ {flash.success}
                         </div>
                     )}
 
@@ -69,23 +69,26 @@ export default function Index({ auth, asets, filters }) {
 
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
+                            <table className="min-w-full divide-y divide-gray-200 border">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase border-r">
                                             QR Code
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase border-r">
                                             Detail Aset
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase border-r">
                                             Pemegang / Lokasi
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
-                                            Informasi Finansial
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase border-r">
+                                            Info Finansial
+                                        </th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase border-r">
+                                            Status
                                         </th>
                                         <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">
-                                            Status
+                                            Aksi
                                         </th>
                                     </tr>
                                 </thead>
@@ -93,7 +96,7 @@ export default function Index({ auth, asets, filters }) {
                                     {asets.data.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan="5"
+                                                colSpan="6"
                                                 className="px-6 py-8 text-center text-gray-500"
                                             >
                                                 Belum ada aset terdaftar di
@@ -104,29 +107,39 @@ export default function Index({ auth, asets, filters }) {
                                         asets.data.map((aset) => (
                                             <tr
                                                 key={aset.id}
-                                                className="hover:bg-gray-50 transition"
+                                                className="hover:bg-gray-50 transition border-b"
                                             >
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 border-r text-center">
                                                     {aset.qr_code_path ? (
-                                                        <a
-                                                            href={`/storage/${aset.qr_code_path}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                        >
-                                                            <img
-                                                                src={`/storage/${aset.qr_code_path}`}
-                                                                alt="QR"
-                                                                className="w-16 h-16 object-contain border border-gray-300 rounded p-1 bg-white hover:scale-150 transition-transform duration-300"
-                                                                title="Klik untuk memperbesar"
-                                                            />
-                                                        </a>
+                                                        <div className="flex flex-col items-center">
+                                                            <a
+                                                                href={`/storage/${aset.qr_code_path}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                            >
+                                                                <img
+                                                                    src={`/storage/${aset.qr_code_path}`}
+                                                                    alt="QR"
+                                                                    className="w-16 h-16 object-contain border border-gray-300 rounded p-1 bg-white hover:scale-150 transition-transform duration-300"
+                                                                    title="Klik untuk memperbesar"
+                                                                />
+                                                            </a>
+                                                            {/* TOMBOL UNDUH MENGGUNAKAN ATRIBUT DOWNLOAD */}
+                                                            <a
+                                                                href={`/storage/${aset.qr_code_path}`}
+                                                                download={`QR-${aset.kode_aset}.svg`}
+                                                                className="mt-2 text-[10px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded inline-block font-bold cursor-pointer transition"
+                                                            >
+                                                                ⬇️ Unduh
+                                                            </a>
+                                                        </div>
                                                     ) : (
                                                         <span className="text-xs text-red-500">
                                                             No QR
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 border-r">
                                                     <div className="font-bold text-gray-900 text-lg">
                                                         {aset.kode_aset}
                                                     </div>
@@ -137,7 +150,7 @@ export default function Index({ auth, asets, filters }) {
                                                         {aset.kategori}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 border-r">
                                                     {aset.penanggung_jawab_id ? (
                                                         <>
                                                             <div className="font-bold text-gray-800">
@@ -163,7 +176,7 @@ export default function Index({ auth, asets, filters }) {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 border-r">
                                                     <div className="text-sm font-semibold text-gray-800">
                                                         {aset.harga_beli
                                                             ? formatRupiah(
@@ -182,7 +195,7 @@ export default function Index({ auth, asets, filters }) {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
+                                                <td className="px-6 py-4 text-center border-r">
                                                     <span
                                                         className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full 
                                                         ${
@@ -200,6 +213,36 @@ export default function Index({ auth, asets, filters }) {
                                                     >
                                                         {aset.status}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                                                    <Link
+                                                        href={route(
+                                                            "admin.aset.edit",
+                                                            aset.id,
+                                                        )}
+                                                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded-md text-xs font-bold transition inline-block"
+                                                    >
+                                                        Edit
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (
+                                                                confirm(
+                                                                    "Yakin ingin menghapus aset dan QR Code ini secara permanen?",
+                                                                )
+                                                            ) {
+                                                                router.delete(
+                                                                    route(
+                                                                        "admin.aset.destroy",
+                                                                        aset.id,
+                                                                    ),
+                                                                );
+                                                            }
+                                                        }}
+                                                        className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-md text-xs font-bold transition inline-block"
+                                                    >
+                                                        Hapus
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
