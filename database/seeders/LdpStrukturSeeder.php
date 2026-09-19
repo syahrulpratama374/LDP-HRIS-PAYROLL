@@ -108,7 +108,7 @@ class LdpStrukturSeeder extends Seeder
         $sOpm2 = $this->buatKaryawan('Septian Ardianta', 'septian@ldp.co.id', 5, $dOpm->id, $jSpv->id, $mOpm->id);
         $sOpm3 = $this->buatKaryawan('Bambang Edi L', 'bambang@ldp.co.id', 5, $dOpm->id, $jSpv->id, $mOpm->id);
         
-        $this->buatKaryawan('Syahrul Pratama', 'syahrul@ldp.co.id', 6, $dOpm->id, $jStaff->id, $sOpm1->id);
+        $this->buatKaryawan('Syahrul Pratama', 'syahrul@ldp.co.id', 1, $dOpm->id, $jStaff->id, $sOpm1->id);
         $this->buatKaryawan('Staff NOC Dua', 'staff.noc2@ldp.co.id', 6, $dOpm->id, $jStaff->id, $sOpm1->id);
         $this->buatKaryawan('Staff POP Satu', 'staff.pop1@ldp.co.id', 6, $dOpm->id, $jStaff->id, $sOpm2->id);
         $this->buatKaryawan('Staff CS Satu', 'staff.cs1@ldp.co.id', 6, $dOpm->id, $jStaff->id, $sOpm3->id);

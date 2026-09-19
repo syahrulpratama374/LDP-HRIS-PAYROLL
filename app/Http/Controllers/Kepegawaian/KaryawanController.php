@@ -247,23 +247,45 @@ class KaryawanController extends Controller
         }
     }
 
-    public function show($id)
+   public function show($id)
     {
         $karyawan = Karyawan::with([
             'departemen', 'jabatan', 'golongan', 'user', 'atasan',
             'riwayatGajis', 'riwayatJabatans.jabatan'
         ])->findOrFail($id);
 
-        $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
-        $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : 'Belum Tersedia';
-        $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : 'Belum Tersedia';
+        // --- TAMBAHAN BARU: Cari siapa saja yang atasan_id nya adalah karyawan ini ---
+        $bawahans = Karyawan::with('jabatan')
+            ->where('atasan_id', $id)
+            ->where('status_aktif', true)
+            ->get();
+        // -----------------------------------------------------------------------------
+
+        // PENGAMANAN DEKRIPSI (Try-Catch yang sudah Anda pasang)
+        try { 
+            $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); 
+        } catch (\Exception $e) { 
+            $karyawan->no_ktp = 'Format Enkripsi Tidak Valid / Data Dummy'; 
+        }
+
+        try { 
+            $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '-'; 
+        } catch (\Exception $e) { 
+            $karyawan->npwp = 'Format Enkripsi Tidak Valid'; 
+        }
+
+        try { 
+            $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '-'; 
+        } catch (\Exception $e) { 
+            $karyawan->no_rek_bca = 'Format Enkripsi Tidak Valid'; 
+        }
 
         return Inertia::render('Kepegawaian/Karyawan/Show', [
             'karyawan' => $karyawan,
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
+            'bawahans' => $bawahans, // <-- LEMPAR DATA BAWAHAN KE REACT
         ]);
     }
-
     public function updateGaji(Request $request, $id)
     {
         $request->validate([
