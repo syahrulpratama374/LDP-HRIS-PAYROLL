@@ -1,6 +1,6 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Create() {
     const { data, setData, post, processing, errors } = useForm({
@@ -262,7 +262,14 @@ export default function Create() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4">
+                            <div className="flex justify-end pt-4 gap-3">
+                                {/* TOMBOL BATAL DITAMBAHKAN DI SINI */}
+                                <Link
+                                    href={route("spj.index")}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow transition-all"
+                                >
+                                    Batal
+                                </Link>
                                 <button
                                     type="submit"
                                     disabled={processing}

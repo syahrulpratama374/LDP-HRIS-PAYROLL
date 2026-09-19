@@ -1,12 +1,12 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Create() {
     const { data, setData, post, processing, errors } = useForm({
         tanggal: "",
-        jam_mulai: "17:00", // Default jam pulang kantor standar
-        jam_selesai: "19:00", // Default lembur 2 jam
+        jam_mulai: "17:00",
+        jam_selesai: "19:00",
         deskripsi_pekerjaan: "",
     });
 
@@ -28,7 +28,6 @@ export default function Create() {
             <div className="py-12">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        {/* Notifikasi Error Umum dari Backend */}
                         {errors.error && (
                             <div
                                 className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
@@ -82,7 +81,6 @@ export default function Create() {
                                         </div>
                                     )}
                                 </div>
-
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">
                                         Jam Selesai
@@ -106,7 +104,6 @@ export default function Create() {
                                 </div>
                             </div>
 
-                            {/* Tombol Pintas Instan untuk Mempermudah Pengisian di HP */}
                             <div className="flex gap-2">
                                 <span className="text-xs text-gray-500 self-center">
                                     Pintas Cepat:
@@ -156,7 +153,14 @@ export default function Create() {
                                 )}
                             </div>
 
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                {/* TOMBOL BATAL DITAMBAHKAN DI SINI */}
+                                <Link
+                                    href={route("lembur.index")}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow transition-all"
+                                >
+                                    Batal
+                                </Link>
                                 <button
                                     type="submit"
                                     disabled={processing}

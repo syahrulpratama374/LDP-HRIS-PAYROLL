@@ -218,9 +218,7 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
         
-        // ====================================================================
-        // GATEKEEPER EXIT CLEARANCE (Pencegat Penghapusan Paksa)
-        // ====================================================================
+        // GATEKEEPER EXIT CLEARANCE (Pencegat Penghapusan Paksa Aset & Kasbon)
         $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)->count();
         $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)
             ->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])
@@ -228,7 +226,7 @@ class KaryawanController extends Controller
 
         if ($asetDitahan > 0 || $hutangKasbon > 0) {
             return back()->withErrors([
-                'error' => "PENGHAPUSAN DITOLAK: Karyawan ini masih terikat dengan {$asetDitahan} Aset Perusahaan dan {$hutangKasbon} tunggakan Kasbon. Pindahkan kepemilikan aset dan lunasi kasbon sebelum menghapus data karyawan."
+                'error' => "PENGHAPUSAN DITOLAK: Karyawan ini masih terikat dengan {$asetDitahan} Aset Perusahaan dan {$hutangKasbon} tunggakan Kasbon."
             ]);
         }
 
@@ -241,6 +239,12 @@ class KaryawanController extends Controller
 
             DB::commit();
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan akun loginnya berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            // TANGKAP ERROR DATABASE (FOREIGN KEY REJECTION)
+            return back()->withErrors([
+                'error' => 'SISTEM MENOLAK: Karyawan ini tidak dapat dihapus karena sudah memiliki riwayat transaksi (Absensi/Cuti/SPJ/Lembur) di sistem. Silakan Edit dan ubah statusnya menjadi "NON-AKTIF" sebagai gantinya.'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Gagal menghapus data: ' . $e->getMessage()]);

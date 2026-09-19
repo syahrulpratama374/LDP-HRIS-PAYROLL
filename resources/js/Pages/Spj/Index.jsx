@@ -3,22 +3,35 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Index({ spj, adaUtangLaporan }) {
-    // State untuk mengontrol Modal Pelaporan Pasca-SPJ
-    const [showModal, setShowModal] = useState(false);
+    // State untuk Laporan
+    const [showModalLapor, setShowModalLapor] = useState(false);
     const [selectedSpjId, setSelectedSpjId] = useState(null);
+
+    // State untuk Detail Modal
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedDetail, setSelectedDetail] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         laporan_hasil: "",
         file_bukti: null,
     });
 
-    const openModal = (id) => {
-        setSelectedSpjId(id);
-        setShowModal(true);
+    const formatRupiah = (angka) => {
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(angka);
     };
 
-    const closeModal = () => {
-        setShowModal(false);
+    // Fungsi Lapor
+    const openModalLapor = (id) => {
+        setSelectedSpjId(id);
+        setShowModalLapor(true);
+    };
+
+    const closeModalLapor = () => {
+        setShowModalLapor(false);
         setSelectedSpjId(null);
         reset();
     };
@@ -27,8 +40,19 @@ export default function Index({ spj, adaUtangLaporan }) {
         e.preventDefault();
         post(route("spj.laporan", selectedSpjId), {
             forceFormData: true,
-            onSuccess: () => closeModal(),
+            onSuccess: () => closeModalLapor(),
         });
+    };
+
+    // Fungsi Detail
+    const openDetailModal = (item) => {
+        setSelectedDetail(item);
+        setShowDetailModal(true);
+    };
+
+    const closeDetailModal = () => {
+        setShowDetailModal(false);
+        setSelectedDetail(null);
     };
 
     return (
@@ -119,66 +143,52 @@ export default function Index({ spj, adaUtangLaporan }) {
                                                     <div className="font-bold text-gray-800">
                                                         {item.tujuan}
                                                     </div>
-                                                    <div className="text-sm text-gray-600">
+                                                    <div className="text-sm text-gray-600 truncate max-w-xs">
                                                         {item.keperluan}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-700">
-                                                    {new Date(
-                                                        item.tgl_mulai,
-                                                    ).toLocaleDateString(
-                                                        "id-ID",
-                                                    )}{" "}
-                                                    -{" "}
-                                                    {new Date(
-                                                        item.tgl_selesai,
-                                                    ).toLocaleDateString(
-                                                        "id-ID",
-                                                    )}
+                                                    {new Date(item.tgl_mulai).toLocaleDateString("id-ID")} -{" "}
+                                                    {new Date(item.tgl_selesai).toLocaleDateString("id-ID")}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm font-bold text-green-600">
-                                                    Rp{" "}
-                                                    {Number(
-                                                        item.total_biaya,
-                                                    ).toLocaleString("id-ID")}
+                                                    {formatRupiah(item.total_biaya)}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <span
                                                         className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                                                         ${
-                                                            item.status_approval ===
-                                                            "Pending"
+                                                            item.status_approval === "Pending"
                                                                 ? "bg-yellow-100 text-yellow-800"
-                                                                : item.status_approval ===
-                                                                    "Disetujui"
-                                                                  ? "bg-blue-100 text-blue-800"
-                                                                  : item.status_approval ===
-                                                                      "Menunggu Pelaporan"
-                                                                    ? "bg-orange-100 text-orange-800"
-                                                                    : item.status_approval ===
-                                                                        "Menunggu Validasi Finance"
-                                                                      ? "bg-purple-100 text-purple-800"
-                                                                      : item.status_approval ===
-                                                                          "Selesai"
-                                                                        ? "bg-green-100 text-green-800"
-                                                                        : "bg-red-100 text-red-800"
+                                                                : item.status_approval === "Disetujui"
+                                                                ? "bg-blue-100 text-blue-800"
+                                                                : item.status_approval === "Menunggu Pelaporan"
+                                                                ? "bg-orange-100 text-orange-800"
+                                                                : item.status_approval === "Menunggu Validasi Finance"
+                                                                ? "bg-purple-100 text-purple-800"
+                                                                : item.status_approval === "Selesai"
+                                                                ? "bg-green-100 text-green-800"
+                                                                : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {item.status_approval}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 border-b text-center">
-                                                    {item.status_approval ===
-                                                        "Menunggu Pelaporan" && (
+                                                <td className="px-6 py-4 border-b text-center space-x-2">
+                                                    {/* TOMBOL DETAIL DITAMBAHKAN DI SINI */}
+                                                    <button
+                                                        onClick={() => openDetailModal(item)}
+                                                        className="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded text-xs font-bold shadow"
+                                                    >
+                                                        Detail
+                                                    </button>
+
+                                                    {item.status_approval === "Menunggu Pelaporan" && (
                                                         <button
-                                                            onClick={() =>
-                                                                openModal(
-                                                                    item.id,
-                                                                )
-                                                            }
+                                                            onClick={() => openModalLapor(item.id)}
                                                             className="text-white bg-orange-500 hover:bg-orange-600 px-3 py-1 rounded text-xs font-bold shadow"
                                                         >
-                                                            Lapor Sekarang
+                                                            Lapor
                                                         </button>
                                                     )}
                                                 </td>
@@ -192,8 +202,62 @@ export default function Index({ spj, adaUtangLaporan }) {
                 </div>
             </div>
 
+            {/* Modal Detail SPJ */}
+            {showDetailModal && selectedDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+                        <div className="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">
+                                Rincian Perjalanan Dinas
+                            </h3>
+                            <button onClick={closeDetailModal} className="text-gray-500 hover:text-red-500 font-bold text-xl">
+                                &times;
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-3 text-sm">
+                            <div>
+                                <span className="block text-gray-500 font-medium">Tujuan:</span>
+                                <span className="font-bold text-gray-900">{selectedDetail.tujuan}</span>
+                            </div>
+                            <div>
+                                <span className="block text-gray-500 font-medium">Keperluan:</span>
+                                <span className="text-gray-800">{selectedDetail.keperluan}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="block text-gray-500 font-medium">Tanggal Mulai:</span>
+                                    <span className="text-gray-800">{new Date(selectedDetail.tgl_mulai).toLocaleDateString("id-ID")}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-gray-500 font-medium">Tanggal Selesai:</span>
+                                    <span className="text-gray-800">{new Date(selectedDetail.tgl_selesai).toLocaleDateString("id-ID")}</span>
+                                </div>
+                            </div>
+                            <div className="bg-green-50 p-3 rounded border border-green-100">
+                                <span className="block text-green-700 font-medium">Total Anggaran SPJ:</span>
+                                <span className="text-xl font-bold text-green-700">{formatRupiah(selectedDetail.total_biaya)}</span>
+                            </div>
+                            <div>
+                                <span className="block text-gray-500 font-medium">Status Saat Ini:</span>
+                                <span className="font-bold text-indigo-600">{selectedDetail.status_approval}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={closeDetailModal}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Pelaporan Pasca-SPJ */}
-            {showModal && (
+            {showModalLapor && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
                         <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
@@ -207,17 +271,13 @@ export default function Index({ spj, adaUtangLaporan }) {
                                 <textarea
                                     rows="4"
                                     value={data.laporan_hasil}
-                                    onChange={(e) =>
-                                        setData("laporan_hasil", e.target.value)
-                                    }
+                                    onChange={(e) => setData("laporan_hasil", e.target.value)}
                                     className="w-full border-gray-300 rounded-md shadow-sm"
                                     placeholder="Ketikkan kesimpulan dan hasil perjalanan dinas di sini..."
                                     required
                                 ></textarea>
                                 {errors.laporan_hasil && (
-                                    <div className="text-red-500 text-xs mt-1">
-                                        {errors.laporan_hasil}
-                                    </div>
+                                    <div className="text-red-500 text-xs mt-1">{errors.laporan_hasil}</div>
                                 )}
                             </div>
 
@@ -227,23 +287,19 @@ export default function Index({ spj, adaUtangLaporan }) {
                                 </label>
                                 <input
                                     type="file"
-                                    onChange={(e) =>
-                                        setData("file_bukti", e.target.files[0])
-                                    }
+                                    onChange={(e) => setData("file_bukti", e.target.files[0])}
                                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                                     required
                                 />
                                 {errors.file_bukti && (
-                                    <div className="text-red-500 text-xs mt-1">
-                                        {errors.file_bukti}
-                                    </div>
+                                    <div className="text-red-500 text-xs mt-1">{errors.file_bukti}</div>
                                 )}
                             </div>
 
                             <div className="flex justify-end gap-3">
                                 <button
                                     type="button"
-                                    onClick={closeModal}
+                                    onClick={closeModalLapor}
                                     className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
                                 >
                                     Batal
