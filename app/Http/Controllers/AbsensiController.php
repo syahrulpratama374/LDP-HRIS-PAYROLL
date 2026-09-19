@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Absensi;
 use App\Models\Pengaturan;
 use App\Models\PengajuanSpj;
+use App\Models\LogbookShift;
+use App\Models\MasterShift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -139,10 +141,28 @@ class AbsensiController extends Controller
             if (!$absensi) return back()->withErrors(['error' => 'Anda belum melakukan Clock In.']);
             if ($absensi->waktu_keluar) return back()->withErrors(['error' => 'Anda sudah melakukan Clock Out hari ini.']);
 
-            $catatanKeluar = $absensi->catatan;
+        $catatanKeluar = $absensi->catatan;
+            
             if ($request->filled('catatan_logbook')) {
                 $tambahanLogbook = 'Logbook Handover: ' . $request->catatan_logbook;
                 $catatanKeluar = $catatanKeluar ? $catatanKeluar . ' | ' . $tambahanLogbook : $tambahanLogbook;
+
+                // ==============================================================
+                // JEMBATAN OTOMATIS KE TABEL LOGBOOK SHIFT (KHUSUS NOC)
+                // ==============================================================
+                
+                // Cari Shift pertama di database sebagai default jika jadwal kosong
+                $shiftDefault = MasterShift::first(); 
+                
+                if ($shiftDefault) {
+                    LogbookShift::create([
+                        'karyawan_id' => $karyawan->id,
+                        'shift_id' => $shiftDefault->id,
+                        'tanggal' => $tanggal,
+                        'catatan_handover' => $request->catatan_logbook,
+                    ]);
+                }
+                // ==============================================================
             }
 
             $absensi->update([
@@ -151,8 +171,6 @@ class AbsensiController extends Controller
                 'foto_keluar_path' => $filePath,
                 'catatan' => $catatanKeluar
             ]);
-            
-            return back()->with('success', 'Clock Out dan Logbook berhasil dicatat! Selamat beristirahat.');
         }
     }
 

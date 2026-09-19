@@ -14,7 +14,7 @@ export default function Index({ logbooks, shifts }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route("admin.logbook.store"), {
+        post(route("logbook.store"), {
             onSuccess: () => reset("catatan_handover"),
         });
     };
