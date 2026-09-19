@@ -67,7 +67,7 @@ class AbsensiController extends Controller
         $waktuSekarang = Carbon::now('Asia/Jakarta');
         $tanggal = $waktuSekarang->toDateString();
 
-        // --- MULAI BLOK VALIDASI GEOFENCING (KUNCI SUDAH DISINKRONKAN) ---
+        // --- MULAI BLOK VALIDASI GEOFENCING ---
         $titikKantor = Pengaturan::where('kunci', 'koordinat_kantor')->value('nilai') ?? '-7.8014,110.3644';
         $radiusMaksimal = (int) (Pengaturan::where('kunci', 'radius_absensi')->value('nilai') ?? 50);
         
@@ -80,7 +80,7 @@ class AbsensiController extends Controller
         );
 
         $sedangSPJ = PengajuanSpj::where('karyawan_id', $karyawan->id)
-            ->where('status_approval', 'Selesai') // Pastikan statusnya Selesai (sudah cair/tervalidasi) atau sesuai aturan main Anda
+            ->where('status_approval', 'Selesai')
             ->where('tgl_mulai', '<=', $tanggal)
             ->where('tgl_selesai', '>=', $tanggal)
             ->exists();
@@ -101,13 +101,14 @@ class AbsensiController extends Controller
 
         $absensi = Absensi::where('karyawan_id', $karyawan->id)->where('tanggal', $tanggal)->first();
 
+        // ==============================================================
         // LOGIKA CLOCK IN (MASUK)
+        // ==============================================================
         if ($request->tipe === 'masuk') {
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
-            // SINKRONISASI KUNCI PENGATURAN WAKTU
             $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai') ?? '08:00';
-            $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15); // Fallback 15 menit
+            $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15);
             
             $batasWaktuMasuk = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta')->addMinutes($toleransiMenit);
             
@@ -136,44 +137,45 @@ class AbsensiController extends Controller
             return back()->with('success', 'Clock In berhasil! Status: ' . $status);
         } 
         
+        // ==============================================================
         // LOGIKA CLOCK OUT (KELUAR)
+        // ==============================================================
         else if ($request->tipe === 'keluar') {
             if (!$absensi) return back()->withErrors(['error' => 'Anda belum melakukan Clock In.']);
             if ($absensi->waktu_keluar) return back()->withErrors(['error' => 'Anda sudah melakukan Clock Out hari ini.']);
 
-        $catatanKeluar = $absensi->catatan;
+            $catatanKeluar = $absensi->catatan;
             
             if ($request->filled('catatan_logbook')) {
                 $tambahanLogbook = 'Logbook Handover: ' . $request->catatan_logbook;
                 $catatanKeluar = $catatanKeluar ? $catatanKeluar . ' | ' . $tambahanLogbook : $tambahanLogbook;
 
-                // ==============================================================
-                // JEMBATAN OTOMATIS KE TABEL LOGBOOK SHIFT (KHUSUS NOC)
-                // ==============================================================
-                
-                // Cari Shift pertama di database sebagai default jika jadwal kosong
-                $shiftDefault = MasterShift::first(); 
-                
-                if ($shiftDefault) {
-                    LogbookShift::create([
-                        'karyawan_id' => $karyawan->id,
-                        'shift_id' => $shiftDefault->id,
-                        'tanggal' => $tanggal,
-                        'catatan_handover' => $request->catatan_logbook,
-                    ]);
+                // JEMBATAN OTOMATIS KE TABEL LOGBOOK SHIFT (DINAMIS 100%)
+                if ($karyawan->departemen && $karyawan->departemen->is_wajib_logbook) {
+                    $shiftDefault = MasterShift::first(); 
+                    
+                    if ($shiftDefault) {
+                        LogbookShift::create([
+                            'karyawan_id' => $karyawan->id,
+                            'shift_id' => $shiftDefault->id,
+                            'tanggal' => $tanggal,
+                            'catatan_handover' => $request->catatan_logbook,
+                        ]);
+                    }
                 }
-                // ==============================================================
             }
 
+            // Pembaruan Absensi (Berlaku untuk SEMUA KARYAWAN)
             $absensi->update([
                 'waktu_keluar' => $waktuSekarang,
                 'koordinat_keluar' => $request->koordinat,
                 'foto_keluar_path' => $filePath,
                 'catatan' => $catatanKeluar
             ]);
+
+            return back()->with('success', 'Clock Out berhasil dicatat! Selamat beristirahat.');
         }
     }
-
     private function hitungJarakMeter($lat1, $lon1, $lat2, $lon2)
     {
         $earthRadius = 6371000; 

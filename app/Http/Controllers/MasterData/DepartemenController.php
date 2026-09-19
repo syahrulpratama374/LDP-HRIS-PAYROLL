@@ -22,14 +22,13 @@ class DepartemenController extends Controller
 
     public function store(Request $request)
     {
-        // Validasi input agar tidak ada kode yang ganda atau kosong
         $validated = $request->validate([
             'kode_departemen' => 'required|string|max:20|unique:departemens',
             'nama_departemen' => 'required|string|max:100',
+            'is_wajib_logbook' => 'boolean', // <-- Tambahan baru
         ]);
 
         Departemen::create($validated);
-
         return redirect()->back()->with('success', 'Data Departemen berhasil ditambahkan.');
     }
 
@@ -38,13 +37,12 @@ class DepartemenController extends Controller
         $departemen = Departemen::findOrFail($id);
 
         $validated = $request->validate([
-            // Validasi unique diabaikan untuk ID departemen yang sedang di-edit
             'kode_departemen' => 'required|string|max:20|unique:departemens,kode_departemen,' . $departemen->id,
             'nama_departemen' => 'required|string|max:100',
+            'is_wajib_logbook' => 'boolean', // <-- Tambahan baru
         ]);
 
         $departemen->update($validated);
-
         return redirect()->back()->with('success', 'Data Departemen berhasil diperbarui.');
     }
 
