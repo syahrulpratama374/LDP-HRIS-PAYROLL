@@ -410,7 +410,7 @@ export default function Karyawan({
                   : "Kehadiran hari ini",
             href: route("absensi.create"),
             icon: "attendance",
-            iconStyle: "bg-[#F0E4F7] text-[#6D1AA8]",
+            iconStyle: "bg-[#F3EDF8] text-[#431D6D]",
         },
         {
             number: "02",
@@ -512,11 +512,11 @@ export default function Karyawan({
                     ====================================================== */}
 
                     <section className="mb-6 sm:mb-8">
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#3A0D59] via-[#521480] to-[#6D1AA8] text-white shadow-xl shadow-[#421065]/10">
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2A164E] to-[#431D6D] text-white shadow-xl shadow-[#2A164E]/20">
                             <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full border border-white/10" />
                             <div className="pointer-events-none absolute -right-6 -top-12 h-52 w-52 rounded-full border border-white/10" />
-                            <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-[#8B4BB3]/25 blur-3xl" />
-                            <div className="pointer-events-none absolute right-1/4 top-1/2 h-40 w-40 rounded-full bg-[#F4B400]/15 blur-3xl" />
+                            <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-[#431D6D]/40 blur-3xl" />
+                            <div className="pointer-events-none absolute right-1/4 top-1/2 h-40 w-40 rounded-full bg-[#F3B817]/20 blur-3xl" />
 
                             <div
                                 className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -530,7 +530,7 @@ export default function Karyawan({
                             <div className="relative z-10 grid gap-7 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[1.35fr_1fr] lg:items-center lg:gap-10">
                                 <div className="min-w-0">
                                     <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400]" />
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#F3B817]" />
 
                                         <span className="text-[10px] font-semibold tracking-wide text-purple-100 sm:text-[11px]">
                                             {sapaan}, semangat hari ini!
@@ -564,7 +564,7 @@ export default function Karyawan({
                                             Portal aktif
                                         </span>
 
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-[#F4B400]/25 bg-[#F4B400]/15 px-3 py-1.5 text-[10px] font-semibold text-[#F4B400] sm:text-[11px]">
+                                        <span className="inline-flex items-center gap-2 rounded-full border border-[#F3B817]/25 bg-[#F3B817]/15 px-3 py-1.5 text-[10px] font-semibold text-[#F3B817] sm:text-[11px]">
                                             <Icon
                                                 name="sparkle"
                                                 className="h-3.5 w-3.5"
@@ -648,7 +648,7 @@ export default function Karyawan({
                             {statCards.map((s) => (
                                 <div
                                     key={s.label}
-                                    className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#DCC8E8] hover:shadow-md"
+                                    className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#431D6D]/40 hover:shadow-md"
                                 >
                                     <span
                                         className={`absolute left-0 top-0 h-full w-1 ${s.accent} opacity-70`}
@@ -666,7 +666,7 @@ export default function Karyawan({
 
                                         <Icon
                                             name="chart"
-                                            className="h-4 w-4 text-slate-200 transition group-hover:text-[#C9A9D8]"
+                                            className="h-4 w-4 text-slate-200 transition group-hover:text-[#431D6D]"
                                         />
                                     </div>
 
@@ -693,10 +693,10 @@ export default function Karyawan({
                     <section className="mb-8 sm:mb-9">
                         <div className="mb-3 flex items-end justify-between gap-4">
                             <div className="flex min-w-0 items-start gap-3">
-                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#F4B400]" />
+                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#F3B817]" />
 
                                 <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#6D1AA8] sm:text-[10px]">
+                                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#431D6D] sm:text-[10px]">
                                         Informasi LDP
                                     </p>
 
@@ -709,7 +709,7 @@ export default function Karyawan({
                             {isPengelolaPengumuman && (
                                 <Link
                                     href={route("pengumuman.index")}
-                                    className="whitespace-nowrap text-[11px] font-semibold text-[#6D1AA8] transition hover:text-[#421065] sm:text-xs"
+                                    className="whitespace-nowrap text-[11px] font-semibold text-[#431D6D] transition hover:text-[#2A164E] sm:text-xs"
                                 >
                                     Kelola →
                                 </Link>
@@ -728,9 +728,9 @@ export default function Karyawan({
                                                 ring: "hover:border-amber-200",
                                             },
                                             Info: {
-                                                dot: "bg-[#8B4BB3]",
-                                                badge: "bg-[#F0E4F7] text-[#6D1AA8]",
-                                                ring: "hover:border-[#DCC8E8]",
+                                                dot: "bg-[#431D6D]",
+                                                badge: "bg-[#F3EDF8] text-[#431D6D]",
+                                                ring: "hover:border-[#431D6D]/30",
                                             },
                                             Sukses: {
                                                 dot: "bg-emerald-500",
@@ -749,7 +749,7 @@ export default function Karyawan({
                                                 className={`group rounded-xl border border-slate-200 bg-white px-4 py-4 transition hover:bg-[#FCFAFD] sm:px-5 ${style.ring}`}
                                             >
                                                 <div className="flex items-start gap-4">
-                                                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F0E4F7] text-[10px] font-bold text-[#6D1AA8] sm:flex">
+                                                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F3EDF8] text-[10px] font-bold text-[#431D6D] sm:flex">
                                                         0{index + 1}
                                                     </div>
 
@@ -797,7 +797,7 @@ export default function Karyawan({
                                                         </div>
                                                     </div>
 
-                                                    <div className="self-center text-sm font-bold text-[#6D1AA8] opacity-60 transition group-hover:opacity-100">
+                                                    <div className="self-center text-sm font-bold text-[#431D6D] opacity-60 transition group-hover:opacity-100">
                                                         →
                                                     </div>
                                                 </div>
@@ -809,7 +809,7 @@ export default function Karyawan({
                                     pengumumanTerurut.length > 3 && (
                                         <Link
                                             href={route("pengumuman.index")}
-                                            className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold text-[#6D1AA8] transition hover:border-[#DCC8E8] hover:bg-[#F0E4F7]"
+                                            className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold text-[#431D6D] transition hover:border-[#431D6D]/30 hover:bg-[#F3EDF8]"
                                         >
                                             Lihat {pengumumanTerurut.length - 3}{" "}
                                             pengumuman lainnya →
@@ -818,7 +818,7 @@ export default function Karyawan({
                             </div>
                         ) : (
                             <div className="flex items-center gap-4 rounded-xl border border-dashed border-slate-200 bg-white px-5 py-5">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0E4F7] text-[#8B4BB3]">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3EDF8] text-[#431D6D]">
                                     <Icon name="bell" className="h-5 w-5" />
                                 </div>
 
@@ -841,16 +841,16 @@ export default function Karyawan({
                     ====================================================== */}
 
                     <section className="mb-8 sm:mb-10">
-                        <div className="relative overflow-hidden rounded-2xl bg-[#421065] text-white">
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2A164E] to-[#431D6D] text-white">
                             <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border border-white/10" />
                             <div className="pointer-events-none absolute -right-8 -top-8 h-44 w-44 rounded-full border border-white/10" />
-                            <div className="pointer-events-none absolute -bottom-24 left-1/4 h-56 w-56 rounded-full bg-[#8B4BB3]/20 blur-3xl" />
+                            <div className="pointer-events-none absolute -bottom-24 left-1/4 h-56 w-56 rounded-full bg-[#431D6D]/30 blur-3xl" />
 
                             <div className="relative z-10 px-5 py-6 sm:px-6 md:px-8 md:py-7">
                                 <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1fr_330px] lg:gap-8">
                                     <div className="min-w-0">
                                         <div className="mb-4 flex items-center gap-2">
-                                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#F4B400]" />
+                                            <span className="h-2 w-2 shrink-0 rounded-full bg-[#F3B817]" />
 
                                             <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-purple-200 sm:text-[10px]">
                                                 Kehadiran Hari Ini
@@ -930,7 +930,7 @@ export default function Karyawan({
                                                     href={route(
                                                         "absensi.create",
                                                     )}
-                                                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#F4B400] text-xs font-bold text-[#421065] transition hover:bg-[#e5a900] sm:min-h-[48px] sm:text-sm"
+                                                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#F3B817] text-xs font-bold text-[#2A164E] transition hover:bg-[#e3a812] sm:min-h-[48px] sm:text-sm"
                                                 >
                                                     {sudahMasuk
                                                         ? "Clock Out →"
@@ -1014,7 +1014,7 @@ export default function Karyawan({
                                                     <span
                                                         className={`text-[8px] uppercase tracking-wider sm:text-[9px] ${
                                                             isToday
-                                                                ? "font-bold text-[#F4B400]"
+                                                                ? "font-bold text-[#F3B817]"
                                                                 : "text-purple-300"
                                                         }`}
                                                     >
@@ -1028,7 +1028,7 @@ export default function Karyawan({
                                                         }
                                                         className={`flex h-9 w-full items-center justify-center rounded-xl border text-[11px] font-bold transition sm:h-10 sm:text-xs ${style.box} ${
                                                             isToday
-                                                                ? "ring-2 ring-[#F4B400]/60 ring-offset-2 ring-offset-[#421065]"
+                                                                ? "ring-2 ring-[#F3B817]/60 ring-offset-2 ring-offset-[#2A164E]"
                                                                 : ""
                                                         }`}
                                                     >
@@ -1049,7 +1049,7 @@ export default function Karyawan({
 
                     <section className="mb-10">
                         <div className="mb-4">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6D1AA8]">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#431D6D]">
                                 Navigasi
                             </p>
 
@@ -1063,9 +1063,9 @@ export default function Karyawan({
                                 <Link
                                     key={item.label}
                                     href={item.href}
-                                    className="group relative h-[158px] overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-[#C9A9D8] hover:shadow-md"
+                                    className="group relative h-[158px] overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-[#431D6D]/40 hover:shadow-md"
                                 >
-                                    <span className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#F0E4F7]/0 transition group-hover:bg-[#F0E4F7]/60" />
+                                    <span className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#F3EDF8]/0 transition group-hover:bg-[#F3EDF8]/60" />
 
                                     <div className="relative flex items-start justify-between">
                                         <div
@@ -1092,7 +1092,7 @@ export default function Karyawan({
                                         </p>
                                     </div>
 
-                                    <div className="relative mt-4 text-xs text-slate-300 transition group-hover:text-[#6D1AA8]">
+                                    <div className="relative mt-4 text-xs text-slate-300 transition group-hover:text-[#431D6D]">
                                         Buka →
                                     </div>
                                 </Link>
@@ -1106,7 +1106,7 @@ export default function Karyawan({
 
                     <section>
                         <div className="mb-4">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6D1AA8]">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#431D6D]">
                                 Ringkasan
                             </p>
 
@@ -1204,7 +1204,7 @@ export default function Karyawan({
                             {/* SLIP GAJI */}
                             <Link
                                 href={route("slip.index")}
-                                className="group relative h-[176px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#421065] to-[#6D1AA8] p-6 text-white transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#421065]/20"
+                                className="group relative h-[176px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#2A164E] to-[#431D6D] p-6 text-white transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#2A164E]/20"
                             >
                                 <span className="absolute -right-8 -top-8 h-32 w-32 rounded-full border border-white/10" />
                                 <span className="absolute -right-2 -top-2 h-20 w-20 rounded-full border border-white/10" />
@@ -1224,7 +1224,7 @@ export default function Karyawan({
                                         </p>
                                     </div>
 
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-[#F4B400]">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-[#F3B817]">
                                         <Icon
                                             name="document"
                                             className="h-5 w-5"
@@ -1233,34 +1233,17 @@ export default function Karyawan({
                                 </div>
 
                                 <div className="absolute inset-x-6 bottom-5 flex items-center justify-between border-t border-white/10 pt-4">
-                                    <span className="text-xs font-bold text-[#F4B400]">
+                                    <span className="text-xs font-bold text-[#F3B817]">
                                         Lihat slip gaji
                                     </span>
 
-                                    <span className="text-xs font-bold text-[#F4B400] transition group-hover:translate-x-1">
+                                    <span className="text-xs font-bold text-[#F3B817] transition group-hover:translate-x-1">
                                         →
                                     </span>
                                 </div>
                             </Link>
                         </div>
                     </section>
-
-                    {/* FOOTER */}
-
-                    <div className="mt-10 flex flex-col items-center justify-center gap-2 border-t border-slate-200 pt-6 text-center">
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#8B4BB3]" />
-
-                            <span className="font-semibold text-slate-500">
-                                LDP HRIS &amp; Payroll
-                            </span>
-                        </div>
-
-                        <p className="text-[10px] text-slate-400">
-                            Butuh bantuan? Hubungi tim HR atau administrator
-                            melalui kanal internal perusahaan.
-                        </p>
-                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

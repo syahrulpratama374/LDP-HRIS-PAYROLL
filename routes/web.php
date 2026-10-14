@@ -119,6 +119,9 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
         Route::resource('karyawan', App\Http\Controllers\Kepegawaian\KaryawanController::class);
         Route::post('karyawan/{id}/gaji', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
         Route::post('karyawan/{id}/jabatan', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'updateJabatan'])->name('karyawan.updateJabatan');
+        // --- ROUTE BARU: MANAJEMEN DOKUMEN KARYAWAN ---
+        Route::post('karyawan/{id}/dokumen', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'uploadDokumen'])->name('karyawan.dokumen.store');
+        Route::delete('karyawan/{id}/dokumen/{dokumen_id}', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'deleteDokumen'])->name('karyawan.dokumen.destroy');
 
         Route::get('/surat-peringatan', [SuratPeringatanController::class, 'index'])->name('admin.sp.index');
         Route::get('/surat-peringatan/buat', [SuratPeringatanController::class, 'create'])->name('admin.sp.create');

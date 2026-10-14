@@ -12,11 +12,13 @@ class Karyawan extends Model
 
     protected $fillable = [
         'user_id', 'departemen_id', 'jabatan_id', 'golongan_id', 'ptkp_id',
-        'nik_internal', 'nama_lengkap', 'tempat_lahir', 'tgl_lahir',
-        'agama', 'status_pernikahan', 'email_kantor', 'no_telp', 'tgl_bergabung',
+        'nik_internal', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir',
+        'agama', 'status_pernikahan', 'alamat_ktp', 'alamat_domisili',
+        'email_kantor', 'no_telp', 'tgl_bergabung',
         'no_ktp_encrypted', 'npwp_encrypted', 'no_rek_bca_encrypted',
-        'no_bpjs_kesehatan', 'no_bpjs_ketenagakerjaan', 'status_aktif',
-        'atasan_id'
+        'no_bpjs_kesehatan', 'no_bpjs_ketenagakerjaan', 
+        'nama_kontak_darurat', 'no_telp_darurat',
+        'status_aktif', 'atasan_id', 'foto_profil',
     ];
 
     public function user()
@@ -60,5 +62,13 @@ class Karyawan extends Model
     public function asets()
     {
         return $this->hasMany(Aset::class, 'penanggung_jawab_id');
+    }
+
+    // --- TAMBAHAN RELASI DOKUMEN ---
+    public function dokumens()
+    {
+        // Pastikan Anda nanti membuat model DokumenKaryawan
+        // php artisan make:model DokumenKaryawan
+        return $this->hasMany(DokumenKaryawan::class, 'karyawan_id');
     }
 }

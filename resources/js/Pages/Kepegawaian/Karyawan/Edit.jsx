@@ -30,7 +30,11 @@ export default function Edit({
         jabatan_id: karyawan.jabatan_id || "",
         golongan_id: karyawan.golongan_id || "",
         ptkp_id: karyawan.ptkp_id || "",
-        role_id: karyawan.user?.role_id || "", // Menarik Role dari relasi User
+        jenis_kelamin: karyawan.jenis_kelamin || "",
+        alamat_ktp: karyawan.alamat_ktp || "",
+        alamat_domisili: karyawan.alamat_domisili || "",
+        nama_kontak_darurat: karyawan.nama_kontak_darurat || "",
+        no_telp_darurat: karyawan.no_telp_darurat || "",
         atasan_id: karyawan.atasan_id || "", // Menarik ID Atasan
         no_ktp: karyawan.no_ktp || "",
         npwp: karyawan.npwp || "",
@@ -102,6 +106,30 @@ export default function Edit({
                                         />
                                         <InputError
                                             message={errors.nama_lengkap}
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Jenis Kelamin" />
+                                        <select
+                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            value={data.jenis_kelamin}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "jenis_kelamin",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">Pilih...</option>
+                                            <option value="Laki-laki">
+                                                Laki-laki
+                                            </option>
+                                            <option value="Perempuan">
+                                                Perempuan
+                                            </option>
+                                        </select>
+                                        <InputError
+                                            message={errors.jenis_kelamin}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -200,6 +228,44 @@ export default function Edit({
                                                 }
                                             />
                                         </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 col-span-1 md:col-span-2">
+                                            <div>
+                                                <InputLabel value="Alamat Sesuai KTP" />
+                                                <textarea
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                    rows="3"
+                                                    value={data.alamat_ktp}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "alamat_ktp",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                ></textarea>
+                                                <InputError
+                                                    message={errors.alamat_ktp}
+                                                />
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Alamat Domisili (Kosongkan jika sama)" />
+                                                <textarea
+                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                    rows="3"
+                                                    value={data.alamat_domisili}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "alamat_domisili",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                ></textarea>
+                                                <InputError
+                                                    message={
+                                                        errors.alamat_domisili
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -243,29 +309,6 @@ export default function Edit({
                                     </div>
 
                                     {/* --- INJEKSI RBAC & DIRECT REPORTING --- */}
-                                    <div>
-                                        <InputLabel value="Hak Akses Sistem (Role)" />
-                                        <select
-                                            className="mt-1 block w-full border-indigo-300 bg-indigo-50 rounded-md font-semibold text-indigo-900"
-                                            value={data.role_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "role_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                        >
-                                            <option value="">
-                                                -- Tentukan Akses Login --
-                                            </option>
-                                            {roles.map((r) => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.nama_role}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError message={errors.role_id} />
-                                    </div>
                                     <div>
                                         <InputLabel value="Melapor Kepada (Atasan Langsung)" />
                                         <select
@@ -410,6 +453,45 @@ export default function Edit({
                                                 Non-Aktif / Resign
                                             </option>
                                         </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-orange-600 border-b pb-2 mb-4 mt-8">
+                                    Kontak Darurat (Emergency Contact)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-orange-50 p-4 rounded-md border border-orange-100">
+                                    <div>
+                                        <InputLabel value="Nama Kontak Darurat (Cth: Istri/Orang Tua)" />
+                                        <TextInput
+                                            className="mt-1 block w-full border-orange-300"
+                                            value={data.nama_kontak_darurat}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "nama_kontak_darurat",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.nama_kontak_darurat}
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="No. Telepon Darurat" />
+                                        <TextInput
+                                            className="mt-1 block w-full border-orange-300"
+                                            value={data.no_telp_darurat}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "no_telp_darurat",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.no_telp_darurat}
+                                        />
                                     </div>
                                 </div>
                             </div>

@@ -9,11 +9,13 @@ use App\Models\Jabatan;
 use App\Models\Golongan;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\DokumenKaryawan; // <-- Model baru
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Storage; // <-- Untuk upload file
 
 class KaryawanController extends Controller
 {
@@ -32,8 +34,8 @@ class KaryawanController extends Controller
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
             'ptkps' => DB::table('master_ptkps')->get(),
-            'roles' => Role::orderBy('id')->get(),
             'atasans' => Karyawan::where('status_aktif', true)->orderBy('nama_lengkap')->get(),
+            // roles tidak perlu lagi dikirim ke view karena di-set default
         ]);
     }
 
@@ -42,10 +44,13 @@ class KaryawanController extends Controller
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans',
             'nama_lengkap' => 'required|string|max:150',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
             'tempat_lahir' => 'required|string|max:100',
             'tgl_lahir' => 'required|date',
             'agama' => 'required|string|max:30',
             'status_pernikahan' => 'required|string|max:30',
+            'alamat_ktp' => 'required|string',
+            'alamat_domisili' => 'required|string',
             'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
@@ -53,23 +58,25 @@ class KaryawanController extends Controller
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            'role_id' => 'required|exists:roles,id', 
             'atasan_id' => 'nullable|exists:karyawans,id', 
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
+            'nama_kontak_darurat' => 'required|string|max:150',
+            'no_telp_darurat' => 'required|string|max:20',
         ]);
 
         DB::beginTransaction();
         try {
+            // Bypass Role: Otomatis diset ke 6 (Role Karyawan Staff)
             $user = User::create([
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
                 'password' => Hash::make($validated['nik_internal']), 
-                'role_id' => $validated['role_id'], 
+                'role_id' => 6, 
             ]);
 
             Karyawan::create([
@@ -81,10 +88,13 @@ class KaryawanController extends Controller
                 'atasan_id' => $validated['atasan_id'], 
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
+                'jenis_kelamin' => $validated['jenis_kelamin'],
                 'tempat_lahir' => $validated['tempat_lahir'],
                 'tgl_lahir' => $validated['tgl_lahir'],
                 'agama' => $validated['agama'],
                 'status_pernikahan' => $validated['status_pernikahan'],
+                'alamat_ktp' => $validated['alamat_ktp'],
+                'alamat_domisili' => $validated['alamat_domisili'],
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
@@ -93,11 +103,13 @@ class KaryawanController extends Controller
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
+                'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
+                'no_telp_darurat' => $validated['no_telp_darurat'],
                 'status_aktif' => true,
             ]);
 
             DB::commit();
-            return redirect()->route('karyawan.index')->with('success', 'Karyawan dan Akun Login berhasil dibuat!');
+            return redirect()->route('karyawan.index')->with('success', 'Karyawan berhasil didaftarkan dengan Role Default Karyawan!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()]);
@@ -108,9 +120,24 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::with('user')->findOrFail($id);
 
-        $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted);
-        $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '';
-        $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '';
+        // Gunakan Try-Catch agar sistem tidak crash jika bertemu data lama/dummy
+        try { 
+            $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); 
+        } catch (\Exception $e) { 
+            $karyawan->no_ktp = ''; // Kosongkan jika gagal dekripsi
+        }
+
+        try { 
+            $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : ''; 
+        } catch (\Exception $e) { 
+            $karyawan->npwp = ''; 
+        }
+
+        try { 
+            $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : ''; 
+        } catch (\Exception $e) { 
+            $karyawan->no_rek_bca = ''; 
+        }
 
         return Inertia::render('Kepegawaian/Karyawan/Edit', [
             'karyawan' => $karyawan,
@@ -118,7 +145,6 @@ class KaryawanController extends Controller
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
             'golongans' => Golongan::orderBy('kode_golongan')->get(),
             'ptkps' => DB::table('master_ptkps')->get(),
-            'roles' => Role::orderBy('id')->get(),
             'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(),
         ]);
     }
@@ -130,10 +156,13 @@ class KaryawanController extends Controller
         $validated = $request->validate([
             'nik_internal' => 'required|string|max:50|unique:karyawans,nik_internal,' . $karyawan->id,
             'nama_lengkap' => 'required|string|max:150',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
             'tempat_lahir' => 'required|string|max:100',
             'tgl_lahir' => 'required|date',
             'agama' => 'required|string|max:30',
             'status_pernikahan' => 'required|string|max:30',
+            'alamat_ktp' => 'required|string',
+            'alamat_domisili' => 'required|string',
             'email_kantor' => 'required|email|unique:karyawans,email_kantor,' . $karyawan->id,
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
@@ -141,30 +170,21 @@ class KaryawanController extends Controller
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            'role_id' => 'required|exists:roles,id',
             'atasan_id' => 'nullable|exists:karyawans,id|different:id',
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
             'no_bpjs_kesehatan' => 'nullable|string',
             'no_bpjs_ketenagakerjaan' => 'nullable|string',
+            'nama_kontak_darurat' => 'required|string|max:150',
+            'no_telp_darurat' => 'required|string|max:20',
             'status_aktif' => 'required|boolean',
         ]);
 
-        // ====================================================================
-        // GATEKEEPER EXIT CLEARANCE (Pencegat Non-Aktif / Resign)
-        // ====================================================================
+        // GATEKEEPER EXIT CLEARANCE
         if ($karyawan->status_aktif == true && $validated['status_aktif'] == false) {
-            
-            // Cek Aset
-            $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)
-                ->where('status', 'Dipakai')
-                ->count();
-            
-            // Cek Hutang Kasbon
-            $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)
-                ->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])
-                ->count();
+            $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)->where('status', 'Dipakai')->count();
+            $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])->count();
 
             if ($asetDitahan > 0 || $hutangKasbon > 0) {
                 return back()->withErrors([
@@ -175,12 +195,12 @@ class KaryawanController extends Controller
 
         DB::beginTransaction();
         try {
+            // Update akun user tapi HINDARI mengubah role_id
             $user = User::findOrFail($karyawan->user_id);
             $user->update([
                 'name' => $validated['nama_lengkap'],
                 'username' => $validated['nik_internal'],
                 'email' => $validated['email_kantor'],
-                'role_id' => $validated['role_id'],
             ]);
 
             $karyawan->update([
@@ -191,10 +211,13 @@ class KaryawanController extends Controller
                 'atasan_id' => $validated['atasan_id'],
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
+                'jenis_kelamin' => $validated['jenis_kelamin'],
                 'tempat_lahir' => $validated['tempat_lahir'],
                 'tgl_lahir' => $validated['tgl_lahir'],
                 'agama' => $validated['agama'],
                 'status_pernikahan' => $validated['status_pernikahan'],
+                'alamat_ktp' => $validated['alamat_ktp'],
+                'alamat_domisili' => $validated['alamat_domisili'],
                 'email_kantor' => $validated['email_kantor'],
                 'no_telp' => $validated['no_telp'],
                 'tgl_bergabung' => $validated['tgl_bergabung'],
@@ -203,6 +226,8 @@ class KaryawanController extends Controller
                 'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
                 'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
                 'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
+                'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
+                'no_telp_darurat' => $validated['no_telp_darurat'],
                 'status_aktif' => $validated['status_aktif'],
             ]);
 
@@ -218,7 +243,6 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
         
-        // GATEKEEPER EXIT CLEARANCE (Pencegat Penghapusan Paksa Aset & Kasbon)
         $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)->count();
         $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)
             ->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])
@@ -233,7 +257,6 @@ class KaryawanController extends Controller
         DB::beginTransaction();
         try {
             $userId = $karyawan->user_id;
-            
             $karyawan->delete();
             User::where('id', $userId)->delete(); 
 
@@ -241,7 +264,6 @@ class KaryawanController extends Controller
             return redirect()->route('karyawan.index')->with('success', 'Karyawan dan akun loginnya berhasil dihapus.');
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
-            // TANGKAP ERROR DATABASE (FOREIGN KEY REJECTION)
             return back()->withErrors([
                 'error' => 'SISTEM MENOLAK: Karyawan ini tidak dapat dihapus karena sudah memiliki riwayat transaksi (Absensi/Cuti/SPJ/Lembur) di sistem. Silakan Edit dan ubah statusnya menjadi "NON-AKTIF" sebagai gantinya.'
             ]);
@@ -251,45 +273,30 @@ class KaryawanController extends Controller
         }
     }
 
-   public function show($id)
+    public function show($id)
     {
+        // Tambahan: 'dokumens' diload agar berkas KTP/Ijazah tampil di profil
         $karyawan = Karyawan::with([
             'departemen', 'jabatan', 'golongan', 'user', 'atasan',
-            'riwayatGajis', 'riwayatJabatans.jabatan'
+            'riwayatGajis', 'riwayatJabatans.jabatan', 'dokumens'
         ])->findOrFail($id);
 
-        // --- TAMBAHAN BARU: Cari siapa saja yang atasan_id nya adalah karyawan ini ---
         $bawahans = Karyawan::with('jabatan')
             ->where('atasan_id', $id)
             ->where('status_aktif', true)
             ->get();
-        // -----------------------------------------------------------------------------
 
-        // PENGAMANAN DEKRIPSI (Try-Catch yang sudah Anda pasang)
-        try { 
-            $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); 
-        } catch (\Exception $e) { 
-            $karyawan->no_ktp = 'Format Enkripsi Tidak Valid / Data Dummy'; 
-        }
-
-        try { 
-            $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '-'; 
-        } catch (\Exception $e) { 
-            $karyawan->npwp = 'Format Enkripsi Tidak Valid'; 
-        }
-
-        try { 
-            $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '-'; 
-        } catch (\Exception $e) { 
-            $karyawan->no_rek_bca = 'Format Enkripsi Tidak Valid'; 
-        }
+        try { $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); } catch (\Exception $e) { $karyawan->no_ktp = 'Format Enkripsi Tidak Valid'; }
+        try { $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '-'; } catch (\Exception $e) { $karyawan->npwp = 'Format Enkripsi Tidak Valid'; }
+        try { $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '-'; } catch (\Exception $e) { $karyawan->no_rek_bca = 'Format Enkripsi Tidak Valid'; }
 
         return Inertia::render('Kepegawaian/Karyawan/Show', [
             'karyawan' => $karyawan,
             'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
-            'bawahans' => $bawahans, // <-- LEMPAR DATA BAWAHAN KE REACT
+            'bawahans' => $bawahans, 
         ]);
     }
+
     public function updateGaji(Request $request, $id)
     {
         $request->validate([
@@ -356,6 +363,63 @@ class KaryawanController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Gagal memperbarui jabatan: ' . $e->getMessage()]);
+        }
+    }
+
+    // ====================================================================
+    // FITUR BARU: MANAJEMEN UPLOAD DOKUMEN KARYAWAN
+    // ====================================================================
+    
+    public function uploadDokumen(Request $request, $id)
+    {
+        $request->validate([
+            'jenis_dokumen' => 'required|string|max:100',
+            'nama_dokumen' => 'required|string|max:255',
+            'file_dokumen' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // Maks 5MB
+        ]);
+
+        try {
+            $karyawan = Karyawan::findOrFail($id);
+            
+            if ($request->hasFile('file_dokumen')) {
+                $file = $request->file('file_dokumen');
+                // Format Nama File: NIK_JenisDokumen_Timestamp.ext
+                $fileName = $karyawan->nik_internal . '_' . str_replace(' ', '', $request->jenis_dokumen) . '_' . time() . '.' . $file->getClientOriginalExtension();
+                
+                // Simpan ke storage/app/public/dokumen_karyawan
+                $filePath = $file->storeAs('dokumen_karyawan', $fileName, 'public');
+
+                DokumenKaryawan::create([
+                    'karyawan_id' => $karyawan->id,
+                    'jenis_dokumen' => $request->jenis_dokumen,
+                    'nama_dokumen' => $request->nama_dokumen,
+                    'file_path' => '/storage/' . $filePath,
+                ]);
+
+                return back()->with('success', 'Dokumen berhasil diunggah.');
+            }
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal mengunggah dokumen: ' . $e->getMessage()]);
+        }
+    }
+
+    public function deleteDokumen($karyawanId, $dokumenId)
+    {
+        try {
+            $dokumen = DokumenKaryawan::where('karyawan_id', $karyawanId)->findOrFail($dokumenId);
+            
+            // Hapus file fisik dari server
+            $pathParts = explode('/storage/', $dokumen->file_path);
+            if (isset($pathParts[1])) {
+                Storage::disk('public')->delete($pathParts[1]);
+            }
+
+            // Hapus data dari database
+            $dokumen->delete();
+
+            return back()->with('success', 'Dokumen berhasil dihapus.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal menghapus dokumen: ' . $e->getMessage()]);
         }
     }
 }
