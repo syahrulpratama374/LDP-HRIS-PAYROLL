@@ -25,6 +25,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::post('/profile/foto', [ProfileController::class, 'updateFoto'])->name('profile.foto.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
     // Terminal Absensi & Self-Service
     Route::get('/absensi/karyawan', [AbsensiController::class, 'create'])->name('absensi.create');
     Route::post('/absensi/karyawan', [AbsensiController::class, 'store'])->name('absensi.store');
@@ -123,6 +126,8 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
         Route::post('karyawan/{id}/dokumen', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'uploadDokumen'])->name('karyawan.dokumen.store');
         Route::delete('karyawan/{id}/dokumen/{dokumen_id}', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'deleteDokumen'])->name('karyawan.dokumen.destroy');
 
+        Route::post('karyawan/{id}/foto', [App\Http\Controllers\Kepegawaian\KaryawanController::class, 'uploadFotoProfil'])->name('karyawan.foto.store');
+        
         Route::get('/surat-peringatan', [SuratPeringatanController::class, 'index'])->name('admin.sp.index');
         Route::get('/surat-peringatan/buat', [SuratPeringatanController::class, 'create'])->name('admin.sp.create');
         Route::post('/surat-peringatan', [SuratPeringatanController::class, 'store'])->name('admin.sp.store');

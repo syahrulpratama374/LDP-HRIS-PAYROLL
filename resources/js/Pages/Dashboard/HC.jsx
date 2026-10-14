@@ -1,5 +1,5 @@
 import React from "react";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AuthenticatedLayout from "@/Layouts/AdminLayout";
 import { Head } from "@inertiajs/react";
 
 export default function HC({ auth }) {

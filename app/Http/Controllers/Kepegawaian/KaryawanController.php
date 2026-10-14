@@ -50,7 +50,7 @@ class KaryawanController extends Controller
             'agama' => 'required|string|max:30',
             'status_pernikahan' => 'required|string|max:30',
             'alamat_ktp' => 'required|string',
-            'alamat_domisili' => 'required|string',
+            'alamat_domisili' => 'nullable|string', // PERBAIKAN 1: Diubah menjadi nullable
             'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
             'no_telp' => 'nullable|string|max:20',
             'tgl_bergabung' => 'required|date',
@@ -67,6 +67,10 @@ class KaryawanController extends Controller
             'nama_kontak_darurat' => 'required|string|max:150',
             'no_telp_darurat' => 'required|string|max:20',
         ]);
+
+        // PERBAIKAN 2: Logika Auto-Fill Alamat Domisili
+        // Jika domisili dikosongkan oleh HRD, otomatis samakan isinya dengan Alamat KTP
+        $alamatDomisili = $validated['alamat_domisili'] ?? $validated['alamat_ktp'];
 
         DB::beginTransaction();
         try {
@@ -85,7 +89,7 @@ class KaryawanController extends Controller
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
-                'atasan_id' => $validated['atasan_id'], 
+                'atasan_id' => $validated['atasan_id'] ?? null, 
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'jenis_kelamin' => $validated['jenis_kelamin'],
@@ -94,15 +98,15 @@ class KaryawanController extends Controller
                 'agama' => $validated['agama'],
                 'status_pernikahan' => $validated['status_pernikahan'],
                 'alamat_ktp' => $validated['alamat_ktp'],
-                'alamat_domisili' => $validated['alamat_domisili'],
+                'alamat_domisili' => $alamatDomisili, // Menggunakan variabel auto-fill
                 'email_kantor' => $validated['email_kantor'],
-                'no_telp' => $validated['no_telp'],
+                'no_telp' => $validated['no_telp'] ?? null,
                 'tgl_bergabung' => $validated['tgl_bergabung'],
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
-                'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
-                'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-                'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
-                'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
+                'npwp_encrypted' => !empty($validated['npwp']) ? Crypt::encryptString($validated['npwp']) : null,
+                'no_rek_bca_encrypted' => !empty($validated['no_rek_bca']) ? Crypt::encryptString($validated['no_rek_bca']) : null,
+                'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'] ?? null,
+                'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'] ?? null,
                 'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
                 'no_telp_darurat' => $validated['no_telp_darurat'],
                 'status_aktif' => true,
@@ -420,6 +424,40 @@ class KaryawanController extends Controller
             return back()->with('success', 'Dokumen berhasil dihapus.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Gagal menghapus dokumen: ' . $e->getMessage()]);
+        }
+    }
+
+    public function uploadFotoProfil(Request $request, $id)
+    {
+        $request->validate([
+            'foto_profil' => 'required|image|mimes:jpg,jpeg,png|max:2048', // Maks 2MB, wajib gambar
+        ]);
+
+        try {
+            $karyawan = Karyawan::findOrFail($id);
+            
+            if ($request->hasFile('foto_profil')) {
+                // Jika sudah punya foto sebelumnya, hapus foto lama agar server tidak penuh
+                if ($karyawan->foto_profil) {
+                    $oldPhotoPath = str_replace('/storage/', '', $karyawan->foto_profil);
+                    Storage::disk('public')->delete($oldPhotoPath);
+                }
+
+                $file = $request->file('foto_profil');
+                $fileName = 'avatar_' . $karyawan->nik_internal . '_' . time() . '.' . $file->getClientOriginalExtension();
+                
+                // Simpan ke folder public/profil_karyawan
+                $filePath = $file->storeAs('profil_karyawan', $fileName, 'public');
+
+                // Update database
+                $karyawan->update([
+                    'foto_profil' => '/storage/' . $filePath
+                ]);
+
+                return back()->with('success', 'Foto profil berhasil diperbarui.');
+            }
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Gagal mengunggah foto: ' . $e->getMessage()]);
         }
     }
 }
