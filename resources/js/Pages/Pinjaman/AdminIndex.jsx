@@ -8,12 +8,9 @@ export default function AdminIndex({ pinjaman, userRole }) {
     const handleAction = (id, status) => {
         let confirmText = "Apakah Anda yakin?";
 
-        if (status === "Menunggu Pencairan")
-            confirmText =
-                "Setujui pengajuan ini? Dokumen akan diteruskan ke Finance untuk pencairan dana.";
         if (status === "Berjalan")
             confirmText =
-                "Cairkan dana kasbon ini? Sistem akan otomatis mentransfer ke rekening karyawan dan membuat jadwal pemotongan gaji.";
+                "Setujui dan Cairkan dana kasbon ini? Sistem akan otomatis membuat jadwal pemotongan gaji.";
         if (status === "Ditolak")
             confirmText = "Tolak pengajuan kasbon ini secara permanen?";
 
@@ -26,11 +23,19 @@ export default function AdminIndex({ pinjaman, userRole }) {
         }
     };
 
+    const formatRupiah = (angka) => {
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(angka);
+    };
+
     return (
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Approval Kasbon & Pinjaman Karyawan
+                    Approval Kasbon & Pinjaman (Finance)
                 </h2>
             }
         >
@@ -94,16 +99,13 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                 <td className="px-6 py-4 border-b">
                                                     <div className="text-sm font-bold text-gray-800">
                                                         {p.karyawan
-                                                            ? p.karyawan
-                                                                  .nama_lengkap
-                                                            : "Tidak Diketahui"}
+                                                            ?.nama_lengkap ||
+                                                            "Tidak Diketahui"}
                                                     </div>
                                                     <div className="text-xs text-gray-500">
                                                         {p.karyawan?.departemen
-                                                            ? p.karyawan
-                                                                  .departemen
-                                                                  .nama_departemen
-                                                            : "-"}
+                                                            ?.nama_departemen ||
+                                                            "-"}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-700">
@@ -115,11 +117,8 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-gray-800">
                                                     <span className="font-bold text-indigo-600">
-                                                        Rp{" "}
-                                                        {Number(
+                                                        {formatRupiah(
                                                             p.total_pinjaman,
-                                                        ).toLocaleString(
-                                                            "id-ID",
                                                         )}
                                                     </span>{" "}
                                                     <br />
@@ -129,10 +128,9 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-sm text-red-600 font-semibold">
-                                                    Rp{" "}
-                                                    {Number(
+                                                    {formatRupiah(
                                                         p.sisa_pinjaman,
-                                                    ).toLocaleString("id-ID")}
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <span
@@ -142,18 +140,12 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                             "Pending"
                                                                 ? "bg-yellow-100 text-yellow-800"
                                                                 : p.status ===
-                                                                    "Menunggu Pencairan"
-                                                                  ? "bg-orange-100 text-orange-800"
+                                                                    "Berjalan"
+                                                                  ? "bg-blue-100 text-blue-800"
                                                                   : p.status ===
-                                                                      "Menunggu Approval Direktur"
-                                                                    ? "bg-purple-100 text-purple-800"
-                                                                    : p.status ===
-                                                                        "Berjalan"
-                                                                      ? "bg-blue-100 text-blue-800"
-                                                                      : p.status ===
-                                                                          "Lunas"
-                                                                        ? "bg-green-100 text-green-800"
-                                                                        : "bg-red-100 text-red-800"
+                                                                      "Lunas"
+                                                                    ? "bg-green-100 text-green-800"
+                                                                    : "bg-red-100 text-red-800"
                                                         }`}
                                                     >
                                                         {p.status}
@@ -161,103 +153,35 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                 </td>
                                                 <td className="px-6 py-4 border-b text-center">
                                                     <div className="flex justify-center items-center space-x-2">
-                                                        {/* TIER-1: SPV / MANAGER (Role 5 / 1) */}
+                                                        {/* ACTION BUTTONS: HANYA MUNCUL SAAT PENDING */}
                                                         {p.status ===
-                                                            "Pending" &&
-                                                            [1, 5].includes(
-                                                                userRole,
-                                                            ) && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Menunggu Pencairan",
-                                                                            )
-                                                                        }
-                                                                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        Setujui
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Ditolak",
-                                                                            )
-                                                                        }
-                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        Tolak
-                                                                    </button>
-                                                                </>
-                                                            )}
-
-                                                        {/* TIER-2: FINANCE (Role 4 / 1) */}
-                                                        {p.status ===
-                                                            "Menunggu Pencairan" &&
-                                                            [1, 4].includes(
-                                                                userRole,
-                                                            ) && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Berjalan",
-                                                                            )
-                                                                        }
-                                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        💸
-                                                                        Cairkan
-                                                                        Dana
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Ditolak",
-                                                                            )
-                                                                        }
-                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        Tolak
-                                                                    </button>
-                                                                </>
-                                                            )}
-
-                                                        {/* TIER-3: DIREKTUR VETO (Role 2) */}
-                                                        {p.status ===
-                                                            "Menunggu Approval Direktur" &&
-                                                            userRole === 2 && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Berjalan",
-                                                                            )
-                                                                        }
-                                                                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        ✅ ACC &
-                                                                        Cairkan
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            handleAction(
-                                                                                p.id,
-                                                                                "Ditolak",
-                                                                            )
-                                                                        }
-                                                                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                    >
-                                                                        Veto
-                                                                        Tolak
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                                            "Pending" && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleAction(
+                                                                            p.id,
+                                                                            "Berjalan",
+                                                                        )
+                                                                    }
+                                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                >
+                                                                    ✅ Setujui &
+                                                                    Cairkan
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleAction(
+                                                                            p.id,
+                                                                            "Ditolak",
+                                                                        )
+                                                                    }
+                                                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                >
+                                                                    Tolak
+                                                                </button>
+                                                            </>
+                                                        )}
 
                                                         {/* INDIKATOR SELESAI */}
                                                         {[
@@ -271,21 +195,6 @@ export default function AdminIndex({ pinjaman, userRole }) {
                                                                 Selesai diproses
                                                             </span>
                                                         )}
-                                                        {p.status ===
-                                                            "Pending" &&
-                                                            userRole === 4 && (
-                                                                <span className="text-xs text-orange-400 font-semibold">
-                                                                    Menunggu SPV
-                                                                </span>
-                                                            )}
-                                                        {p.status ===
-                                                            "Menunggu Approval Direktur" &&
-                                                            userRole === 4 && (
-                                                                <span className="text-xs text-purple-600 font-semibold italic">
-                                                                    Di Meja
-                                                                    Direktur
-                                                                </span>
-                                                            )}
                                                     </div>
                                                 </td>
                                             </tr>

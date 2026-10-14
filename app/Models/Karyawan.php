@@ -71,4 +71,18 @@ class Karyawan extends Model
         // php artisan make:model DokumenKaryawan
         return $this->hasMany(DokumenKaryawan::class, 'karyawan_id');
     }
+    public function keluargas()
+    {
+        return $this->hasMany(KeluargaKaryawan::class, 'karyawan_id');
+    }
+
+    public function pendidikans()
+    {
+        return $this->hasMany(PendidikanKaryawan::class, 'karyawan_id')->orderBy('thn_lulus', 'desc');
+    }
+
+    public function kontraks()
+    {
+        return $this->hasMany(RiwayatKontrak::class, 'karyawan_id')->orderBy('tgl_mulai', 'desc');
+    }
 }

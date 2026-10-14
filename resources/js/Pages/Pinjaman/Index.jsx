@@ -201,7 +201,7 @@ export default function Index({ auth, pinjaman = [] }) {
                                         <th className="whitespace-nowrap px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Status
                                         </th>
-                                        <th className="whitespace-nowrap px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
+                                        <th className="px-6 py-3 border-b text-center text-xs font-semibold text-gray-600 uppercase">
                                             Aksi
                                         </th>
                                     </tr>
@@ -211,8 +211,8 @@ export default function Index({ auth, pinjaman = [] }) {
                                     {filteredPinjaman.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan="6"
-                                                className="px-5 py-8 text-center"
+                                                colSpan="6"   
+                                                className="px-6 py-8 text-center text-gray-500"
                                             >
                                                 <p className="text-sm font-semibold text-gray-500">
                                                     {search
