@@ -59,7 +59,12 @@ Route::middleware(['auth'])->group(function () {
     // --- BARU: LOGBOOK SHIFT NOC ---
     Route::get('/logbook-shift', [App\Http\Controllers\ItTicket\LogbookController::class, 'index'])->name('logbook.index');
     Route::post('/logbook-shift', [App\Http\Controllers\ItTicket\LogbookController::class, 'store'])->name('logbook.store');
-});
+
+        Route::resource('keluar', App\Http\Controllers\Persuratan\SuratKeluarController::class);
+        Route::post('keluar/{id}/terbitkan', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
+        Route::post('keluar/{id}/batal', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
+        Route::get('keluar/{id}/pdf', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
+    });
 
 
 // 3. RUTE MANAJERIAL & OPERASIONAL (Dilindungi CheckRole)
@@ -147,10 +152,6 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
     // Persuratan HC
     Route::prefix('persuratan')->group(function () {
         Route::resource('template', App\Http\Controllers\Persuratan\MasterTemplateController::class);
-        Route::resource('keluar', App\Http\Controllers\Persuratan\SuratKeluarController::class);
-        Route::post('keluar/{id}/terbitkan', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
-        Route::post('keluar/{id}/batal', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
-        Route::get('keluar/{id}/pdf', [App\Http\Controllers\Persuratan\SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
         Route::resource('masuk', App\Http\Controllers\Persuratan\SuratMasukController::class);
     });
 });

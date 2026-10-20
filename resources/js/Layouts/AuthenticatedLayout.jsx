@@ -105,6 +105,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Logbook Shift
                                         </NavLink>
+                                        <NavLink
+                                            href={route("keluar.index")}
+                                            active={route().current("keluar.*")}
+                                        >
+                                            Persuratan
+                                        </NavLink>
                                     </>
                                 )}
 
@@ -459,6 +465,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current("logbook.*")}
                                 >
                                     Logbook Shift
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("keluar.index")}
+                                    active={route().current("keluar.*")}
+                                >
+                                    e-Persuratan
                                 </ResponsiveNavLink>
                             </>
                         )}
