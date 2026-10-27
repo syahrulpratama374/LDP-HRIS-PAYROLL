@@ -22,4 +22,10 @@ class MasterTemplateSurat extends Model
     {
         return $this->hasMany(SuratKeluar::class, 'template_id');
     }
+
+    // Relasi ke Rute Approval (Cetak Biru)
+    public function ruteApprovals()
+    {
+        return $this->hasMany(RuteApprovalTemplate::class, 'template_id')->orderBy('urutan_langkah', 'asc');
+    }
 }

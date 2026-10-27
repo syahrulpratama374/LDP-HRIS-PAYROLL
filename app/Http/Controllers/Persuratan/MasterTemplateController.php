@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Persuratan;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterTemplateSurat;
+use App\Models\RuteApprovalTemplate;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,70 +12,50 @@ class MasterTemplateController extends Controller
 {
     public function index()
     {
-        $templates = MasterTemplateSurat::latest()->get();
-        // Pastikan path foldernya sesuai dengan folder di resources/js/Pages
-        return Inertia::render('Persuratan/MasterTemplate/Index', [
-            'templates' => $templates
-        ]);
-    }
+        $templates = MasterTemplateSurat::with('ruteApprovals.jabatan')->latest()->get();
+        $jabatans  = \App\Models\Jabatan::all(); 
 
-    // 1. TAMBAHAN: Method create untuk membuka halaman Editor React Quill
-    public function create()
-    {
-        return Inertia::render('Persuratan/MasterTemplate/Create');
+        return Inertia::render('Persuratan/Template/Index', [
+            'templates' => $templates,
+            'jabatans'  => $jabatans, // Kirim data jabatan ke React
+        ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'nama_template' => 'required|string|max:255',
-            'kode_surat'    => 'required|string|max:50|unique:master_template_surats,kode_surat',
-            // WAJIB DITAMBAHKAN: Untuk logika Approval Direktur & Kode Pembuat (Kop Surat)
-            'kategori_alur' => 'required|in:Approval_Direksi,Hanya_Notifikasi',
-            'pembuat_kode'  => 'required|string|max:50',
-            'konten'        => 'required|string',
-            'is_active'     => 'boolean',
+            'kode_surat'    => 'required|string|max:50', // Contoh: SPJ, SKEP
+            'pembuat_kode'  => 'required|string|max:50', // Contoh: LDP-HC
+            'konten'        => 'required|string', // Isi dasar HTML
+            
+            // Validasi Input Array Rute dari React Frontend
+            'rute_approvals'              => 'nullable|array',
+            'rute_approvals.*.urutan'     => 'required|integer',
+            'rute_approvals.*.jabatan_id' => 'required|exists:jabatans,id',
+            'rute_approvals.*.label_ttd'  => 'required|string|max:255',
         ]);
 
-        MasterTemplateSurat::create($request->all());
-
-        // Diarahkan kembali ke halaman index setelah selesai dibuat dari halaman Create
-        return redirect()->route('template.index')
-                         ->with('success', 'Template surat berhasil ditambahkan.');
-    }
-
-    // 2. TAMBAHAN: Method edit untuk membuka halaman Editor saat mau revisi template
-    public function edit($id)
-    {
-        $template = MasterTemplateSurat::findOrFail($id);
-        return Inertia::render('Persuratan/MasterTemplate/Edit', [
-            'template' => $template
-        ]);
-    }
-
-    public function update(Request $request, $id)
-    {
-        $template = MasterTemplateSurat::findOrFail($id);
-
-        $request->validate([
-            'nama_template' => 'required|string|max:255',
-            'kode_surat'    => 'required|string|max:50|unique:master_template_surats,kode_surat,' . $id,
-            // WAJIB DITAMBAHKAN:
-            'kategori_alur' => 'required|in:Approval_Direksi,Hanya_Notifikasi',
-            'pembuat_kode'  => 'required|string|max:50',
-            'konten'        => 'required|string',
-            'is_active'     => 'boolean',
+        $template = MasterTemplateSurat::create([
+            'nama_template' => $request->nama_template,
+            'kode_surat'    => $request->kode_surat,
+            'pembuat_kode'  => $request->pembuat_kode,
+            'konten'        => $request->konten,
+            'is_active'     => true,
         ]);
 
-        $template->update($request->all());
+        // Simpan Cetak Biru Rute Approval Bertingkat
+        if ($request->has('rute_approvals')) {
+            foreach ($request->rute_approvals as $rute) {
+                RuteApprovalTemplate::create([
+                    'template_id'    => $template->id,
+                    'urutan_langkah' => $rute['urutan'],
+                    'jabatan_id'     => $rute['jabatan_id'],
+                    'label_ttd'      => $rute['label_ttd'],
+                ]);
+            }
+        }
 
-        return redirect()->route('template.index')
-                         ->with('success', 'Template surat berhasil diperbarui.');
-    }
-
-    public function destroy($id)
-    {
-        MasterTemplateSurat::findOrFail($id)->delete();
-        return back()->with('success', 'Template surat berhasil dihapus.');
+        return redirect()->back()->with('success', 'Master Template dan Rute Approval berhasil dibuat.');
     }
 }

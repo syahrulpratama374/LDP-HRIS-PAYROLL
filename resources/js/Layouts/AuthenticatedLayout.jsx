@@ -19,18 +19,18 @@ export default function AuthenticatedLayout({ header, children }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
-                            {/* Logo */}
+                            {/* Logo Perusahaan */}
                             <div className="shrink-0 flex items-center">
                                 <Link href={route("dashboard")}>
                                     <ApplicationLogo className="block h-9 w-auto fill-current text-indigo-600" />
                                 </Link>
                             </div>
 
-                            {/* ============================================== */}
-                            {/* MENU NAVIGASI DESKTOP                          */}
-                            {/* ============================================== */}
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                {/* 1. MENU UMUM (Semua Role) */}
+                            {/* ============================================================== */}
+                            {/* MENU NAVIGASI DESKTOP (TERSTRUKTUR & RAPI)                    */}
+                            {/* ============================================================== */}
+                            <div className="hidden space-x-4 sm:-my-px sm:ms-8 sm:flex sm:items-center">
+                                {/* 1. DASHBOARD UTAMA */}
                                 <NavLink
                                     href={route("dashboard")}
                                     active={route().current("dashboard")}
@@ -38,258 +38,404 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Dashboard
                                 </NavLink>
 
-                                {/* Menu Desktop (Biasanya di bagian atas layout) */}
-                                {[1].includes(auth.user.role_id) && (
-                                    <>
-                                        <NavLink
-                                            href={route("admin.audit.index")}
-                                            active={route().current(
-                                                "admin.audit.*",
-                                            )}
-                                        >
-                                            Audit Trail
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.aset.index")}
-                                            active={route().current(
-                                                "admin.aset.*",
-                                            )}
-                                        >
-                                            Aset & QR Code
-                                        </NavLink>
-                                    </>
-                                )}
+                                {/* 2. MENU SELF-SERVICE KARYAWAN (Role 1 s/d 6) */}
+                                <NavLink
+                                    href={route("absensi.create")}
+                                    active={route().current("absensi.create")}
+                                >
+                                    Absensi
+                                </NavLink>
 
-                                {/* 2. MENU SELF-SERVICE (Role 2 s/d 6) */}
-                                {[2, 3, 4, 5, 6].includes(user.role_id) && (
-                                    <>
-                                        <NavLink
-                                            href={route("absensi.create")}
-                                            active={route().current(
-                                                "absensi.create",
-                                            )}
+                                {/* Dropdown Pengajuan Karyawan */}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button
+                                            type="button"
+                                            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150 ${
+                                                route().current("cuti.*") ||
+                                                route().current("lembur.*") ||
+                                                route().current("spj.*") ||
+                                                route().current("pinjaman.*") ||
+                                                route().current("logbook.*")
+                                                    ? "text-indigo-600 font-bold border-b-2 border-indigo-500"
+                                                    : ""
+                                            }`}
                                         >
-                                            Absensi
-                                        </NavLink>
-                                        <NavLink
+                                            Pengajuan Saya
+                                            <svg
+                                                className="ms-2 -me-0.5 h-4 w-4"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content width="48">
+                                        <Dropdown.Link
                                             href={route("cuti.index")}
-                                            active={route().current("cuti.*")}
                                         >
                                             Pengajuan Cuti
-                                        </NavLink>
-                                        <NavLink
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
                                             href={route("lembur.index")}
-                                            active={route().current("lembur.*")}
                                         >
-                                            Lembur
-                                        </NavLink>
-                                        <NavLink
+                                            Pengajuan Lembur
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
                                             href={route("spj.index")}
-                                            active={route().current("spj.*")}
                                         >
-                                            SPJ
-                                        </NavLink>
-                                        <NavLink
+                                            Perjalanan Dinas (SPJ)
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
                                             href={route("pinjaman.index")}
-                                            active={route().current(
-                                                "pinjaman.*",
-                                            )}
                                         >
-                                            Kasbon
-                                        </NavLink>
-                                        <NavLink
+                                            Kasbon & Pinjaman
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
                                             href={route("logbook.index")}
-                                            active={route().current(
-                                                "logbook.*",
-                                            )}
                                         >
-                                            Logbook Shift
-                                        </NavLink>
-                                        <NavLink
+                                            Logbook Shift NOC
+                                        </Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
+
+                                {/* 3. DROPDOWN MODUL E-PERSURATAN */}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button
+                                            type="button"
+                                            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150 ${
+                                                route().current("keluar.*") ||
+                                                route().current("template.*") ||
+                                                route().current("layout.*")
+                                                    ? "text-indigo-600 font-bold border-b-2 border-indigo-500"
+                                                    : ""
+                                            }`}
+                                        >
+                                            e-Persuratan
+                                            <svg
+                                                className="ms-2 -me-0.5 h-4 w-4"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content width="56">
+                                        <Dropdown.Link
                                             href={route("keluar.index")}
-                                            active={route().current("keluar.*")}
                                         >
-                                            Persuratan
-                                        </NavLink>
-                                    </>
-                                )}
+                                            Surat Keluar
+                                        </Dropdown.Link>
 
-                                {/* menu ini khusus untuk Role 1, 2, dan 3 */}
-                                {[1, 2, 3].includes(auth.user.role_id) && (
-                                    <NavLink
-                                        href={route("pengumuman.index")}
-                                        active={route().current("pengumuman.*")}
-                                    >
-                                        Broadcast
-                                    </NavLink>
-                                )}
+                                        {/* Khusus Admin & HC (Role 1 & 3) */}
+                                        {[1, 3].includes(user.role_id) && (
+                                            <>
+                                                <div className="border-t border-gray-100 my-1" />
+                                                <div className="block px-4 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                                    Pengaturan Persuratan
+                                                </div>
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "template.index",
+                                                    )}
+                                                >
+                                                    Master Template & Rute TTD
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route("layout.index")}
+                                                >
+                                                    Layout Kop & Aset Visual
+                                                </Dropdown.Link>
+                                            </>
+                                        )}
+                                    </Dropdown.Content>
+                                </Dropdown>
 
-                                {/* 3. MENU MANAJERIAL / APPROVER (Role 1 s/d 5) */}
+                                {/* 4. DROPDOWN APPROVAL CENTER (Role 1 s/d 5) */}
                                 {[1, 2, 3, 4, 5].includes(user.role_id) && (
-                                    <>
-                                        <NavLink
-                                            href={route("admin.cuti.index")}
-                                            active={route().current(
-                                                "admin.cuti.*",
-                                            )}
-                                        >
-                                            Apprv Cuti
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.lembur.index")}
-                                            active={route().current(
-                                                "admin.lembur.*",
-                                            )}
-                                        >
-                                            Apprv Lembur
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.spj.index")}
-                                            active={route().current(
-                                                "admin.spj.*",
-                                            )}
-                                        >
-                                            Apprv SPJ
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.delegasi.index")}
-                                            active={route().current(
-                                                "admin.delegasi.*",
-                                            )}
-                                        >
-                                            Delegasi (Plt)
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.kinerja.index")}
-                                            active={route().current(
-                                                "admin.kinerja.*",
-                                            )}
-                                        >
-                                            KPI Kinerja
-                                        </NavLink>
-                                    </>
+                                    <Dropdown>
+                                        <Dropdown.Trigger>
+                                            <button
+                                                type="button"
+                                                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150 ${
+                                                    route().current(
+                                                        "admin.cuti.*",
+                                                    ) ||
+                                                    route().current(
+                                                        "admin.lembur.*",
+                                                    ) ||
+                                                    route().current(
+                                                        "admin.spj.*",
+                                                    ) ||
+                                                    route().current(
+                                                        "admin.delegasi.*",
+                                                    ) ||
+                                                    route().current(
+                                                        "admin.kinerja.*",
+                                                    )
+                                                        ? "text-indigo-600 font-bold border-b-2 border-indigo-500"
+                                                        : ""
+                                                }`}
+                                            >
+                                                Approval Center
+                                                <svg
+                                                    className="ms-2 -me-0.5 h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </Dropdown.Trigger>
+                                        <Dropdown.Content width="48">
+                                            <Dropdown.Link
+                                                href={route("admin.cuti.index")}
+                                            >
+                                                Approval Cuti
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.lembur.index",
+                                                )}
+                                            >
+                                                Approval Lembur
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route("admin.spj.index")}
+                                            >
+                                                Approval SPJ
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.delegasi.index",
+                                                )}
+                                            >
+                                                Delegasi Wewenang (Plt)
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.kinerja.index",
+                                                )}
+                                            >
+                                                Penilaian KPI Kinerja
+                                            </Dropdown.Link>
+                                        </Dropdown.Content>
+                                    </Dropdown>
                                 )}
 
-                                {/* 4. MENU HC & ADMIN (Role 1 & 3) */}
+                                {/* 5. DROPDOWN KEPEGAWAIAN & MASTER DATA (Role 1 & 3) */}
                                 {[1, 3].includes(user.role_id) && (
                                     <>
-                                        <NavLink
-                                            href={route("karyawan.index")}
-                                            active={route().current(
-                                                "karyawan.*",
-                                            )}
-                                        >
-                                            Data Karyawan
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("absensi.index")}
-                                            active={route().current(
-                                                "absensi.index",
-                                            )}
-                                        >
-                                            Monitor Absensi
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("keluar.index")}
-                                            active={route().current("keluar.*")}
-                                        >
-                                            Persuratan
-                                        </NavLink>
+                                        <Dropdown>
+                                            <Dropdown.Trigger>
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                                >
+                                                    Kepegawaian
+                                                    <svg
+                                                        className="ms-2 -me-0.5 h-4 w-4"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </Dropdown.Trigger>
+                                            <Dropdown.Content width="48">
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "karyawan.index",
+                                                    )}
+                                                >
+                                                    Data Karyawan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "absensi.index",
+                                                    )}
+                                                >
+                                                    Monitor Absensi
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "pengumuman.index",
+                                                    )}
+                                                >
+                                                    Broadcast Internal
+                                                </Dropdown.Link>
+                                            </Dropdown.Content>
+                                        </Dropdown>
 
-                                        {/* Dropdown Master Data */}
-                                        <div className="hidden sm:flex sm:items-center">
-                                            <Dropdown>
-                                                <Dropdown.Trigger>
-                                                    <span className="inline-flex rounded-md mt-1">
-                                                        <button
-                                                            type="button"
-                                                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
-                                                        >
-                                                            Master Data
-                                                            <svg
-                                                                className="ms-2 -me-0.5 h-4 w-4"
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                viewBox="0 0 20 20"
-                                                                fill="currentColor"
-                                                            >
-                                                                <path
-                                                                    fillRule="evenodd"
-                                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                                    clipRule="evenodd"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                    </span>
-                                                </Dropdown.Trigger>
-                                                <Dropdown.Content>
-                                                    <Dropdown.Link
-                                                        href={route(
-                                                            "departemen.index",
-                                                        )}
+                                        <Dropdown>
+                                            <Dropdown.Trigger>
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                                >
+                                                    Master Data
+                                                    <svg
+                                                        className="ms-2 -me-0.5 h-4 w-4"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
                                                     >
-                                                        Departemen
-                                                    </Dropdown.Link>
-                                                    <Dropdown.Link
-                                                        href={route(
-                                                            "jabatan.index",
-                                                        )}
-                                                    >
-                                                        Jabatan
-                                                    </Dropdown.Link>
-                                                    <Dropdown.Link
-                                                        href={route(
-                                                            "golongan.index",
-                                                        )}
-                                                    >
-                                                        Golongan
-                                                    </Dropdown.Link>
-                                                    <Dropdown.Link
-                                                        href={route(
-                                                            "shift.index",
-                                                        )}
-                                                    >
-                                                        Jam Shift
-                                                    </Dropdown.Link>
-                                                </Dropdown.Content>
-                                            </Dropdown>
-                                        </div>
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </Dropdown.Trigger>
+                                            <Dropdown.Content width="48">
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "departemen.index",
+                                                    )}
+                                                >
+                                                    Departemen
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "jabatan.index",
+                                                    )}
+                                                >
+                                                    Jabatan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route(
+                                                        "golongan.index",
+                                                    )}
+                                                >
+                                                    Golongan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link
+                                                    href={route("shift.index")}
+                                                >
+                                                    Jam Shift
+                                                </Dropdown.Link>
+                                            </Dropdown.Content>
+                                        </Dropdown>
                                     </>
                                 )}
 
-                                {/* 5. MENU FINANCE & ADMIN (Role 1 & 4) */}
+                                {/* 6. DROPDOWN FINANCE & PAYROLL (Role 1 & 4) */}
                                 {[1, 4].includes(user.role_id) && (
-                                    <>
-                                        <NavLink
-                                            href={route("admin.pinjaman.index")}
-                                            active={route().current(
-                                                "admin.pinjaman.*",
-                                            )}
-                                        >
-                                            Apprv Kasbon
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.payroll.index")}
-                                            active={route().current(
-                                                "admin.payroll.*",
-                                            )}
-                                        >
-                                            Payroll
-                                        </NavLink>
-                                        <NavLink
-                                            href={route("admin.komponen.index")}
-                                            active={route().current(
-                                                "admin.komponen.*",
-                                            )}
-                                        >
-                                            Master Komponen Gaji
-                                        </NavLink>
-                                    </>
+                                    <Dropdown>
+                                        <Dropdown.Trigger>
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                            >
+                                                Finance & Payroll
+                                                <svg
+                                                    className="ms-2 -me-0.5 h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </Dropdown.Trigger>
+                                        <Dropdown.Content width="48">
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.pinjaman.index",
+                                                )}
+                                            >
+                                                Approval Kasbon
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.payroll.index",
+                                                )}
+                                            >
+                                                Kalkulator Payroll
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.komponen.index",
+                                                )}
+                                            >
+                                                Master Komponen Gaji
+                                            </Dropdown.Link>
+                                        </Dropdown.Content>
+                                    </Dropdown>
+                                )}
+
+                                {/* 7. DROPDOWN SISTEM & GA (Khusus Super Admin Role 1) */}
+                                {[1].includes(user.role_id) && (
+                                    <Dropdown>
+                                        <Dropdown.Trigger>
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                            >
+                                                Sistem & Aset
+                                                <svg
+                                                    className="ms-2 -me-0.5 h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </Dropdown.Trigger>
+                                        <Dropdown.Content width="48">
+                                            <Dropdown.Link
+                                                href={route("admin.aset.index")}
+                                            >
+                                                Aset & QR Code
+                                            </Dropdown.Link>
+                                            <Dropdown.Link
+                                                href={route(
+                                                    "admin.audit.index",
+                                                )}
+                                            >
+                                                Audit Trail (Log Forensik)
+                                            </Dropdown.Link>
+                                        </Dropdown.Content>
+                                    </Dropdown>
                                 )}
                             </div>
                         </div>
 
+                        {/* DROPDOWN PROFIL AKUN (KANAN) */}
                         <div className="hidden sm:flex sm:items-center sm:ms-6">
-                            {/* Dropdown Profil Akun */}
                             <div className="ms-3 relative">
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -323,12 +469,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Dropdown.Link
                                             href={route("ticket.index")}
                                         >
-                                            IT Helpdesk
+                                            IT Helpdesk Ticket
                                         </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route("profile.edit")}
                                         >
-                                            Profile
+                                            Pengaturan Profil
                                         </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route("logout")}
@@ -342,7 +488,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
-                        {/* Hamburger Menu (Tampilan Mobile) */}
+                        {/* HAMBURGER MENU (MOBILE TOGGLE) */}
                         <div className="-me-2 flex items-center sm:hidden">
                             <button
                                 onClick={() =>
@@ -386,9 +532,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </div>
 
-                {/* ============================================== */}
-                {/* MENU RESPONSIVE (MOBILE)                       */}
-                {/* ============================================== */}
+                {/* ============================================================== */}
+                {/* MENU RESPONSIVE (TAMPILAN MOBILE)                              */}
+                {/* ============================================================== */}
                 <div
                     className={
                         (showingNavigationDropdown ? "block" : "hidden") +
@@ -403,93 +549,58 @@ export default function AuthenticatedLayout({ header, children }) {
                             Dashboard
                         </ResponsiveNavLink>
 
-                        {/* Menu Mobile */}
-                        {[1].includes(auth.user.role_id) && (
-                            <>
-                                <ResponsiveNavLink
-                                    href={route("admin.audit.index")}
-                                    active={route().current("admin.audit.*")}
-                                >
-                                    Audit Trail
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.aset.index")}
-                                    active={route().current("admin.aset.*")}
-                                >
-                                    Aset & QR Code
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("logbook.index")}
-                                    active={route().current("logbook.*")}
-                                >
-                                    Logbook Shift
-                                </ResponsiveNavLink>
-                            </>
-                        )}
-
                         {/* SELF-SERVICE MOBILE */}
-                        {[2, 3, 4, 5, 6].includes(user.role_id) && (
-                            <>
-                                <ResponsiveNavLink
-                                    href={route("absensi.create")}
-                                    active={route().current("absensi.create")}
-                                >
-                                    Absensi Kehadiran
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("cuti.index")}
-                                    active={route().current("cuti.*")}
-                                >
-                                    Pengajuan Cuti
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("lembur.index")}
-                                    active={route().current("lembur.*")}
-                                >
-                                    Pengajuan Lembur
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("spj.index")}
-                                    active={route().current("spj.*")}
-                                >
-                                    Perjalanan Dinas
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("pinjaman.index")}
-                                    active={route().current("pinjaman.*")}
-                                >
-                                    Kasbon & Pinjaman
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("logbook.index")}
-                                    active={route().current("logbook.*")}
-                                >
-                                    Logbook Shift
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("keluar.index")}
-                                    active={route().current("keluar.*")}
-                                >
-                                    e-Persuratan
-                                </ResponsiveNavLink>
-                            </>
-                        )}
-
-                        {/* menu ini khusus untuk Role 1, 2, dan 3 */}
-                        {[1, 2, 3].includes(auth.user.role_id) && (
-                            <ResponsiveNavLink
-                                href={route("pengumuman.index")}
-                                active={route().current("pengumuman.*")}
-                            >
-                                Broadcast
-                            </ResponsiveNavLink>
-                        )}
+                        <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                            Pengajuan & Persuratan
+                        </div>
+                        <ResponsiveNavLink
+                            href={route("absensi.create")}
+                            active={route().current("absensi.create")}
+                        >
+                            Absensi Kehadiran
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("cuti.index")}
+                            active={route().current("cuti.*")}
+                        >
+                            Pengajuan Cuti
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("lembur.index")}
+                            active={route().current("lembur.*")}
+                        >
+                            Pengajuan Lembur
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("spj.index")}
+                            active={route().current("spj.*")}
+                        >
+                            Perjalanan Dinas (SPJ)
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("pinjaman.index")}
+                            active={route().current("pinjaman.*")}
+                        >
+                            Kasbon & Pinjaman
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("logbook.index")}
+                            active={route().current("logbook.*")}
+                        >
+                            Logbook Shift NOC
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("keluar.index")}
+                            active={route().current("keluar.*")}
+                        >
+                            Surat Keluar
+                        </ResponsiveNavLink>
 
                         {/* APPROVAL MOBILE */}
                         {[1, 2, 3, 4, 5].includes(user.role_id) && (
                             <>
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                                    Approve & Manajerial
+                                    Approval Center
                                 </div>
                                 <ResponsiveNavLink
                                     href={route("admin.cuti.index")}
@@ -524,89 +635,29 @@ export default function AuthenticatedLayout({ header, children }) {
                             </>
                         )}
 
-                        {/* HC & ADMIN MOBILE */}
+                        {/* PENGATURAN PERSURATAN HC/ADMIN MOBILE */}
                         {[1, 3].includes(user.role_id) && (
                             <>
                                 <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                                    HC & Admin
+                                    Pengaturan Persuratan
                                 </div>
                                 <ResponsiveNavLink
-                                    href={route("karyawan.index")}
-                                    active={route().current("karyawan.*")}
+                                    href={route("template.index")}
+                                    active={route().current("template.*")}
                                 >
-                                    Data Karyawan
+                                    Master Template & Rute
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
-                                    href={route("absensi.index")}
-                                    active={route().current("absensi.index")}
+                                    href={route("layout.index")}
+                                    active={route().current("layout.*")}
                                 >
-                                    Monitor Absensi
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("keluar.index")}
-                                    active={route().current("keluar.*")}
-                                >
-                                    Persuratan HC
-                                </ResponsiveNavLink>
-
-                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                                    Master Data
-                                </div>
-                                <ResponsiveNavLink
-                                    href={route("departemen.index")}
-                                    active={route().current("departemen.index")}
-                                >
-                                    Departemen
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("jabatan.index")}
-                                    active={route().current("jabatan.index")}
-                                >
-                                    Jabatan
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("golongan.index")}
-                                    active={route().current("golongan.index")}
-                                >
-                                    Golongan
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("shift.index")}
-                                    active={route().current("shift.*")}
-                                >
-                                    Jam Shift
-                                </ResponsiveNavLink>
-                            </>
-                        )}
-
-                        {/* FINANCE MOBILE */}
-                        {[1, 4].includes(user.role_id) && (
-                            <>
-                                <div className="px-4 py-2 mt-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                                    Finance & Payroll
-                                </div>
-                                <ResponsiveNavLink
-                                    href={route("admin.pinjaman.index")}
-                                    active={route().current("admin.pinjaman.*")}
-                                >
-                                    Approval Kasbon
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.payroll.index")}
-                                    active={route().current("admin.payroll.*")}
-                                >
-                                    Kalkulator Payroll
-                                </ResponsiveNavLink>
-                                <ResponsiveNavLink
-                                    href={route("admin.komponen.index")}
-                                    active={route().current("admin.komponen.*")}
-                                >
-                                    Master Komponen Gaji
+                                    Layout Kop & Aset Visual
                                 </ResponsiveNavLink>
                             </>
                         )}
                     </div>
 
+                    {/* FOOTER USER MOBILE */}
                     <div className="pt-4 pb-1 border-t border-gray-200">
                         <div className="px-4">
                             <div className="font-medium text-base text-gray-800">
@@ -638,6 +689,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
+            {/* HEADER HALAMAN */}
             {header && (
                 <header className="bg-white shadow">
                     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -646,6 +698,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </header>
             )}
 
+            {/* KONTEN UTAMA */}
             <main>{children}</main>
         </div>
     );

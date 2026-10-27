@@ -10,46 +10,40 @@ import "react-quill/dist/quill.snow.css";
 
 export default function Create({ auth, templates, karyawans, approvers }) {
     const { data, setData, post, processing, errors } = useForm({
-        mode: "template", // 'template' atau 'custom'
         template_id: "",
         karyawan_id: "",
         approver_id: "",
-        keterangan_tambahan: "",
-        isi_custom: "", // Menyimpan HTML jika mode custom
-        kategori_alur_custom: "Approval_Direksi", // Default alur untuk mode custom
+        isi_surat_final: "",
+        lampirans: [],
     });
 
     const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [selectedKaryawan, setSelectedKaryawan] = useState(null);
-    const [previewHtml, setPreviewHtml] = useState(
-        "<p class='text-gray-400 text-center mt-10'>Pilih template atau mulai ketik surat untuk melihat preview.</p>",
-    );
 
-    // Fungsi Render Live Preview
+    // Menyuntikkan template ke React Quill setiap kali Template atau Karyawan diubah
     useEffect(() => {
-        let html = "";
+        if (data.template_id) {
+            const template = templates.find((t) => t.id == data.template_id);
+            setSelectedTemplate(template || null);
 
-        if (data.mode === "template") {
-            if (selectedTemplate) {
-                html = selectedTemplate.konten;
+            if (template) {
+                let html = template.konten;
+                const karyawan = karyawans.find(
+                    (k) => k.id == data.karyawan_id,
+                );
 
-                // Render data karyawan jika dipilih
-                if (selectedKaryawan) {
+                if (karyawan) {
                     html = html.replace(
                         /\[nama_karyawan\]/g,
-                        `<strong>${selectedKaryawan.nama_lengkap}</strong>`,
+                        `<strong>${karyawan.nama_lengkap}</strong>`,
                     );
-                    html = html.replace(
-                        /[nik]/g,
-                        selectedKaryawan.nik_internal || "-",
-                    );
+                    html = html.replace(/[nik]/g, karyawan.nik_internal || "-");
                     html = html.replace(
                         /[jabatan]/g,
-                        selectedKaryawan.jabatan?.nama_jabatan || "-",
+                        karyawan.jabatan?.nama_jabatan || "-",
                     );
                     html = html.replace(
                         /[alamat]/g,
-                        selectedKaryawan.alamat_domisili || "-",
+                        karyawan.alamat_domisili || "-",
                     );
                 } else {
                     html = html.replace(
@@ -70,70 +64,25 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                     );
                 }
 
-                // Teks tambahan dinamis (Regex sudah diperbaiki dengan backslash)
-                html = html.replace(
-                    /[keterangan]/g,
-                    data.keterangan_tambahan ||
-                        "<span class='bg-yellow-200'>[Keterangan Tambahan]</span>",
-                );
+                const today = new Date().toLocaleDateString("id-ID", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                });
+                html = html.replace(/\[tanggal_hari_ini\]/g, today);
+
+                setData("isi_surat_final", html);
             }
         } else {
-            // Mode Custom: Langsung gunakan input dari React Quill
-            html =
-                data.isi_custom ||
-                "<p class='text-gray-400'>Ketik isi surat di editor...</p>";
+            setSelectedTemplate(null);
+            setData("isi_surat_final", "");
         }
-
-        // Tanggal Hari Ini (berlaku untuk kedua mode)
-        const today = new Date().toLocaleDateString("id-ID", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-        html = html.replace(/\[tanggal_hari_ini\]/g, today);
-
-        if (data.mode === "template" && !selectedTemplate) {
-            setPreviewHtml(
-                "<p class='text-gray-400 text-center mt-10'>Pilih template surat terlebih dahulu untuk melihat preview.</p>",
-            );
-        } else {
-            setPreviewHtml(html);
-        }
-    }, [
-        data.mode,
-        selectedTemplate,
-        selectedKaryawan,
-        data.keterangan_tambahan,
-        data.isi_custom,
-    ]);
-
-    const handleTemplateChange = (e) => {
-        const id = e.target.value;
-        setData("template_id", id);
-        const template = templates.find((t) => t.id == id);
-        setSelectedTemplate(template || null);
-
-        if (template && template.kategori_alur === "Hanya_Notifikasi") {
-            setData("approver_id", "");
-        }
-    };
-
-    const handleKaryawanChange = (e) => {
-        const id = e.target.value;
-        setData("karyawan_id", id);
-        setSelectedKaryawan(karyawans.find((k) => k.id == id) || null);
-    };
+    }, [data.template_id, data.karyawan_id]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route("keluar.store"));
     };
-
-    // Logika penentuan apakah butuh Approver saat ini
-    const butuhApprover =
-        data.mode === "template"
-            ? selectedTemplate?.kategori_alur === "Approval_Direksi"
-            : data.kategori_alur_custom === "Approval_Direksi";
 
     return (
         <AuthenticatedLayout
@@ -152,38 +101,20 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                         onSubmit={handleSubmit}
                         className="grid grid-cols-1 lg:grid-cols-12 gap-6"
                     >
-                        {/* BAGIAN KIRI: FORM EDITOR */}
+                        {/* BAGIAN KIRI: KONTROL & EDITOR */}
                         <div className="lg:col-span-5 flex flex-col gap-4">
                             <div className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-indigo-500">
-                                {/* TAB PILIHAN MODE */}
-                                <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setData("mode", "template")
-                                        }
-                                        className={`flex-1 py-2 text-sm font-bold rounded-md transition ${data.mode === "template" ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700"}`}
-                                    >
-                                        📑 Gunakan Template
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setData("mode", "custom")
-                                        }
-                                        className={`flex-1 py-2 text-sm font-bold rounded-md transition ${data.mode === "custom" ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700"}`}
-                                    >
-                                        ✍️ Tulis Custom Bebas
-                                    </button>
-                                </div>
-
-                                {/* INPUT UMUM: KARYAWAN TUJUAN */}
                                 <div className="mb-4">
-                                    <InputLabel value="Surat Ditujukan Kepada (Karyawan)" />
+                                    <InputLabel value="1. Surat Ditujukan Kepada (Karyawan)" />
                                     <select
                                         className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
                                         value={data.karyawan_id}
-                                        onChange={handleKaryawanChange}
+                                        onChange={(e) =>
+                                            setData(
+                                                "karyawan_id",
+                                                e.target.value,
+                                            )
+                                        }
                                         required
                                     >
                                         <option value="">
@@ -202,102 +133,61 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     />
                                 </div>
 
-                                {/* KONDISIONAL BERDASARKAN MODE */}
-                                {data.mode === "template" ? (
-                                    <>
-                                        <div className="mb-4">
-                                            <InputLabel value="Pilih Template Resmi" />
-                                            <select
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
-                                                value={data.template_id}
-                                                onChange={handleTemplateChange}
-                                                required={
-                                                    data.mode === "template"
-                                                }
-                                            >
-                                                <option value="">
-                                                    -- Pilih Template --
-                                                </option>
-                                                {templates.map((t) => (
-                                                    <option
-                                                        key={t.id}
-                                                        value={t.id}
-                                                    >
-                                                        {t.kode_surat} -{" "}
-                                                        {t.nama_template}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <InputError
-                                                message={errors.template_id}
-                                                className="mt-1"
-                                            />
-                                        </div>
-                                        <div className="mb-4">
-                                            <InputLabel value="Keterangan Tambahan (Isi [keterangan])" />
-                                            <textarea
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
-                                                rows="3"
-                                                value={data.keterangan_tambahan}
-                                                onChange={(e) =>
+                                <div className="mb-4">
+                                    <InputLabel value="2. Pilih Template Surat" />
+                                    <select
+                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
+                                        value={data.template_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                "template_id",
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                    >
+                                        <option value="">
+                                            -- Pilih Template --
+                                        </option>
+                                        {templates.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.kode_surat} -{" "}
+                                                {t.nama_template}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        message={errors.template_id}
+                                        className="mt-1"
+                                    />
+                                </div>
+
+                                {selectedTemplate && (
+                                    <div className="mb-4">
+                                        <InputLabel value="3. Editor Isi Surat (Format Bebas)" />
+                                        <div className="mt-1 bg-white">
+                                            <ReactQuill
+                                                theme="snow"
+                                                value={data.isi_surat_final}
+                                                onChange={(val) =>
                                                     setData(
-                                                        "keterangan_tambahan",
-                                                        e.target.value,
+                                                        "isi_surat_final",
+                                                        val,
                                                     )
                                                 }
+                                                style={{
+                                                    height: "300px",
+                                                    marginBottom: "40px",
+                                                }}
                                             />
                                         </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="mb-4">
-                                            <InputLabel value="Jalur Persetujuan (Custom)" />
-                                            <select
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
-                                                value={
-                                                    data.kategori_alur_custom
-                                                }
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "kategori_alur_custom",
-                                                        e.target.value,
-                                                    )
-                                                }
-                                            >
-                                                <option value="Approval_Direksi">
-                                                    Membutuhkan TTD Pimpinan
-                                                </option>
-                                                <option value="Hanya_Notifikasi">
-                                                    Tanpa TTD (Hanya Tembusan)
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div className="mb-4">
-                                            <InputLabel value="Ketik Isi Surat (Format Bebas)" />
-                                            <div className="mt-1 bg-white">
-                                                <ReactQuill
-                                                    theme="snow"
-                                                    value={data.isi_custom}
-                                                    onChange={(val) =>
-                                                        setData(
-                                                            "isi_custom",
-                                                            val,
-                                                        )
-                                                    }
-                                                    style={{
-                                                        height: "200px",
-                                                        marginBottom: "40px",
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </>
+                                    </div>
                                 )}
 
-                                {/* PEMILIHAN APPROVER */}
-                                {butuhApprover && (
+                                {selectedTemplate?.kategori_alur ===
+                                    "Approval_Direksi" && (
                                     <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-md">
-                                        <InputLabel value="Pilih Pimpinan Penandatangan (Approver)" />
+                                        <InputLabel value="4. Pilih Pimpinan Penandatangan (Approver)" />
                                         <select
                                             className="mt-1 block w-full border-orange-300 rounded-md shadow-sm text-sm"
                                             value={data.approver_id}
@@ -324,6 +214,30 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                         />
                                     </div>
                                 )}
+                                {/* Input Upload Lampiran (Opsional) */}
+                                <div className="mb-4">
+                                    <InputLabel value="Upload Lampiran Tambahan (Opsional - Bisa Pilih Banyak)" />
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.jpg,.jpeg,.png,.docx"
+                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                        onChange={(e) =>
+                                            setData(
+                                                "lampirans",
+                                                Array.from(e.target.files),
+                                            )
+                                        }
+                                    />
+                                    <span className="text-xs text-gray-400">
+                                        Format: PDF, PNG, JPG, DOCX (Maks.
+                                        5MB/file)
+                                    </span>
+                                    <InputError
+                                        message={errors.lampirans}
+                                        className="mt-1"
+                                    />
+                                </div>
 
                                 <div className="mt-6 flex gap-3 border-t pt-4">
                                     <Link
@@ -337,14 +251,13 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     <PrimaryButton
                                         className="w-2/3 justify-center !bg-indigo-600 hover:!bg-indigo-700"
                                         disabled={
-                                            processing ||
-                                            (data.mode === "template" &&
-                                                !selectedTemplate)
+                                            processing || !selectedTemplate
                                         }
                                     >
                                         {processing
                                             ? "Memproses..."
-                                            : butuhApprover
+                                            : selectedTemplate?.kategori_alur ===
+                                                "Approval_Direksi"
                                               ? "Ajukan Draft Surat"
                                               : "Terbitkan Surat"}
                                     </PrimaryButton>
@@ -371,55 +284,58 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                         padding: "40px 50px",
                                     }}
                                 >
-                                    {/* Area Konten Surat */}
-                                    <div
-                                        className="prose prose-sm max-w-none text-gray-800 flex-grow"
-                                        dangerouslySetInnerHTML={{
-                                            __html: previewHtml,
-                                        }}
-                                    />
+                                    {selectedTemplate ? (
+                                        <>
+                                            <div
+                                                className="prose prose-sm max-w-none text-gray-800 flex-grow"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: data.isi_surat_final,
+                                                }}
+                                            />
 
-                                    {/* Area Footer / TTD (Tetap baku/terkunci oleh sistem) */}
-                                    {(selectedTemplate ||
-                                        data.mode === "custom") && (
-                                        <div className="mt-16 flex justify-end text-sm text-gray-800">
-                                            <div className="text-center w-64">
-                                                <p>
-                                                    Yogyakarta,{" "}
-                                                    {new Date().toLocaleDateString(
-                                                        "id-ID",
-                                                        {
-                                                            year: "numeric",
-                                                            month: "long",
-                                                            day: "numeric",
-                                                        },
-                                                    )}
-                                                </p>
-                                                <p className="font-bold">
-                                                    {data.mode === "template"
-                                                        ? selectedTemplate?.pembuat_kode ===
-                                                          "LDP-DIR"
+                                            <div className="mt-16 flex justify-end text-sm text-gray-800">
+                                                <div className="text-center w-64">
+                                                    <p>
+                                                        Yogyakarta,{" "}
+                                                        {new Date().toLocaleDateString(
+                                                            "id-ID",
+                                                            {
+                                                                year: "numeric",
+                                                                month: "long",
+                                                                day: "numeric",
+                                                            },
+                                                        )}
+                                                    </p>
+                                                    <p className="font-bold">
+                                                        {selectedTemplate.pembuat_kode ===
+                                                        "LDP-DIR"
                                                             ? "PT. Lintas Data Prima"
-                                                            : "Departemen Terkait"
-                                                        : "PT. Lintas Data Prima"}
-                                                </p>
+                                                            : "Departemen Terkait"}
+                                                    </p>
 
-                                                <div className="h-24 mt-4 mb-2 flex items-center justify-center border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
-                                                    {butuhApprover
-                                                        ? "[ Menunggu TTD / QR Code Validasi ]"
-                                                        : "[ Validasi Sistem Terbit Otomatis ]"}
+                                                    <div className="h-24 mt-4 mb-2 flex items-center justify-center border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                                                        {selectedTemplate.kategori_alur ===
+                                                        "Approval_Direksi"
+                                                            ? "[ Menunggu TTD / QR Code Validasi ]"
+                                                            : "[ Validasi Sistem Terbit Otomatis ]"}
+                                                    </div>
+
+                                                    <p className="font-bold underline uppercase">
+                                                        {approvers.find(
+                                                            (a) =>
+                                                                a.id ==
+                                                                data.approver_id,
+                                                        )?.name ||
+                                                            "(Nama Pimpinan)"}
+                                                    </p>
                                                 </div>
-
-                                                <p className="font-bold underline uppercase">
-                                                    {approvers.find(
-                                                        (a) =>
-                                                            a.id ==
-                                                            data.approver_id,
-                                                    )?.name ||
-                                                        "(Nama Pimpinan)"}
-                                                </p>
                                             </div>
-                                        </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-gray-400 text-center mt-20">
+                                            Pilih template surat terlebih dahulu
+                                            untuk melihat preview.
+                                        </p>
                                     )}
                                 </div>
                             </div>
