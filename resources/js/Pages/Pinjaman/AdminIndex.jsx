@@ -4,7 +4,9 @@ import { Head, router, usePage, useForm } from "@inertiajs/react";
 
 export default function AdminIndex({ pinjaman = [], userRole }) {
     const { flash, errors } = usePage().props;
-    const [selectedCicilan, setSelectedCicilan] = useState(null);
+    const [selectedCicilanUpload, setSelectedCicilanUpload] = useState(null);
+    const [selectedCicilanValidasi, setSelectedCicilanValidasi] =
+        useState(null);
 
     const formBayar = useForm({
         bukti_transfer: null,
@@ -27,13 +29,13 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
         }
     };
 
+    // Modal Upload Bukti Transfer Manual
     const handleOpenBayarModal = (pinjam) => {
-        // Ambil cicilan pertama yang belum lunas
         const cicilanBelumLunas = pinjam.cicilans?.find(
             (c) => c.status_bayar === "Belum Lunas",
         );
         if (cicilanBelumLunas) {
-            setSelectedCicilan({
+            setSelectedCicilanUpload({
                 ...cicilanBelumLunas,
                 karyawan: pinjam.karyawan,
             });
@@ -42,20 +44,39 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
         }
     };
 
+    // Submit Upload Bukti Bayar
     const submitBayarManual = (e) => {
         e.preventDefault();
-        if (!selectedCicilan) return;
+        if (!selectedCicilanUpload) return;
 
         formBayar.post(
-            route("admin.pinjaman.bayarManual", selectedCicilan.id),
+            route("admin.pinjaman.bayarManual", selectedCicilanUpload.id),
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    setSelectedCicilan(null);
+                    setSelectedCicilanUpload(null);
                     formBayar.reset();
                 },
             },
         );
+    };
+
+    // Submit Verifikasi Bukti Bayar (Konfirmasi / Tolak)
+    const handleVerifikasi = (cicilanId, statusVerifikasi) => {
+        if (
+            confirm(
+                `Apakah Anda yakin ingin memverifikasi pembayaran ini sebagai ${statusVerifikasi}?`,
+            )
+        ) {
+            router.post(
+                route("admin.pinjaman.verifikasi", cicilanId),
+                { status_verifikasi: statusVerifikasi },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => setSelectedCicilanValidasi(null),
+                },
+            );
+        }
     };
 
     const formatRupiah = (angka) => {
@@ -78,7 +99,7 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
-                    {/* FLASH NOTIFICATION */}
+                    {/* FLASH MESSAGE */}
                     {flash?.success && (
                         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm text-sm font-semibold">
                             ✓ {flash.success}
@@ -126,155 +147,280 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                                             </td>
                                         </tr>
                                     ) : (
-                                        pinjaman.map((p) => (
-                                            <tr
-                                                key={p.id}
-                                                className="hover:bg-gray-50 transition"
-                                            >
-                                                {/* KARYAWAN & SUMBER DANA */}
-                                                <td className="px-6 py-4 border-b">
-                                                    <div className="text-sm font-bold text-gray-800">
-                                                        {p.karyawan
-                                                            ?.nama_lengkap ||
-                                                            "Tidak Diketahui"}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 mb-1">
-                                                        {p.karyawan?.departemen
-                                                            ?.nama_departemen ||
-                                                            "-"}
-                                                    </div>
-                                                    <span
-                                                        className={`inline-block px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                                                            p.jenis_kasbon ===
-                                                            "Divisi"
-                                                                ? "bg-purple-100 text-purple-800 border border-purple-200"
-                                                                : "bg-blue-100 text-blue-800 border border-blue-200"
-                                                        }`}
-                                                    >
-                                                        Kas{" "}
-                                                        {p.jenis_kasbon ||
-                                                            "Finance"}
-                                                    </span>
-                                                </td>
+                                        pinjaman.map((p) => {
+                                            // Cari cicilan yang butuh validasi
+                                            const cicilanValidasi =
+                                                p.cicilans?.find(
+                                                    (c) =>
+                                                        c.status_bayar ===
+                                                        "Menunggu Validasi",
+                                                );
 
-                                                {/* TANGGAL & ALASAN */}
-                                                <td className="px-6 py-4 border-b text-sm text-gray-700">
-                                                    <div className="font-semibold text-xs text-gray-500">
-                                                        {new Date(
-                                                            p.created_at,
-                                                        ).toLocaleDateString(
-                                                            "id-ID",
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-gray-700 italic mt-0.5 max-w-xs truncate">
-                                                        "
-                                                        {p.alasan_pinjaman ||
-                                                            "-"}
-                                                        "
-                                                    </p>
-                                                </td>
+                                            return (
+                                                <tr
+                                                    key={p.id}
+                                                    className="hover:bg-gray-50 transition"
+                                                >
+                                                    <td className="px-6 py-4 border-b">
+                                                        <div className="text-sm font-bold text-gray-800">
+                                                            {p.karyawan
+                                                                ?.nama_lengkap ||
+                                                                "Tidak Diketahui"}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mb-1">
+                                                            {p.karyawan
+                                                                ?.departemen
+                                                                ?.nama_departemen ||
+                                                                "-"}
+                                                        </div>
+                                                        <span
+                                                            className={`inline-block px-2 py-0.5 text-[10px] font-extrabold rounded ${
+                                                                p.jenis_kasbon ===
+                                                                "Divisi"
+                                                                    ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                                                    : "bg-blue-100 text-blue-800 border border-blue-200"
+                                                            }`}
+                                                        >
+                                                            Kas{" "}
+                                                            {p.jenis_kasbon ||
+                                                                "Finance"}
+                                                        </span>
+                                                    </td>
 
-                                                {/* TOTAL & TENOR */}
-                                                <td className="px-6 py-4 border-b text-sm text-gray-800">
-                                                    <span className="font-bold text-indigo-600">
+                                                    <td className="px-6 py-4 border-b text-sm text-gray-700">
+                                                        <div className="font-semibold text-xs text-gray-500">
+                                                            {new Date(
+                                                                p.created_at,
+                                                            ).toLocaleDateString(
+                                                                "id-ID",
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-gray-700 italic mt-0.5 max-w-xs truncate">
+                                                            "
+                                                            {p.alasan_pinjaman ||
+                                                                "-"}
+                                                            "
+                                                        </p>
+                                                    </td>
+
+                                                    <td className="px-6 py-4 border-b text-sm text-gray-800">
+                                                        <span className="font-bold text-indigo-600">
+                                                            {formatRupiah(
+                                                                p.total_pinjaman,
+                                                            )}
+                                                        </span>
+                                                        <br />
+                                                        <span className="text-xs text-gray-500">
+                                                            {p.tenor_bulan}{" "}
+                                                            Bulan Cicilan
+                                                        </span>
+                                                    </td>
+
+                                                    <td className="px-6 py-4 border-b text-sm text-red-600 font-semibold">
                                                         {formatRupiah(
-                                                            p.total_pinjaman,
+                                                            p.sisa_pinjaman,
                                                         )}
-                                                    </span>
-                                                    <br />
-                                                    <span className="text-xs text-gray-500">
-                                                        {p.tenor_bulan} Bulan
-                                                        Cicilan
-                                                    </span>
-                                                </td>
+                                                    </td>
 
-                                                {/* SISA HUTANG */}
-                                                <td className="px-6 py-4 border-b text-sm text-red-600 font-semibold">
-                                                    {formatRupiah(
-                                                        p.sisa_pinjaman,
-                                                    )}
-                                                </td>
-
-                                                {/* STATUS */}
-                                                <td className="px-6 py-4 border-b text-center">
-                                                    <span
-                                                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            p.status ===
-                                                            "Pending"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : p.status ===
-                                                                    "Berjalan"
-                                                                  ? "bg-blue-100 text-blue-800"
-                                                                  : p.status ===
-                                                                      "Lunas"
-                                                                    ? "bg-green-100 text-green-800"
-                                                                    : "bg-red-100 text-red-800"
-                                                        }`}
-                                                    >
-                                                        {p.status}
-                                                    </span>
-                                                </td>
-
-                                                {/* AKSI */}
-                                                <td className="px-6 py-4 border-b text-center">
-                                                    <div className="flex justify-center items-center space-x-2">
-                                                        {p.status ===
-                                                            "Pending" && (
-                                                            <>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleAction(
-                                                                            p.id,
-                                                                            "Berjalan",
-                                                                        )
-                                                                    }
-                                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                >
-                                                                    Setujui &
-                                                                    Cairkan
-                                                                </button>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleAction(
-                                                                            p.id,
-                                                                            "Ditolak",
-                                                                        )
-                                                                    }
-                                                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
-                                                                >
-                                                                    Tolak
-                                                                </button>
-                                                            </>
-                                                        )}
-
-                                                        {p.status ===
-                                                            "Berjalan" && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleOpenBayarModal(
-                                                                        p,
-                                                                    )
-                                                                }
-                                                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                    <td className="px-6 py-4 border-b text-center">
+                                                        {cicilanValidasi ? (
+                                                            <span className="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300 animate-pulse">
+                                                                Menunggu
+                                                                Validasi{" "}
+                                                                {p.jenis_kasbon ===
+                                                                "Divisi"
+                                                                    ? "Atasan"
+                                                                    : "Finance"}
+                                                            </span>
+                                                        ) : (
+                                                            <span
+                                                                className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                    p.status ===
+                                                                    "Pending"
+                                                                        ? "bg-yellow-100 text-yellow-800"
+                                                                        : p.status ===
+                                                                            "Disetujui Atasan"
+                                                                          ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                                                                          : p.status ===
+                                                                              "Berjalan"
+                                                                            ? "bg-blue-100 text-blue-800"
+                                                                            : p.status ===
+                                                                                "Lunas"
+                                                                              ? "bg-green-100 text-green-800"
+                                                                              : "bg-red-100 text-red-800"
+                                                                }`}
                                                             >
-                                                                Pelunasan Manual
-                                                            </button>
-                                                        )}
-
-                                                        {[
-                                                            "Lunas",
-                                                            "Ditolak",
-                                                        ].includes(
-                                                            p.status,
-                                                        ) && (
-                                                            <span className="text-xs text-gray-400 italic">
-                                                                Selesai
+                                                                {p.status}
                                                             </span>
                                                         )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+
+                                                    <td className="px-6 py-4 border-b text-center">
+                                                        <div className="flex justify-center items-center space-x-2">
+                                                            {/* 1. JIKA STATUS 'Pending' */}
+                                                            {p.status ===
+                                                                "Pending" && (
+                                                                <>
+                                                                    {/* Atasan / Supervisor Divisi (Role 5) melakukan ACC Pertama */}
+                                                                    {userRole ===
+                                                                        5 && (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    handleAction(
+                                                                                        p.id,
+                                                                                        "Disetujui Atasan",
+                                                                                    )
+                                                                                }
+                                                                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                            >
+                                                                                ✅
+                                                                                ACC
+                                                                                Atasan
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    handleAction(
+                                                                                        p.id,
+                                                                                        "Ditolak",
+                                                                                    )
+                                                                                }
+                                                                                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                            >
+                                                                                Tolak
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+
+                                                                    {/* Jika Admin (Role 1) atau Finance (Role 4) melihat status Pending (Kasbon Divisi langsung) */}
+                                                                    {[
+                                                                        1, 4,
+                                                                    ].includes(
+                                                                        userRole,
+                                                                    ) &&
+                                                                        p.jenis_kasbon ===
+                                                                            "Divisi" && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleAction(
+                                                                                            p.id,
+                                                                                            "Berjalan",
+                                                                                        )
+                                                                                    }
+                                                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                                >
+                                                                                    Setujui
+                                                                                    &
+                                                                                    Cairkan
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleAction(
+                                                                                            p.id,
+                                                                                            "Ditolak",
+                                                                                        )
+                                                                                    }
+                                                                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                                >
+                                                                                    Tolak
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                </>
+                                                            )}
+
+                                                            {/* 2. JIKA STATUS 'Disetujui Atasan' (Kasbon Finance Naik ke Finance) */}
+                                                            {p.status ===
+                                                                "Disetujui Atasan" &&
+                                                                [1, 4].includes(
+                                                                    userRole,
+                                                                ) && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleAction(
+                                                                                    p.id,
+                                                                                    "Berjalan",
+                                                                                )
+                                                                            }
+                                                                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                        >
+                                                                            💰
+                                                                            Cairkan
+                                                                            Dana
+                                                                            (Finance)
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleAction(
+                                                                                    p.id,
+                                                                                    "Ditolak",
+                                                                                )
+                                                                            }
+                                                                            className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                        >
+                                                                            Tolak
+                                                                        </button>
+                                                                    </>
+                                                                )}
+
+                                                            {/* 3. JIKA STATUS 'Berjalan' (Proses Pelunasan) */}
+                                                            {p.status ===
+                                                                "Berjalan" && (
+                                                                <>
+                                                                    {cicilanValidasi ? (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setSelectedCicilanValidasi(
+                                                                                    {
+                                                                                        ...cicilanValidasi,
+                                                                                        karyawan:
+                                                                                            p.karyawan,
+                                                                                        jenis_kasbon:
+                                                                                            p.jenis_kasbon,
+                                                                                    },
+                                                                                )
+                                                                            }
+                                                                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                        >
+                                                                            Cek
+                                                                            Bukti
+                                                                            Bayar
+                                                                            🔍
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleOpenBayarModal(
+                                                                                    p,
+                                                                                )
+                                                                            }
+                                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                        >
+                                                                            Pelunasan
+                                                                            Manual
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            )}
+
+                                                            {/* 4. JIKA STATUS 'Lunas' ATAU 'Ditolak' */}
+                                                            {[
+                                                                "Lunas",
+                                                                "Ditolak",
+                                                            ].includes(
+                                                                p.status,
+                                                            ) && (
+                                                                <span className="text-xs text-gray-400 italic">
+                                                                    Selesai
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     )}
                                 </tbody>
                             </table>
@@ -283,8 +429,8 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                 </div>
             </div>
 
-            {/* MODAL PELUNASAN MANUAL */}
-            {selectedCicilan && (
+            {/* MODAL UPLOAD BUKTI BAYAR */}
+            {selectedCicilanUpload && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
                         <div className="bg-[#2A164E] px-5 py-4 text-white">
@@ -293,7 +439,7 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                             </h3>
                             <p className="text-xs text-gray-300">
                                 Karyawan:{" "}
-                                {selectedCicilan.karyawan?.nama_lengkap}
+                                {selectedCicilanUpload.karyawan?.nama_lengkap}
                             </p>
                         </div>
 
@@ -307,7 +453,7 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                                 </p>
                                 <p className="text-lg font-extrabold text-[#2A164E]">
                                     {formatRupiah(
-                                        selectedCicilan.nominal_cicilan,
+                                        selectedCicilanUpload.nominal_cicilan,
                                     )}
                                 </p>
                             </div>
@@ -334,7 +480,9 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                             <div className="flex justify-end space-x-2 pt-3 border-t">
                                 <button
                                     type="button"
-                                    onClick={() => setSelectedCicilan(null)}
+                                    onClick={() =>
+                                        setSelectedCicilanUpload(null)
+                                    }
                                     className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-200"
                                 >
                                     Batal
@@ -346,10 +494,117 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                                 >
                                     {formBayar.processing
                                         ? "Menyimpan..."
-                                        : "Konfirmasi Lunas"}
+                                        : "Kirim Bukti Bayar"}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL VERIFIKASI BUKTI BAYAR */}
+            {selectedCicilanValidasi && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
+                        <div className="bg-[#2A164E] px-5 py-4 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-base">
+                                    Verifikasi Bukti Pelunasan
+                                </h3>
+                                <p className="text-xs text-gray-300">
+                                    {
+                                        selectedCicilanValidasi.karyawan
+                                            ?.nama_lengkap
+                                    }{" "}
+                                    ({selectedCicilanValidasi.jenis_kasbon})
+                                </p>
+                            </div>
+                            <span className="text-xs font-bold px-2 py-1 bg-orange-500 text-white rounded">
+                                Menunggu Validasi
+                            </span>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            <div className="p-3 bg-gray-50 border rounded-lg flex justify-between items-center text-xs">
+                                <div>
+                                    <p className="text-gray-400 font-bold uppercase">
+                                        Nominal Ditransfer
+                                    </p>
+                                    <p className="text-base font-extrabold text-[#2A164E]">
+                                        {formatRupiah(
+                                            selectedCicilanValidasi.nominal_cicilan,
+                                        )}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400 font-bold uppercase">
+                                        Metode
+                                    </p>
+                                    <p className="font-semibold text-gray-800">
+                                        {
+                                            selectedCicilanValidasi.metode_pelunasan
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* PRATINJAU FOTO BUKTI TRANSFER */}
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-2">
+                                    Foto Bukti Transfer
+                                </label>
+                                <div className="border rounded-lg p-2 bg-gray-100 flex justify-center max-h-64 overflow-y-auto">
+                                    {selectedCicilanValidasi.bukti_transfer ? (
+                                        <img
+                                            src={`/storage/${selectedCicilanValidasi.bukti_transfer}`}
+                                            alt="Bukti Transfer"
+                                            className="max-h-56 object-contain rounded"
+                                        />
+                                    ) : (
+                                        <p className="text-xs text-gray-400 py-8">
+                                            Tidak ada file gambar.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* TOMBOL AKSI VERIFIKASI */}
+                            <div className="flex justify-end space-x-2 pt-3 border-t">
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setSelectedCicilanValidasi(null)
+                                    }
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-200"
+                                >
+                                    Tutup
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        handleVerifikasi(
+                                            selectedCicilanValidasi.id,
+                                            "Ditolak",
+                                        )
+                                    }
+                                    className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700"
+                                >
+                                    ❌ Tolak Bukti
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        handleVerifikasi(
+                                            selectedCicilanValidasi.id,
+                                            "Lunas",
+                                        )
+                                    }
+                                    className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700"
+                                >
+                                    ✅ Konfirmasi Sah & Lunas
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -71,6 +71,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pinjaman', [PinjamanController::class, 'index'])->name('pinjaman.index');
     Route::get('/pinjaman/ajukan', [PinjamanController::class, 'create'])->name('pinjaman.create');
     Route::post('/pinjaman', [PinjamanController::class, 'store'])->name('pinjaman.store');
+    Route::post('/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'uploadBuktiBayar'])->name('pinjaman.bayarManual');
 
     Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.index');
     Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.create');
@@ -137,13 +138,16 @@ Route::middleware(['auth', 'role:1,3,5'])->group(function () {
     Route::patch('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');
 });
 
-// B. Finance (4) & Admin (1) -> Keuangan & Payroll
-// Modul Approval Kasbon & Pinjaman (Admin, HC, Finance, SPV)
+// Modul Approval Kasbon & Pinjaman (Bisa diakses Admin, HC, Finance, SPV)
 Route::middleware(['auth', 'role:1,3,4,5'])->group(function () {
     Route::get('/admin/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
     Route::post('/admin/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
-    Route::post('/admin/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'bayarManual'])->name('admin.pinjaman.bayarManual');
- 
+    Route::post('/admin/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'uploadBuktiBayar'])->name('admin.pinjaman.bayarManual');
+    Route::post('/admin/pinjaman/cicilan/{cicilanId}/verifikasi', [PinjamanController::class, 'verifikasiPelunasan'])->name('admin.pinjaman.verifikasi');
+});
+
+// Modul Payroll & Komponen Gaji (KHUSUS Finance (4) & Super Admin (1))
+Route::middleware(['auth', 'role:1,4'])->group(function () {
     Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
     Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
     Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
@@ -151,7 +155,7 @@ Route::middleware(['auth', 'role:1,3,4,5'])->group(function () {
     Route::resource('/admin/komponen-gaji', MasterKomponenPayrollController::class)
         ->names('admin.komponen')
         ->except(['create', 'show', 'edit']);
-});
+}); 
 
 // C. SPV (5), Finance (4), Direktur (2), Admin (1) -> SPJ
 Route::middleware(['auth', 'role:1,2,4,5'])->group(function () {

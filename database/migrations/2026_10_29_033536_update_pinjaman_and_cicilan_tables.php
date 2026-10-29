@@ -16,6 +16,8 @@ return new class extends Migration
         });
 
         Schema::table('cicilan_pinjamans', function (Blueprint $table) {
+            // Mengubah status_bayar agar mendukung tahap validasi
+            $table->enum('status_bayar', ['Belum Lunas', 'Menunggu Validasi', 'Lunas'])->default('Belum Lunas')->change();
             $table->enum('metode_pelunasan', ['Potong Gaji', 'Tunai / Transfer'])->default('Potong Gaji')->after('status_bayar');
             $table->string('bukti_transfer')->nullable()->after('metode_pelunasan');
             $table->timestamp('tgl_bayar')->nullable()->after('bukti_transfer');
@@ -30,6 +32,7 @@ return new class extends Migration
         });
 
         Schema::table('cicilan_pinjamans', function (Blueprint $table) {
+            $table->enum('status_bayar', ['Belum Lunas', 'Lunas'])->default('Belum Lunas')->change();
             $table->dropColumn(['metode_pelunasan', 'bukti_transfer', 'tgl_bayar']);
         });
     }
