@@ -40,11 +40,13 @@ export default function Index({ auth, suratKeluars }) {
         setIsSubmitting(true);
 
         const routeName =
-            actionType === "approve" ? "keluar.approve" : "keluar.batalkan";
+            actionType === "approve" ? "keluar.approve" : "keluar.tolak";
 
         router.post(
             route(routeName, selectedSurat.id),
-            { catatan },
+            actionType === "approve"
+                ? { catatan }
+                : { catatan_revisi: catatan },
             {
                 onSuccess: () => {
                     setShowApprovalModal(false);
@@ -143,15 +145,20 @@ export default function Index({ auth, suratKeluars }) {
                                 {suratKeluars.data &&
                                 suratKeluars.data.length > 0 ? (
                                     suratKeluars.data.map((surat) => {
-                                        // Cari step approval yang sedang aktif (Menunggu)
                                         const activeStep =
                                             surat.approvals?.find(
                                                 (a) => a.status === "Menunggu",
                                             );
+
+                                        const userJabatanId =
+                                            auth?.user?.karyawan?.jabatan_id ||
+                                            user?.karyawan?.jabatan_id ||
+                                            user?.jabatan_id;
+
                                         const isMyTurn =
                                             activeStep &&
-                                            user.jabatan_id ===
-                                                activeStep.jabatan_id;
+                                            Number(userJabatanId) ===
+                                                Number(activeStep.jabatan_id);
 
                                         return (
                                             <tr
@@ -219,7 +226,6 @@ export default function Index({ auth, suratKeluars }) {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        {/* Tombol Tracking Progress */}
                                                         <button
                                                             onClick={() =>
                                                                 handleOpenDetail(
@@ -231,7 +237,6 @@ export default function Index({ auth, suratKeluars }) {
                                                             Tracking
                                                         </button>
 
-                                                        {/* Tombol Eksekusi TTD Pimpinan (Jika Giliran User saat ini) */}
                                                         {isMyTurn &&
                                                             surat.status ===
                                                                 "Draft" && (
@@ -247,7 +252,6 @@ export default function Index({ auth, suratKeluars }) {
                                                                 </button>
                                                             )}
 
-                                                        {/* Tombol Unduh PDF (Jika Surat Sudah Terbit) */}
                                                         {surat.status ===
                                                             "Terbit" && (
                                                             <a
@@ -294,7 +298,7 @@ export default function Index({ auth, suratKeluars }) {
                                     Progress Tracking Surat #{selectedSurat.id}
                                 </h3>
 
-                                <div className="mb-6 bg-gray-50 p-4 rounded-lg border text-xs grid grid-cols-2 gap-4">
+                                <div className="mb-4 bg-gray-50 p-4 rounded-lg border text-xs grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-gray-500">
                                             Template Surat:
@@ -311,12 +315,41 @@ export default function Index({ auth, suratKeluars }) {
                                             Penerima Dokumen:
                                         </p>
                                         <p className="font-bold text-gray-800">
-                                            {
-                                                selectedSurat.karyawan
-                                                    ?.nama_lengkap
-                                            }
+                                            {selectedSurat.karyawan
+                                                ?.nama_lengkap || "-"}
                                         </p>
                                     </div>
+                                </div>
+
+                                {/* ✅ BAGIAN LAMPIRAN BERKAS PENDUKUNG */}
+                                <div className="mb-6 bg-blue-50/50 p-3.5 rounded-lg border border-blue-100">
+                                    <h4 className="font-bold text-xs text-blue-900 mb-2 uppercase flex items-center gap-1.5">
+                                        📁 Lampiran Berkas Pendukung (
+                                        {selectedSurat.lampirans?.length || 0})
+                                    </h4>
+                                    {selectedSurat.lampirans &&
+                                    selectedSurat.lampirans.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedSurat.lampirans.map(
+                                                (file) => (
+                                                    <a
+                                                        key={file.id}
+                                                        href={`/storage/${file.file_path}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 px-3 py-1.5 rounded-md hover:bg-blue-100 font-medium transition shadow-sm"
+                                                    >
+                                                        📎 {file.nama_file_asli}
+                                                    </a>
+                                                ),
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic">
+                                            Tidak ada lampiran berkas pendukung
+                                            pada surat ini.
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* TIMELINE STEPPER */}
@@ -332,7 +365,6 @@ export default function Index({ auth, suratKeluars }) {
                                                     key={appr.id}
                                                     className="relative flex items-start gap-4 text-xs"
                                                 >
-                                                    {/* Node Circle Indicator */}
                                                     <div
                                                         className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-white z-10 shrink-0 ${
                                                             appr.status ===

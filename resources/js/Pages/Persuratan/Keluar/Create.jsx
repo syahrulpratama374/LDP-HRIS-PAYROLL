@@ -8,59 +8,61 @@ import InputError from "@/Components/InputError";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-export default function Create({ auth, templates, karyawans, approvers }) {
+export default function Create({ auth, templates = [], karyawans = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         template_id: "",
         karyawan_id: "",
-        approver_id: "",
         isi_surat_final: "",
         lampirans: [],
     });
 
     const [selectedTemplate, setSelectedTemplate] = useState(null);
 
-    // Menyuntikkan template ke React Quill setiap kali Template atau Karyawan diubah
+    // Menyuntikkan konten template ke React Quill setiap kali Template atau Karyawan diubah
     useEffect(() => {
         if (data.template_id) {
             const template = templates.find((t) => t.id == data.template_id);
             setSelectedTemplate(template || null);
 
             if (template) {
-                let html = template.konten;
+                let html = template.konten || "";
                 const karyawan = karyawans.find(
                     (k) => k.id == data.karyawan_id,
                 );
 
                 if (karyawan) {
                     html = html.replace(
-                        /\[nama_karyawan\]/g,
+                        /\[nama_karyawan\]/gi,
                         `<strong>${karyawan.nama_lengkap}</strong>`,
                     );
-                    html = html.replace(/[nik]/g, karyawan.nik_internal || "-");
                     html = html.replace(
-                        /[jabatan]/g,
+                        /\[nik\]/gi,
+                        karyawan.nik_internal || "-",
+                    );
+                    html = html.replace(
+                        /\[jabatan\]/gi,
                         karyawan.jabatan?.nama_jabatan || "-",
                     );
                     html = html.replace(
-                        /[alamat]/g,
+                        /\[alamat\]/gi,
                         karyawan.alamat_domisili || "-",
                     );
                 } else {
                     html = html.replace(
-                        /\[nama_karyawan\]/g,
-                        "<span class='bg-yellow-200'>[Nama Karyawan]</span>",
+                        /\[nama_karyawan\]/gi,
+                        "<span class='bg-yellow-200 px-1 rounded'>[Nama Karyawan/Penerima]</span>",
                     );
                     html = html.replace(
-                        /[nik]/g,
-                        "<span class='bg-yellow-200'>[NIK]</span>",
+                        /\[nik\]/gi,
+                        "<span class='bg-yellow-200 px-1 rounded'>[NIK]</span>",
                     );
                     html = html.replace(
-                        /[jabatan]/g,
-                        "<span class='bg-yellow-200'>[Jabatan]</span>",
+                        /\[jabatan\]/gi,
+                        "<span class='bg-yellow-200 px-1 rounded'>[Jabatan]</span>",
                     );
                     html = html.replace(
-                        /[alamat]/g,
-                        "<span class='bg-yellow-200'>[Alamat]</span>",
+                        /\[alamat\]/gi,
+                        "<span class='bg-yellow-200 px-1 rounded'>[Alamat]</span>",
                     );
                 }
 
@@ -69,7 +71,7 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                     month: "long",
                     day: "numeric",
                 });
-                html = html.replace(/\[tanggal_hari_ini\]/g, today);
+                html = html.replace(/\[tanggal_hari_ini\]/gi, today);
 
                 setData("isi_surat_final", html);
             }
@@ -101,40 +103,12 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                         onSubmit={handleSubmit}
                         className="grid grid-cols-1 lg:grid-cols-12 gap-6"
                     >
-                        {/* BAGIAN KIRI: KONTROL & EDITOR */}
+                        {/* BAGIAN KIRI: FORM KONTROL & EDITOR */}
                         <div className="lg:col-span-5 flex flex-col gap-4">
                             <div className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-indigo-500">
+                                {/* 1. PILIH TEMPLATE SURAT TERLEBIH DAHULU */}
                                 <div className="mb-4">
-                                    <InputLabel value="1. Surat Ditujukan Kepada (Karyawan)" />
-                                    <select
-                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
-                                        value={data.karyawan_id}
-                                        onChange={(e) =>
-                                            setData(
-                                                "karyawan_id",
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    >
-                                        <option value="">
-                                            -- Pilih Karyawan --
-                                        </option>
-                                        {karyawans.map((k) => (
-                                            <option key={k.id} value={k.id}>
-                                                {k.nik_internal} -{" "}
-                                                {k.nama_lengkap}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <InputError
-                                        message={errors.karyawan_id}
-                                        className="mt-1"
-                                    />
-                                </div>
-
-                                <div className="mb-4">
-                                    <InputLabel value="2. Pilih Template Surat" />
+                                    <InputLabel value="1. Pilih Jenis Template Surat" />
                                     <select
                                         className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
                                         value={data.template_id}
@@ -162,6 +136,37 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     />
                                 </div>
 
+                                {/* 2. PILIH KARYAWAN PENERIMA (OPSIONAL / NULLABLE) */}
+                                <div className="mb-4">
+                                    <InputLabel value="2. Surat Ditujukan Kepada (Karyawan Internal / Opsional)" />
+                                    <select
+                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 rounded-md shadow-sm text-sm"
+                                        value={data.karyawan_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                "karyawan_id",
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            -- Ditujukan ke Pihak Eksternal /
+                                            Tanpa Karyawan --
+                                        </option>
+                                        {karyawans.map((k) => (
+                                            <option key={k.id} value={k.id}>
+                                                {k.nik_internal} -{" "}
+                                                {k.nama_lengkap}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        message={errors.karyawan_id}
+                                        className="mt-1"
+                                    />
+                                </div>
+
+                                {/* 3. EDITOR ISI SURAT */}
                                 {selectedTemplate && (
                                     <div className="mb-4">
                                         <InputLabel value="3. Editor Isi Surat (Format Bebas)" />
@@ -176,7 +181,7 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                                     )
                                                 }
                                                 style={{
-                                                    height: "300px",
+                                                    height: "280px",
                                                     marginBottom: "40px",
                                                 }}
                                             />
@@ -184,37 +189,7 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     </div>
                                 )}
 
-                                {selectedTemplate?.kategori_alur ===
-                                    "Approval_Direksi" && (
-                                    <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-md">
-                                        <InputLabel value="4. Pilih Pimpinan Penandatangan (Approver)" />
-                                        <select
-                                            className="mt-1 block w-full border-orange-300 rounded-md shadow-sm text-sm"
-                                            value={data.approver_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "approver_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Pimpinan --
-                                            </option>
-                                            {approvers.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={errors.approver_id}
-                                            className="mt-1"
-                                        />
-                                    </div>
-                                )}
-                                {/* Input Upload Lampiran (Opsional) */}
+                                {/* UPLOAD LAMPIRAN */}
                                 <div className="mb-4">
                                     <InputLabel value="Upload Lampiran Tambahan (Opsional - Bisa Pilih Banyak)" />
                                     <input
@@ -239,6 +214,7 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     />
                                 </div>
 
+                                {/* ACTION BUTTONS */}
                                 <div className="mt-6 flex gap-3 border-t pt-4">
                                     <Link
                                         href={route("keluar.index")}
@@ -256,16 +232,13 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                     >
                                         {processing
                                             ? "Memproses..."
-                                            : selectedTemplate?.kategori_alur ===
-                                                "Approval_Direksi"
-                                              ? "Ajukan Draft Surat"
-                                              : "Terbitkan Surat"}
+                                            : "Ajukan Draft Surat"}
                                     </PrimaryButton>
                                 </div>
                             </div>
                         </div>
 
-                        {/* BAGIAN KANAN: LIVE PREVIEW KERTAS */}
+                        {/* BAGIAN KANAN: LIVE PREVIEW KERTAS A4 */}
                         <div className="lg:col-span-7">
                             <div className="sticky top-6">
                                 <h3 className="text-sm font-bold text-gray-500 mb-2 uppercase flex items-center justify-between">
@@ -293,41 +266,49 @@ export default function Create({ auth, templates, karyawans, approvers }) {
                                                 }}
                                             />
 
-                                            <div className="mt-16 flex justify-end text-sm text-gray-800">
-                                                <div className="text-center w-64">
-                                                    <p>
-                                                        Yogyakarta,{" "}
-                                                        {new Date().toLocaleDateString(
-                                                            "id-ID",
-                                                            {
-                                                                year: "numeric",
-                                                                month: "long",
-                                                                day: "numeric",
-                                                            },
-                                                        )}
-                                                    </p>
-                                                    <p className="font-bold">
-                                                        {selectedTemplate.pembuat_kode ===
-                                                        "LDP-DIR"
-                                                            ? "PT. Lintas Data Prima"
-                                                            : "Departemen Terkait"}
-                                                    </p>
-
-                                                    <div className="h-24 mt-4 mb-2 flex items-center justify-center border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
-                                                        {selectedTemplate.kategori_alur ===
-                                                        "Approval_Direksi"
-                                                            ? "[ Menunggu TTD / QR Code Validasi ]"
-                                                            : "[ Validasi Sistem Terbit Otomatis ]"}
-                                                    </div>
-
-                                                    <p className="font-bold underline uppercase">
-                                                        {approvers.find(
-                                                            (a) =>
-                                                                a.id ==
-                                                                data.approver_id,
-                                                        )?.name ||
-                                                            "(Nama Pimpinan)"}
-                                                    </p>
+                                            {/* PREVIEW ALUR APPROVAL */}
+                                            <div className="mt-12 border-t pt-4 text-xs text-gray-700">
+                                                <p className="font-semibold text-gray-500 mb-3 uppercase tracking-wider text-[11px]">
+                                                    Alur Penandatangan Sah
+                                                    (Otomatis Sesuai Blueprint)
+                                                </p>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+                                                    {selectedTemplate.rute_approvals &&
+                                                    selectedTemplate
+                                                        .rute_approvals.length >
+                                                        0 ? (
+                                                        selectedTemplate.rute_approvals.map(
+                                                            (rute, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="border p-2 rounded bg-gray-50"
+                                                                >
+                                                                    <p className="font-bold text-indigo-600">
+                                                                        {
+                                                                            rute.label_ttd
+                                                                        }
+                                                                    </p>
+                                                                    <p className="text-[10px] text-gray-500">
+                                                                        {rute
+                                                                            .jabatan
+                                                                            ?.nama_jabatan ||
+                                                                            "Jabatan"}
+                                                                    </p>
+                                                                    <div className="my-2 text-[10px] italic text-orange-500 border border-dashed border-orange-300 bg-orange-50 py-1 rounded">
+                                                                        [Menunggu
+                                                                        TTD/QR]
+                                                                    </div>
+                                                                </div>
+                                                            ),
+                                                        )
+                                                    ) : (
+                                                        <div className="col-span-full text-center py-2 text-gray-400 italic">
+                                                            Surat diterbitkan
+                                                            otomatis oleh sistem
+                                                            tanpa persetujuan
+                                                            bertingkat.
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </>

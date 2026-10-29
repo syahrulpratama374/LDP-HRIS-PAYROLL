@@ -420,6 +420,11 @@ export default function Index({ auth, templates, jabatans }) {
                                                                             j.id
                                                                         }
                                                                     >
+                                                                        [
+                                                                        {
+                                                                            j.kode_jabatan
+                                                                        }
+                                                                        ]{" "}
                                                                         {
                                                                             j.nama_jabatan
                                                                         }

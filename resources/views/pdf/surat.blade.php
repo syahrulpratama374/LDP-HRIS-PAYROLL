@@ -1,31 +1,187 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Surat Resmi LDP</title>
+    <meta charset="utf-8">
+    <title>Surat Resmi - PT. Lintas Data Prima</title>
     <style>
-        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 20px 40px; }
-        .kop-surat { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 30px; }
-        .kop-surat h1 { margin: 0; font-size: 20pt; text-transform: uppercase; letter-spacing: 1px; }
-        .kop-surat p { margin: 2px 0; font-size: 10pt; }
-        .konten-surat { text-align: justify; }
-        .signature { margin-top: 50px; text-align: right; }
-        .signature p { margin: 0; }
-        .signature .ttd-space { height: 80px; }
+        /* ✅ Atur Margin Kertas A4 (Atas, Kanan, Bawah, Kiri) */
+        @page {
+            margin: 1.5cm 2cm 2cm 2cm;
+        }
+        body { 
+            font-family: 'Helvetica', 'Arial', sans-serif; 
+            font-size: 11pt; 
+            color: #333; 
+            line-height: 1.5; 
+        }
+        .kop-surat { 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 8px; 
+            margin-bottom: 20px; 
+        }
+        .meta-surat { 
+            width: 100%; 
+            margin-bottom: 20px; 
+            font-size: 10.5pt; 
+            border-collapse: collapse; 
+        }
+        .meta-surat td { 
+            vertical-align: top; 
+            padding: 2px 0; 
+        }
+        .penerima-block { 
+            margin-bottom: 20px; 
+            font-size: 10.5pt; 
+        }
+        .isi-surat { 
+            text-align: justify; 
+            margin-bottom: 30px; 
+            min-height: 150px; 
+        }
+        .tanggal-terbit { 
+            text-align: right; 
+            margin-bottom: 15px; 
+            font-size: 10.5pt; 
+        }
+        .ttd-container { 
+            width: 100%; 
+            margin-top: 20px; 
+            page-break-inside: avoid; 
+        }
+        .ttd-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            text-align: center; 
+        }
+        .ttd-table td { 
+            vertical-align: top; 
+            padding: 5px; 
+        }
+        .label-ttd { 
+            font-weight: bold; 
+            font-size: 9.5pt; 
+            text-transform: capitalize; 
+            margin-bottom: 6px; 
+        }
+        .qr-box { 
+            margin: 5px auto; 
+        }
+        .nama-ttd { 
+            font-weight: bold; 
+            font-size: 10pt; 
+            text-decoration: underline; 
+            margin-top: 4px; 
+        }
+        .jabatan-ttd { 
+            font-size: 8.5pt; 
+            color: #666; 
+        }
+        .lampiran-box { 
+            margin-top: 30px; 
+            border-top: 1px solid #ddd; 
+            padding-top: 10px; 
+            font-size: 8.5pt; 
+            color: #555; 
+            page-break-inside: avoid; 
+        }
     </style>
 </head>
 <body>
 
+    <!-- KOP SURAT -->
     <div class="kop-surat">
-        <h1>PT Lintas Data Prima (LDP)</h1>
-        <p>Jl. Teknologi No. 1, Kediri, Jawa Timur</p>
-        <p>Telp: (0354) 123456 | Email: hrd@ldp.co.id</p>
+        <table width="100%" style="border-collapse: collapse;">
+            <tr>
+                <td width="20%" style="vertical-align: middle;">
+                    <strong style="font-size: 26pt; color: #1e3a8a;">LDP</strong>
+                </td>
+                <td width="80%" align="center" style="vertical-align: middle;">
+                    <h2 style="margin:0; font-size: 13pt; text-transform: uppercase;">PT. LINTAS DATA PRIMA</h2>
+                    <p style="margin:2px 0 0 0; font-size: 8.5pt; color: #333;">Telecommunication & IT Managed Services</p>
+                    <p style="margin:2px 0 0 0; font-size: 8pt; color: #555;">Jl. Sakti No. 12, Yogyakarta | Telp: (0274) 415632</p>
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <div class="konten-surat">
-        <!-- Di sinilah parser dari Controller akan menyuntikkan isi surat HTML -->
+    <!-- META SURAT -->
+    <table class="meta-surat">
+        <tr>
+            <td width="15%">Nomor</td>
+            <td width="2%">:</td>
+            <td width="83%"><strong>{{ $surat->nomor_surat ?? 'Draft/Belum_Diterbitkan' }}</strong></td>
+        </tr>
+        <tr>
+            <td>Lampiran</td>
+            <td>:</td>
+            <td>
+                @if($surat->lampirans && $surat->lampirans->count() > 0)
+                    {{ $surat->lampirans->count() }} Berkas
+                @else
+                    -
+                @endif
+            </td>
+        </tr>
+        <tr>
+            <td>Hal</td>
+            <td>:</td>
+            <td><strong>{{ $surat->template->nama_template ?? 'Surat Resmi' }}</strong></td>
+        </tr>
+    </table>
+
+    <!-- PENERIMA (TAMPILKAN JIKA DITUJUKAN KE KARYAWAN) -->
+    @if($surat->karyawan)
+    <div class="penerima-block">
+        <p style="margin:0;">Kepada Yth,</p>
+        <p style="margin:0; font-weight: bold;">{{ $surat->karyawan->nama_lengkap }}</p>
+        <p style="margin:0; font-size: 9.5pt; color: #555;">{{ $surat->karyawan->jabatan->nama_jabatan ?? '' }}</p>
+    </div>
+    @endif
+
+    <!-- ISI SURAT -->
+    <div class="isi-surat">
         {!! $konten !!}
     </div>
+
+    <!-- TANGGAL & BLOK TTD -->
+    <div class="ttd-container">
+        <div class="tanggal-terbit">
+            Yogyakarta, {{ \Carbon\Carbon::parse($surat->tanggal_terbit ?? now())->translatedFormat('d F Y') }}
+        </div>
+
+        <table class="ttd-table">
+            <tr>
+                @foreach($surat->approvals as $appr)
+                <td>
+                    <div class="label-ttd">{{ str_replace('okeh', 'oleh', $appr->label_ttd) }}</div>
+                    
+                    <div class="qr-box">
+                        @if($surat->status === 'Terbit' && $surat->qr_code_token)
+                            <img src="data:image/svg+xml;base64,{!! base64_encode(SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(70)->generate(url('/persuratan/verifikasi/' . $surat->qr_code_token))) !!}">
+                        @else
+                            <div style="height: 70px; line-height: 70px; color: #aaa; font-style: italic; font-size: 8.5pt;">[ Menunggu TTD ]</div>
+                        @endif
+                    </div>
+
+                    <div class="nama-ttd">{{ $appr->userAktual->name ?? '........................' }}</div>
+                    <div class="jabatan-ttd">{{ $appr->jabatan->nama_jabatan ?? '' }}</div>
+                </td>
+                @endforeach
+            </tr>
+        </table>
+    </div>
+
+    <!-- LAMPIRAN BERKAS -->
+    @if($surat->lampirans && $surat->lampirans->count() > 0)
+    <div class="lampiran-box">
+        <strong>Lampiran Berkas Pendukung:</strong>
+        <ol style="margin: 4px 0 0 0; padding-left: 18px;">
+            @foreach($surat->lampirans as $lamp)
+                <li>{{ $lamp->nama_file_asli }} ({{ round($lamp->file_size / 1024, 1) }} KB)</li>
+            @endforeach
+        </ol>
+    </div>
+    @endif
 
 </body>
 </html>

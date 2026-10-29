@@ -62,4 +62,10 @@ class SuratKeluar extends Model
     {
         return $this->hasMany(ApprovalSuratKeluar::class, 'surat_keluar_id')->orderBy('urutan_langkah', 'asc');
     }
+    
+    // Tambahkan relasi ini di SuratKeluar.php
+    public function pembuat()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

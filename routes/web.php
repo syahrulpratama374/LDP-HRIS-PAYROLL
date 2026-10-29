@@ -43,6 +43,7 @@ Route::get('/scan-aset/{kode_aset}', [AsetController::class, 'showPublic'])->nam
 Route::get('/verifikasi/surat/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('surat.verifikasi');
 
 
+
 // =========================================================================
 // 3. RUTE UMUM KARYAWAN (WAJIB LOGIN)
 // =========================================================================
@@ -87,21 +88,25 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/logbook-shift', [LogbookController::class, 'store'])->name('logbook.store');
 });
 
-
 // =========================================================================
-// 4. MODUL MODERAT E-PERSURATAN LDP (WAJIB LOGIN & VERIFIED)
+// 4. MODUL E-PERSURATAN LDP (WAJIB LOGIN & VERIFIED)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->prefix('persuratan')->group(function () {
     // Master Template & Rute Approval
     Route::get('/template', [MasterTemplateController::class, 'index'])->name('template.index');
     Route::post('/template', [MasterTemplateController::class, 'store'])->name('template.store');
 
-    // Surat Keluar & Multi-Level Approval
+    // Surat Keluar & Multi-Level Approval (CRUD Lengkap)
     Route::get('/keluar', [SuratKeluarController::class, 'index'])->name('keluar.index');
     Route::get('/keluar/create', [SuratKeluarController::class, 'create'])->name('keluar.create');
     Route::post('/keluar', [SuratKeluarController::class, 'store'])->name('keluar.store');
+    Route::get('/keluar/{id}/edit', [SuratKeluarController::class, 'edit'])->name('keluar.edit');
+    Route::put('/keluar/{id}', [SuratKeluarController::class, 'update'])->name('keluar.update');
+    Route::delete('/keluar/{id}', [SuratKeluarController::class, 'destroy'])->name('keluar.destroy');
+
+    // Action Aksi: Approval, Tolak/Revisi, Void (Pembatalan), & Unduh PDF
     Route::post('/keluar/{id}/approve', [SuratKeluarController::class, 'approve'])->name('keluar.approve');
-    Route::post('/keluar/{id}/terbitkan', [SuratKeluarController::class, 'terbitkan'])->name('keluar.terbitkan');
+    Route::post('/keluar/{id}/tolak', [SuratKeluarController::class, 'tolak'])->name('keluar.tolak');
     Route::post('/keluar/{id}/batal', [SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
     Route::get('/keluar/{id}/pdf', [SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
 
@@ -109,6 +114,9 @@ Route::middleware(['auth', 'verified'])->prefix('persuratan')->group(function ()
     Route::get('/layout', [PengaturanLayoutController::class, 'index'])->name('layout.index');
     Route::post('/layout', [PengaturanLayoutController::class, 'store'])->name('layout.store');
 });
+
+// Rute Verifikasi Publik QR Code (Ditaruh di Luar Middleware Auth agar Pihak Luar Bisa Scan)
+Route::get('/v/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('keluar.verifikasi');
 
 
 // =========================================================================

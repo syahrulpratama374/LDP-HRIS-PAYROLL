@@ -13,11 +13,13 @@ class MasterTemplateController extends Controller
     public function index()
     {
         $templates = MasterTemplateSurat::with('ruteApprovals.jabatan')->latest()->get();
-        $jabatans  = \App\Models\Jabatan::all(); 
+        
+        // Ambil semua jabatan dan urutkan berdasarkan ID
+        $jabatans = \App\Models\Jabatan::orderBy('id', 'asc')->get(); 
 
         return Inertia::render('Persuratan/Template/Index', [
             'templates' => $templates,
-            'jabatans'  => $jabatans, // Kirim data jabatan ke React
+            'jabatans'  => $jabatans,
         ]);
     }
 
@@ -25,11 +27,10 @@ class MasterTemplateController extends Controller
     {
         $request->validate([
             'nama_template' => 'required|string|max:255',
-            'kode_surat'    => 'required|string|max:50', // Contoh: SPJ, SKEP
-            'pembuat_kode'  => 'required|string|max:50', // Contoh: LDP-HC
-            'konten'        => 'required|string', // Isi dasar HTML
+            'kode_surat'    => 'required|string|max:50',
+            'pembuat_kode'  => 'required|string|max:50',
+            'konten'        => 'required|string',
             
-            // Validasi Input Array Rute dari React Frontend
             'rute_approvals'              => 'nullable|array',
             'rute_approvals.*.urutan'     => 'required|integer',
             'rute_approvals.*.jabatan_id' => 'required|exists:jabatans,id',
@@ -44,7 +45,6 @@ class MasterTemplateController extends Controller
             'is_active'     => true,
         ]);
 
-        // Simpan Cetak Biru Rute Approval Bertingkat
         if ($request->has('rute_approvals')) {
             foreach ($request->rute_approvals as $rute) {
                 RuteApprovalTemplate::create([
