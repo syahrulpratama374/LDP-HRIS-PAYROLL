@@ -344,7 +344,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 )}
 
                                 {/* 6. DROPDOWN FINANCE & PAYROLL (Role 1 & 4) */}
-                                {[1, 4].includes(user.role_id) && (
+                                {[1, 4, 5].includes(user.role_id) && (
                                     <Dropdown>
                                         <Dropdown.Trigger>
                                             <button

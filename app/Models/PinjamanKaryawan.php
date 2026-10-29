@@ -13,15 +13,24 @@ class PinjamanKaryawan extends Model
 
     protected $fillable = [
         'karyawan_id',
+        'jenis_kasbon',
+        'departemen_id',
         'total_pinjaman',
         'tenor_bulan',
         'sisa_pinjaman',
-        'status'
+        'alasan_pinjaman',
+        'status',
+        'approved_atasan_at'
     ];
 
     public function karyawan()
     {
         return $this->belongsTo(Karyawan::class);
+    }
+
+    public function departemen()
+    {
+        return $this->belongsTo(Departemen::class);
     }
 
     public function cicilans()

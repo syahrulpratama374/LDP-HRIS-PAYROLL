@@ -138,10 +138,12 @@ Route::middleware(['auth', 'role:1,3,5'])->group(function () {
 });
 
 // B. Finance (4) & Admin (1) -> Keuangan & Payroll
-Route::middleware(['auth', 'role:1,4'])->group(function () {
+// Modul Approval Kasbon & Pinjaman (Admin, HC, Finance, SPV)
+Route::middleware(['auth', 'role:1,3,4,5'])->group(function () {
     Route::get('/admin/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
     Route::post('/admin/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
-
+    Route::post('/admin/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'bayarManual'])->name('admin.pinjaman.bayarManual');
+ 
     Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
     Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
     Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');

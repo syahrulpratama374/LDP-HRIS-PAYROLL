@@ -180,6 +180,16 @@
                 <li>{{ $lamp->nama_file_asli }} ({{ round($lamp->file_size / 1024, 1) }} KB)</li>
             @endforeach
         </ol>
+        <!-- PROYEKSI PREVIEW GAMBAR (JIKA ADA) -->
+    <div style="margin-top: 15px;">
+        @foreach($surat->lampirans as $lamp)
+            @if(in_array(strtolower(pathinfo($lamp->nama_file_asli, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']))
+                <div style="margin-bottom: 15px; text-align: center;">
+                    <p style="font-size: 8pt; color: #666; margin-bottom: 4px;">[ Gambar Lampiran: {{ $lamp->nama_file_asli }} ]</p>
+                    <img src="{{ public_path('storage/' . $lamp->file_path) }}" style="max-width: 80%; max-height: 400px; border: 1px solid #ccc; padding: 4px;">
+                </div>
+            @endif
+        @endforeach
     </div>
     @endif
 

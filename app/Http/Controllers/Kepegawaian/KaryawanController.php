@@ -40,119 +40,134 @@ class KaryawanController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nik_internal' => 'required|string|max:50|unique:karyawans',
-            'nama_lengkap' => 'required|string|max:150',
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-            'tempat_lahir' => 'required|string|max:100',
-            'tgl_lahir' => 'required|date',
-            'agama' => 'required|string|max:30',
-            'status_pernikahan' => 'required|string|max:30',
-            'alamat_ktp' => 'required|string',
-            'alamat_domisili' => 'nullable|string', // PERBAIKAN 1: Diubah menjadi nullable
-            'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
-            'no_telp' => 'nullable|string|max:20',
-            'tgl_bergabung' => 'required|date',
-            'departemen_id' => 'required|exists:departemens,id',
-            'jabatan_id' => 'required|exists:jabatans,id',
-            'golongan_id' => 'required|exists:golongans,id',
-            'ptkp_id' => 'required|exists:master_ptkps,id',
-            'atasan_id' => 'nullable|exists:karyawans,id', 
-            'no_ktp' => 'required|string',
-            'npwp' => 'nullable|string',
-            'no_rek_bca' => 'nullable|string',
-            'no_bpjs_kesehatan' => 'nullable|string',
-            'no_bpjs_ketenagakerjaan' => 'nullable|string',
-            'nama_kontak_darurat' => 'required|string|max:150',
-            'no_telp_darurat' => 'required|string|max:20',
+{
+    $validated = $request->validate([
+        // ... validasi dasar ...
+        'nik_internal' => 'required|string|max:50|unique:karyawans',
+        'nama_lengkap' => 'required|string|max:150',
+        'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+        'tempat_lahir' => 'required|string|max:100',
+        'tgl_lahir' => 'required|date',
+        'agama' => 'required|string|max:30',
+        'status_pernikahan' => 'required|string|max:30',
+        'alamat_ktp' => 'required|string',
+        'alamat_domisili' => 'nullable|string',
+        'email_kantor' => 'required|email|unique:karyawans|unique:users,email',
+        'no_telp' => 'nullable|string|max:20',
+        'tgl_bergabung' => 'required|date',
+        'departemen_id' => 'required|exists:departemens,id',
+        'jabatan_id' => 'required|exists:jabatans,id',
+        'golongan_id' => 'required|exists:golongans,id',
+        'ptkp_id' => 'required|exists:master_ptkps,id',
+        'atasan_id' => 'nullable|exists:karyawans,id', 
+        'no_ktp' => 'required|string',
+        'npwp' => 'nullable|string',
+        'no_rek_bca' => 'nullable|string',
+        'no_bpjs_kesehatan' => 'nullable|string',
+        'no_bpjs_ketenagakerjaan' => 'nullable|string',
+        'nama_kontak_darurat' => 'required|string|max:150',
+        'no_telp_darurat' => 'required|string|max:20',
+
+        // Validasi Array Data Keluarga
+        'keluargas' => 'nullable|array',
+        'keluargas.*.jenis_relasi' => 'required|string',
+        'keluargas.*.nama_anggota' => 'required|string|max:150',
+        'keluargas.*.nik_keluarga' => 'nullable|string',
+        'keluargas.*.tgl_lahir' => 'nullable|date',
+        'keluargas.*.jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+        'keluargas.*.status_tanggungan_bpjs' => 'boolean',
+    ]);
+
+    $alamatDomisili = $validated['alamat_domisili'] ?? $validated['alamat_ktp'];
+
+    DB::beginTransaction();
+    try {
+        $user = User::create([
+            'name' => $validated['nama_lengkap'],
+            'username' => $validated['nik_internal'],
+            'email' => $validated['email_kantor'],
+            'password' => Hash::make($validated['nik_internal']), 
+            'role_id' => 6, 
         ]);
 
-        // PERBAIKAN 2: Logika Auto-Fill Alamat Domisili
-        // Jika domisili dikosongkan oleh HRD, otomatis samakan isinya dengan Alamat KTP
-        $alamatDomisili = $validated['alamat_domisili'] ?? $validated['alamat_ktp'];
+        $karyawan = Karyawan::create([
+            'user_id' => $user->id,
+            'departemen_id' => $validated['departemen_id'],
+            'jabatan_id' => $validated['jabatan_id'],
+            'golongan_id' => $validated['golongan_id'],
+            'ptkp_id' => $validated['ptkp_id'],
+            'atasan_id' => $validated['atasan_id'] ?? null, 
+            'nik_internal' => $validated['nik_internal'],
+            'nama_lengkap' => $validated['nama_lengkap'],
+            'jenis_kelamin' => $validated['jenis_kelamin'],
+            'tempat_lahir' => $validated['tempat_lahir'],
+            'tgl_lahir' => $validated['tgl_lahir'],
+            'agama' => $validated['agama'],
+            'status_pernikahan' => $validated['status_pernikahan'],
+            'alamat_ktp' => $validated['alamat_ktp'],
+            'alamat_domisili' => $alamatDomisili,
+            'email_kantor' => $validated['email_kantor'],
+            'no_telp' => $validated['no_telp'] ?? null,
+            'tgl_bergabung' => $validated['tgl_bergabung'],
+            'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
+            'npwp_encrypted' => !empty($validated['npwp']) ? Crypt::encryptString($validated['npwp']) : null,
+            'no_rek_bca_encrypted' => !empty($validated['no_rek_bca']) ? Crypt::encryptString($validated['no_rek_bca']) : null,
+            'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'] ?? null,
+            'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'] ?? null,
+            'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
+            'no_telp_darurat' => $validated['no_telp_darurat'],
+            'status_aktif' => true,
+        ]);
 
-        DB::beginTransaction();
-        try {
-            // Bypass Role: Otomatis diset ke 6 (Role Karyawan Staff)
-            $user = User::create([
-                'name' => $validated['nama_lengkap'],
-                'username' => $validated['nik_internal'],
-                'email' => $validated['email_kantor'],
-                'password' => Hash::make($validated['nik_internal']), 
-                'role_id' => 6, 
-            ]);
-
-            Karyawan::create([
-                'user_id' => $user->id,
-                'departemen_id' => $validated['departemen_id'],
-                'jabatan_id' => $validated['jabatan_id'],
-                'golongan_id' => $validated['golongan_id'],
-                'ptkp_id' => $validated['ptkp_id'],
-                'atasan_id' => $validated['atasan_id'] ?? null, 
-                'nik_internal' => $validated['nik_internal'],
-                'nama_lengkap' => $validated['nama_lengkap'],
-                'jenis_kelamin' => $validated['jenis_kelamin'],
-                'tempat_lahir' => $validated['tempat_lahir'],
-                'tgl_lahir' => $validated['tgl_lahir'],
-                'agama' => $validated['agama'],
-                'status_pernikahan' => $validated['status_pernikahan'],
-                'alamat_ktp' => $validated['alamat_ktp'],
-                'alamat_domisili' => $alamatDomisili, // Menggunakan variabel auto-fill
-                'email_kantor' => $validated['email_kantor'],
-                'no_telp' => $validated['no_telp'] ?? null,
-                'tgl_bergabung' => $validated['tgl_bergabung'],
-                'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
-                'npwp_encrypted' => !empty($validated['npwp']) ? Crypt::encryptString($validated['npwp']) : null,
-                'no_rek_bca_encrypted' => !empty($validated['no_rek_bca']) ? Crypt::encryptString($validated['no_rek_bca']) : null,
-                'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'] ?? null,
-                'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'] ?? null,
-                'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
-                'no_telp_darurat' => $validated['no_telp_darurat'],
-                'status_aktif' => true,
-            ]);
-
-            DB::commit();
-            return redirect()->route('karyawan.index')->with('success', 'Karyawan berhasil didaftarkan dengan Role Default Karyawan!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()]);
+        // Simpan Data Anggota Keluarga jika diisi
+        if (!empty($request->keluargas)) {
+            foreach ($request->keluargas as $kel) {
+                \App\Models\KeluargaKaryawan::create([
+                    'karyawan_id' => $karyawan->id,
+                    'jenis_relasi' => $kel['jenis_relasi'],
+                    'nama_anggota' => $kel['nama_anggota'],
+                    'nik_keluarga_encrypted' => !empty($kel['nik_keluarga']) ? Crypt::encryptString($kel['nik_keluarga']) : null,
+                    'tgl_lahir' => $kel['tgl_lahir'] ?? null,
+                    'jenis_kelamin' => $kel['jenis_kelamin'],
+                    'status_tanggungan_bpjs' => $kel['status_tanggungan_bpjs'] ?? false,
+                ]);
+            }
         }
+
+        DB::commit();
+        return redirect()->route('karyawan.index')->with('success', 'Karyawan beserta data keluarga berhasil didaftarkan!');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()]);
     }
+}
 
     public function edit($id)
-    {
-        $karyawan = Karyawan::with('user')->findOrFail($id);
+{
+    $karyawan = Karyawan::with(['user', 'keluargas'])->findOrFail($id);
 
-        // Gunakan Try-Catch agar sistem tidak crash jika bertemu data lama/dummy
-        try { 
-            $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); 
-        } catch (\Exception $e) { 
-            $karyawan->no_ktp = ''; // Kosongkan jika gagal dekripsi
+    try { $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); } catch (\Exception $e) { $karyawan->no_ktp = ''; }
+    try { $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : ''; } catch (\Exception $e) { $karyawan->npwp = ''; }
+    try { $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : ''; } catch (\Exception $e) { $karyawan->no_rek_bca = ''; }
+
+    // Dekripsi NIK Anggota Keluarga
+    foreach ($karyawan->keluargas as $keluarga) {
+        try {
+            $keluarga->nik_keluarga = $keluarga->nik_keluarga_encrypted ? Crypt::decryptString($keluarga->nik_keluarga_encrypted) : '';
+        } catch (\Exception $e) {
+            $keluarga->nik_keluarga = '';
         }
-
-        try { 
-            $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : ''; 
-        } catch (\Exception $e) { 
-            $karyawan->npwp = ''; 
-        }
-
-        try { 
-            $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : ''; 
-        } catch (\Exception $e) { 
-            $karyawan->no_rek_bca = ''; 
-        }
-
-        return Inertia::render('Kepegawaian/Karyawan/Edit', [
-            'karyawan' => $karyawan,
-            'departemens' => Departemen::orderBy('nama_departemen')->get(),
-            'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
-            'golongans' => Golongan::orderBy('kode_golongan')->get(),
-            'ptkps' => DB::table('master_ptkps')->get(),
-            'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(),
-        ]);
     }
 
+    return Inertia::render('Kepegawaian/Karyawan/Edit', [
+        'karyawan' => $karyawan,
+        'departemens' => Departemen::orderBy('nama_departemen')->get(),
+        'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
+        'golongans' => Golongan::orderBy('kode_golongan')->get(),
+        'ptkps' => DB::table('master_ptkps')->get(),
+        'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(),
+    ]);
+}
     public function update(Request $request, $id)
     {
         $karyawan = Karyawan::findOrFail($id);
@@ -278,28 +293,40 @@ class KaryawanController extends Controller
     }
 
     public function show($id)
-    {
-        // Tambahan: 'dokumens' diload agar berkas KTP/Ijazah tampil di profil
-        $karyawan = Karyawan::with([
-            'departemen', 'jabatan', 'golongan', 'user', 'atasan',
-            'riwayatGajis', 'riwayatJabatans.jabatan', 'dokumens'
-        ])->findOrFail($id);
+{
+    $tahunSekarang = date('Y');
 
-        $bawahans = Karyawan::with('jabatan')
-            ->where('atasan_id', $id)
-            ->where('status_aktif', true)
-            ->get();
+    $karyawan = Karyawan::with([
+        'departemen',
+        'jabatan',
+        'atasan',
+        'keluargas',
+        'dokumens',
+        'riwayatJabatans.jabatan',
+        'riwayatGajis',
+        'user.role',
+        'golongan',
+        'ptkp'
+    ])->findOrFail($id);
 
-        try { $karyawan->no_ktp = Crypt::decryptString($karyawan->no_ktp_encrypted); } catch (\Exception $e) { $karyawan->no_ktp = 'Format Enkripsi Tidak Valid'; }
-        try { $karyawan->npwp = $karyawan->npwp_encrypted ? Crypt::decryptString($karyawan->npwp_encrypted) : '-'; } catch (\Exception $e) { $karyawan->npwp = 'Format Enkripsi Tidak Valid'; }
-        try { $karyawan->no_rek_bca = $karyawan->no_rek_bca_encrypted ? Crypt::decryptString($karyawan->no_rek_bca_encrypted) : '-'; } catch (\Exception $e) { $karyawan->no_rek_bca = 'Format Enkripsi Tidak Valid'; }
+    // Load Saldo Cuti Tahun Ini
+    $saldoCuti = \App\Models\SaldoCuti::where('karyawan_id', $id)
+        ->where('tahun_periode', $tahunSekarang)
+        ->first();
 
-        return Inertia::render('Kepegawaian/Karyawan/Show', [
-            'karyawan' => $karyawan,
-            'jabatans' => Jabatan::orderBy('nama_jabatan')->get(),
-            'bawahans' => $bawahans, 
-        ]);
-    }
+    // Load Riwayat Cuti Karyawan
+    $riwayatCuti = \App\Models\PengajuanCuti::where('karyawan_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return Inertia::render('Kepegawaian/Karyawan/Show', [
+        'karyawan' => $karyawan,
+        'saldoCuti' => $saldoCuti ?? ['hak_cuti_tahunan' => 12, 'cuti_terpakai' => 0],
+        'riwayatCuti' => $riwayatCuti,
+        'jabatans' => \App\Models\Jabatan::all(),
+        'bawahans' => Karyawan::where('atasan_id', $id)->get(),
+    ]);
+}
 
     public function updateGaji(Request $request, $id)
     {

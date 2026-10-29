@@ -8,39 +8,71 @@ import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 
 export default function Create({
-    departemens,
-    jabatans,
-    golongans,
+    departemens = [],
+    jabatans = [],
+    golongans = [],
     ptkps = [],
-    roles = [],
     atasans = [],
 }) {
     const { data, setData, post, processing, errors } = useForm({
         nik_internal: "",
         nama_lengkap: "",
-        jenis_kelamin: "",
         tempat_lahir: "",
         tgl_lahir: "",
-        agama: "",
-        status_pernikahan: "",
-        alamat_ktp: "",
-        alamat_domisili: "",
+        agama: "Islam",
+        status_pernikahan: "Belum Kawin",
         email_kantor: "",
         no_telp: "",
         tgl_bergabung: "",
-        departemen_id: "",
-        jabatan_id: "",
-        golongan_id: "",
-        ptkp_id: "",
-        atasan_id: "", // role_id dihapus dari sini
+        departemen_id: departemens[0]?.id || "",
+        jabatan_id: jabatans[0]?.id || "",
+        golongan_id: golongans[0]?.id || "",
+        ptkp_id: ptkps[0]?.id || "",
+        jenis_kelamin: "Laki-laki",
+        alamat_ktp: "",
+        alamat_domisili: "",
+        nama_kontak_darurat: "",
+        no_telp_darurat: "",
+        atasan_id: "",
         no_ktp: "",
         npwp: "",
         no_rek_bca: "",
         no_bpjs_kesehatan: "",
         no_bpjs_ketenagakerjaan: "",
-        nama_kontak_darurat: "",
-        no_telp_darurat: "",
+        status_aktif: true,
+        keluargas: [],
     });
+
+    const addKeluarga = () => {
+        setData("keluargas", [
+            ...data.keluargas,
+            {
+                jenis_relasi: "Istri",
+                nama_anggota: "",
+                nik_keluarga: "",
+                tgl_lahir: "",
+                jenis_kelamin: "Perempuan",
+                status_tanggungan_bpjs: false,
+            },
+        ]);
+    };
+
+    const removeKeluarga = (index) => {
+        setData(
+            "keluargas",
+            data.keluargas.filter((_, i) => i !== index),
+        );
+    };
+
+    const handleKeluargaChange = (index, field, value) => {
+        const updatedKeluargas = data.keluargas.map((item, i) => {
+            if (i === index) {
+                return { ...item, [field]: value };
+            }
+            return item;
+        });
+        setData("keluargas", updatedKeluargas);
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -51,7 +83,7 @@ export default function Create({
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Tambah Data Karyawan
+                    Tambah Data Karyawan Baru
                 </h2>
             }
         >
@@ -67,14 +99,14 @@ export default function Create({
                         )}
 
                         <form onSubmit={submit} className="space-y-8">
-                            {/* SECTION 1: Biodata Dasar */}
+                            {/* SECTION 1: Biodata Diri */}
                             <div>
                                 <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">
                                     Biodata Diri
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <InputLabel value="NIK Internal (Otomatis jadi Password Akun)" />
+                                        <InputLabel value="NIK Internal" />
                                         <TextInput
                                             className="mt-1 block w-full bg-gray-50"
                                             value={data.nik_internal}
@@ -84,6 +116,7 @@ export default function Create({
                                                     e.target.value,
                                                 )
                                             }
+                                            placeholder="Contoh: KRY-2026-001"
                                         />
                                         <InputError
                                             message={errors.nik_internal}
@@ -108,7 +141,7 @@ export default function Create({
                                     <div>
                                         <InputLabel value="Jenis Kelamin" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.jenis_kelamin}
                                             onChange={(e) =>
                                                 setData(
@@ -117,7 +150,6 @@ export default function Create({
                                                 )
                                             }
                                         >
-                                            <option value="">Pilih...</option>
                                             <option value="Laki-laki">
                                                 Laki-laki
                                             </option>
@@ -177,9 +209,6 @@ export default function Create({
                                                     )
                                                 }
                                             >
-                                                <option value="">
-                                                    Pilih...
-                                                </option>
                                                 <option value="Islam">
                                                     Islam
                                                 </option>
@@ -194,6 +223,9 @@ export default function Create({
                                                 </option>
                                                 <option value="Buddha">
                                                     Buddha
+                                                </option>
+                                                <option value="Konghucu">
+                                                    Konghucu
                                                 </option>
                                             </select>
                                             <InputError
@@ -212,9 +244,6 @@ export default function Create({
                                                     )
                                                 }
                                             >
-                                                <option value="">
-                                                    Pilih...
-                                                </option>
                                                 <option value="Belum Kawin">
                                                     Belum Kawin
                                                 </option>
@@ -224,6 +253,9 @@ export default function Create({
                                                 <option value="Cerai Hidup">
                                                     Cerai Hidup
                                                 </option>
+                                                <option value="Cerai Mati">
+                                                    Cerai Mati
+                                                </option>
                                             </select>
                                             <InputError
                                                 message={
@@ -231,56 +263,54 @@ export default function Create({
                                                 }
                                             />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <div>
-                                                <InputLabel value="Alamat Sesuai KTP" />
-                                                <textarea
-                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                                                    rows="3"
-                                                    value={data.alamat_ktp}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "alamat_ktp",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                ></textarea>
-                                                <InputError
-                                                    message={errors.alamat_ktp}
-                                                />
-                                            </div>
-                                            <div>
-                                                <InputLabel value="Alamat Domisili (Kosongkan jika sama)" />
-                                                <textarea
-                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                                                    rows="3"
-                                                    value={data.alamat_domisili}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "alamat_domisili",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                ></textarea>
-                                                <InputError
-                                                    message={
-                                                        errors.alamat_domisili
-                                                    }
-                                                />
-                                            </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-1 md:col-span-2">
+                                        <div>
+                                            <InputLabel value="Alamat Sesuai KTP" />
+                                            <textarea
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                rows="3"
+                                                value={data.alamat_ktp}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "alamat_ktp",
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            ></textarea>
+                                            <InputError
+                                                message={errors.alamat_ktp}
+                                            />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Alamat Domisili" />
+                                            <textarea
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                rows="3"
+                                                value={data.alamat_domisili}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "alamat_domisili",
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            ></textarea>
+                                            <InputError
+                                                message={errors.alamat_domisili}
+                                            />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 2: Kontak & Relasi Perusahaan */}
+                            {/* SECTION 2: Penempatan & Hak Akses */}
                             <div>
                                 <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">
                                     Penempatan & Hak Akses
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <InputLabel value="Email Kantor (Username Login)" />
+                                        <InputLabel value="Email Kantor" />
                                         <TextInput
                                             type="email"
                                             className="mt-1 block w-full"
@@ -310,13 +340,10 @@ export default function Create({
                                         />
                                         <InputError message={errors.no_telp} />
                                     </div>
-
-                                    {/* --- MULAI INJEKSI RBAC & DIRECT REPORTING --- */}
-
                                     <div>
                                         <InputLabel value="Melapor Kepada (Atasan Langsung)" />
                                         <select
-                                            className="mt-1 block w-full border-blue-300 bg-blue-50 rounded-md font-semibold text-blue-900 focus:ring-blue-500"
+                                            className="mt-1 block w-full border-blue-300 bg-blue-50 rounded-md font-semibold text-blue-900 shadow-sm"
                                             value={data.atasan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -326,7 +353,7 @@ export default function Create({
                                             }
                                         >
                                             <option value="">
-                                                -- Kosongkan Jika CEO --
+                                                -- Kosongkan Jika CEO / BOD --
                                             </option>
                                             {atasans.map((a) => (
                                                 <option key={a.id} value={a.id}>
@@ -338,17 +365,11 @@ export default function Create({
                                         <InputError
                                             message={errors.atasan_id}
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Menentukan ke mana dokumen
-                                            SPJ/Cuti/Kasbon dikirim.
-                                        </p>
                                     </div>
-                                    {/* --- AKHIR INJEKSI --- */}
-
                                     <div>
                                         <InputLabel value="Departemen" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.departemen_id}
                                             onChange={(e) =>
                                                 setData(
@@ -357,23 +378,17 @@ export default function Create({
                                                 )
                                             }
                                         >
-                                            <option value="">
-                                                -- Pilih Departemen --
-                                            </option>
                                             {departemens.map((d) => (
                                                 <option key={d.id} value={d.id}>
                                                     {d.nama_departemen}
                                                 </option>
                                             ))}
                                         </select>
-                                        <InputError
-                                            message={errors.departemen_id}
-                                        />
                                     </div>
                                     <div>
                                         <InputLabel value="Jabatan" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.jabatan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -382,23 +397,17 @@ export default function Create({
                                                 )
                                             }
                                         >
-                                            <option value="">
-                                                -- Pilih Jabatan --
-                                            </option>
                                             {jabatans.map((j) => (
                                                 <option key={j.id} value={j.id}>
                                                     {j.nama_jabatan}
                                                 </option>
                                             ))}
                                         </select>
-                                        <InputError
-                                            message={errors.jabatan_id}
-                                        />
                                     </div>
                                     <div>
                                         <InputLabel value="Golongan Gaji" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.golongan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -407,9 +416,6 @@ export default function Create({
                                                 )
                                             }
                                         >
-                                            <option value="">
-                                                -- Pilih Golongan --
-                                            </option>
                                             {golongans.map((g) => (
                                                 <option key={g.id} value={g.id}>
                                                     {g.kode_golongan} -{" "}
@@ -417,14 +423,11 @@ export default function Create({
                                                 </option>
                                             ))}
                                         </select>
-                                        <InputError
-                                            message={errors.golongan_id}
-                                        />
                                     </div>
                                     <div>
                                         <InputLabel value="Status PTKP (Pajak PPh 21)" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.ptkp_id}
                                             onChange={(e) =>
                                                 setData(
@@ -433,9 +436,6 @@ export default function Create({
                                                 )
                                             }
                                         >
-                                            <option value="">
-                                                -- Pilih PTKP --
-                                            </option>
                                             {ptkps.map((p) => (
                                                 <option key={p.id} value={p.id}>
                                                     {p.kode_ptkp} -{" "}
@@ -443,7 +443,6 @@ export default function Create({
                                                 </option>
                                             ))}
                                         </select>
-                                        <InputError message={errors.ptkp_id} />
                                     </div>
                                     <div>
                                         <InputLabel value="Tanggal Bergabung" />
@@ -458,14 +457,197 @@ export default function Create({
                                                 )
                                             }
                                         />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SECTION 3: Data Anggota Keluarga */}
+                            <div className="pt-6 border-t border-gray-200">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-gray-700">
+                                        Data Anggota Keluarga & Tanggungan BPJS
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={addKeluarga}
+                                        className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 transition"
+                                    >
+                                        + Tambah Anggota Keluarga
+                                    </button>
+                                </div>
+
+                                {data.keluargas.length === 0 ? (
+                                    <p className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded-md border text-center">
+                                        Belum ada data anggota keluarga yang
+                                        ditambahkan.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {data.keluargas.map((kel, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="p-4 border border-gray-200 rounded-md bg-gray-50 grid grid-cols-1 md:grid-cols-6 gap-3 items-end"
+                                            >
+                                                <div>
+                                                    <InputLabel value="Relasi" />
+                                                    <select
+                                                        className="mt-1 block w-full border-gray-300 rounded-md text-sm shadow-sm"
+                                                        value={kel.jenis_relasi}
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "jenis_relasi",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="Suami">
+                                                            Suami
+                                                        </option>
+                                                        <option value="Istri">
+                                                            Istri
+                                                        </option>
+                                                        <option value="Anak">
+                                                            Anak
+                                                        </option>
+                                                        <option value="Orang Tua">
+                                                            Orang Tua
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="Nama Lengkap" />
+                                                    <TextInput
+                                                        className="mt-1 block w-full text-sm"
+                                                        value={kel.nama_anggota}
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "nama_anggota",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="NIK Keluarga" />
+                                                    <TextInput
+                                                        className="mt-1 block w-full text-sm"
+                                                        value={
+                                                            kel.nik_keluarga ||
+                                                            ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "nik_keluarga",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="Jenis Kelamin" />
+                                                    <select
+                                                        className="mt-1 block w-full border-gray-300 rounded-md text-sm shadow-sm"
+                                                        value={
+                                                            kel.jenis_kelamin
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "jenis_kelamin",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="Laki-laki">
+                                                            Laki-laki
+                                                        </option>
+                                                        <option value="Perempuan">
+                                                            Perempuan
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center space-x-2 pb-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            kel.status_tanggungan_bpjs
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "status_tanggungan_bpjs",
+                                                                e.target
+                                                                    .checked,
+                                                            )
+                                                        }
+                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-xs text-gray-700 font-medium">
+                                                        Tanggungan BPJS
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeKeluarga(idx)
+                                                        }
+                                                        className="px-3 py-2 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700 w-full transition"
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* SECTION 4: Kontak Darurat */}
+                            <div>
+                                <h3 className="text-lg font-bold text-orange-600 border-b pb-2 mb-4">
+                                    Kontak Darurat (Emergency Contact)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-orange-50 p-4 rounded-md border border-orange-100">
+                                    <div>
+                                        <InputLabel value="Nama Kontak Darurat" />
+                                        <TextInput
+                                            className="mt-1 block w-full border-orange-300"
+                                            value={data.nama_kontak_darurat}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "nama_kontak_darurat",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
                                         <InputError
-                                            message={errors.tgl_bergabung}
+                                            message={errors.nama_kontak_darurat}
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="No. Telepon Darurat" />
+                                        <TextInput
+                                            className="mt-1 block w-full border-orange-300"
+                                            value={data.no_telp_darurat}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "no_telp_darurat",
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.no_telp_darurat}
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 3: Data Sensitif & BPJS */}
+                            {/* SECTION 5: Data Sensitif */}
                             <div>
                                 <h3 className="text-lg font-bold text-red-600 border-b pb-2 mb-4">
                                     Data Sensitif & Asuransi (Ter-Enkripsi)
@@ -494,7 +676,6 @@ export default function Create({
                                                 setData("npwp", e.target.value)
                                             }
                                         />
-                                        <InputError message={errors.npwp} />
                                     </div>
                                     <div>
                                         <InputLabel value="No. Rekening BCA" />
@@ -507,9 +688,6 @@ export default function Create({
                                                     e.target.value,
                                                 )
                                             }
-                                        />
-                                        <InputError
-                                            message={errors.no_rek_bca}
                                         />
                                     </div>
                                     <div>
@@ -524,9 +702,6 @@ export default function Create({
                                                 )
                                             }
                                         />
-                                        <InputError
-                                            message={errors.no_bpjs_kesehatan}
-                                        />
                                     </div>
                                     <div>
                                         <InputLabel value="No. BPJS Ketenagakerjaan" />
@@ -540,61 +715,12 @@ export default function Create({
                                                 )
                                             }
                                         />
-                                        <InputError
-                                            message={
-                                                errors.no_bpjs_ketenagakerjaan
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-orange-600 border-b pb-2 mb-4 mt-8">
-                                            Kontak Darurat (Emergency Contact)
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-orange-50 p-4 rounded-md border border-orange-100">
-                                            <div>
-                                                <InputLabel value="Nama Kontak Darurat (Cth: Istri/Orang Tua)" />
-                                                <TextInput
-                                                    className="mt-1 block w-full border-orange-300"
-                                                    value={
-                                                        data.nama_kontak_darurat
-                                                    }
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "nama_kontak_darurat",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors.nama_kontak_darurat
-                                                    }
-                                                />
-                                            </div>
-                                            <div>
-                                                <InputLabel value="No. Telepon Darurat" />
-                                                <TextInput
-                                                    className="mt-1 block w-full border-orange-300"
-                                                    value={data.no_telp_darurat}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "no_telp_darurat",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors.no_telp_darurat
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                            {/* Action Buttons */}
+                            <div className="flex justify-end space-x-3 pt-4 border-t">
                                 <Link href={route("karyawan.index")}>
                                     <SecondaryButton>Batal</SecondaryButton>
                                 </Link>
@@ -603,8 +729,8 @@ export default function Create({
                                     className="bg-indigo-600 hover:bg-indigo-700"
                                 >
                                     {processing
-                                        ? "Memproses..."
-                                        : "Simpan Data & Buat Akun"}
+                                        ? "Menyimpan..."
+                                        : "Simpan Data Karyawan"}
                                 </PrimaryButton>
                             </div>
                         </form>

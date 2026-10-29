@@ -9,9 +9,9 @@ import InputError from "@/Components/InputError";
 
 export default function Edit({
     karyawan,
-    departemens,
-    jabatans,
-    golongans,
+    departemens = [],
+    jabatans = [],
+    golongans = [],
     ptkps = [],
     roles = [],
     atasans = [],
@@ -21,8 +21,8 @@ export default function Edit({
         nama_lengkap: karyawan.nama_lengkap || "",
         tempat_lahir: karyawan.tempat_lahir || "",
         tgl_lahir: karyawan.tgl_lahir || "",
-        agama: karyawan.agama || "",
-        status_pernikahan: karyawan.status_pernikahan || "",
+        agama: karyawan.agama || "Islam",
+        status_pernikahan: karyawan.status_pernikahan || "Belum Kawin",
         email_kantor: karyawan.email_kantor || "",
         no_telp: karyawan.no_telp || "",
         tgl_bergabung: karyawan.tgl_bergabung || "",
@@ -30,12 +30,12 @@ export default function Edit({
         jabatan_id: karyawan.jabatan_id || "",
         golongan_id: karyawan.golongan_id || "",
         ptkp_id: karyawan.ptkp_id || "",
-        jenis_kelamin: karyawan.jenis_kelamin || "",
+        jenis_kelamin: karyawan.jenis_kelamin || "Laki-laki",
         alamat_ktp: karyawan.alamat_ktp || "",
         alamat_domisili: karyawan.alamat_domisili || "",
         nama_kontak_darurat: karyawan.nama_kontak_darurat || "",
         no_telp_darurat: karyawan.no_telp_darurat || "",
-        atasan_id: karyawan.atasan_id || "", // Menarik ID Atasan
+        atasan_id: karyawan.atasan_id || "",
         no_ktp: karyawan.no_ktp || "",
         npwp: karyawan.npwp || "",
         no_rek_bca: karyawan.no_rek_bca || "",
@@ -43,7 +43,46 @@ export default function Edit({
         no_bpjs_ketenagakerjaan: karyawan.no_bpjs_ketenagakerjaan || "",
         status_aktif:
             karyawan.status_aktif === 1 || karyawan.status_aktif === true,
+
+        // Normalisasi data boolean untuk tanggungan BPJS
+        keluargas: (karyawan.keluargas || []).map((k) => ({
+            ...k,
+            status_tanggungan_bpjs:
+                k.status_tanggungan_bpjs === 1 ||
+                k.status_tanggungan_bpjs === true,
+        })),
     });
+
+    const addKeluarga = () => {
+        setData("keluargas", [
+            ...data.keluargas,
+            {
+                jenis_relasi: "Istri",
+                nama_anggota: "",
+                nik_keluarga: "",
+                tgl_lahir: "",
+                jenis_kelamin: "Perempuan",
+                status_tanggungan_bpjs: false,
+            },
+        ]);
+    };
+
+    const removeKeluarga = (index) => {
+        setData(
+            "keluargas",
+            data.keluargas.filter((_, i) => i !== index),
+        );
+    };
+
+    const handleKeluargaChange = (index, field, value) => {
+        const updatedKeluargas = data.keluargas.map((item, i) => {
+            if (i === index) {
+                return { ...item, [field]: value };
+            }
+            return item;
+        });
+        setData("keluargas", updatedKeluargas);
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -77,7 +116,7 @@ export default function Edit({
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <InputLabel value="NIK Internal (Merubah ini merubah Username Login)" />
+                                        <InputLabel value="NIK Internal" />
                                         <TextInput
                                             className="mt-1 block w-full bg-gray-50"
                                             value={data.nik_internal}
@@ -111,7 +150,7 @@ export default function Edit({
                                     <div>
                                         <InputLabel value="Jenis Kelamin" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.jenis_kelamin}
                                             onChange={(e) =>
                                                 setData(
@@ -120,7 +159,6 @@ export default function Edit({
                                                 )
                                             }
                                         >
-                                            <option value="">Pilih...</option>
                                             <option value="Laki-laki">
                                                 Laki-laki
                                             </option>
@@ -171,7 +209,7 @@ export default function Edit({
                                         <div>
                                             <InputLabel value="Agama" />
                                             <select
-                                                className="mt-1 block w-full border-gray-300 rounded-md"
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                                 value={data.agama}
                                                 onChange={(e) =>
                                                     setData(
@@ -195,6 +233,9 @@ export default function Edit({
                                                 <option value="Buddha">
                                                     Buddha
                                                 </option>
+                                                <option value="Konghucu">
+                                                    Konghucu
+                                                </option>
                                             </select>
                                             <InputError
                                                 message={errors.agama}
@@ -203,7 +244,7 @@ export default function Edit({
                                         <div>
                                             <InputLabel value="Status Pernikahan" />
                                             <select
-                                                className="mt-1 block w-full border-gray-300 rounded-md"
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                                 value={data.status_pernikahan}
                                                 onChange={(e) =>
                                                     setData(
@@ -221,6 +262,9 @@ export default function Edit({
                                                 <option value="Cerai Hidup">
                                                     Cerai Hidup
                                                 </option>
+                                                <option value="Cerai Mati">
+                                                    Cerai Mati
+                                                </option>
                                             </select>
                                             <InputError
                                                 message={
@@ -228,49 +272,47 @@ export default function Edit({
                                                 }
                                             />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 col-span-1 md:col-span-2">
-                                            <div>
-                                                <InputLabel value="Alamat Sesuai KTP" />
-                                                <textarea
-                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                                                    rows="3"
-                                                    value={data.alamat_ktp}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "alamat_ktp",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                ></textarea>
-                                                <InputError
-                                                    message={errors.alamat_ktp}
-                                                />
-                                            </div>
-                                            <div>
-                                                <InputLabel value="Alamat Domisili (Kosongkan jika sama)" />
-                                                <textarea
-                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                                                    rows="3"
-                                                    value={data.alamat_domisili}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "alamat_domisili",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                ></textarea>
-                                                <InputError
-                                                    message={
-                                                        errors.alamat_domisili
-                                                    }
-                                                />
-                                            </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-1 md:col-span-2">
+                                        <div>
+                                            <InputLabel value="Alamat Sesuai KTP" />
+                                            <textarea
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                rows="3"
+                                                value={data.alamat_ktp}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "alamat_ktp",
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            ></textarea>
+                                            <InputError
+                                                message={errors.alamat_ktp}
+                                            />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Alamat Domisili" />
+                                            <textarea
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                rows="3"
+                                                value={data.alamat_domisili}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "alamat_domisili",
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            ></textarea>
+                                            <InputError
+                                                message={errors.alamat_domisili}
+                                            />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 2: Kontak & Penempatan */}
+                            {/* SECTION 2: Penempatan & Hak Akses */}
                             <div>
                                 <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">
                                     Penempatan & Hak Akses
@@ -307,12 +349,10 @@ export default function Edit({
                                         />
                                         <InputError message={errors.no_telp} />
                                     </div>
-
-                                    {/* --- INJEKSI RBAC & DIRECT REPORTING --- */}
                                     <div>
                                         <InputLabel value="Melapor Kepada (Atasan Langsung)" />
                                         <select
-                                            className="mt-1 block w-full border-blue-300 bg-blue-50 rounded-md font-semibold text-blue-900"
+                                            className="mt-1 block w-full border-blue-300 bg-blue-50 rounded-md font-semibold text-blue-900 shadow-sm"
                                             value={data.atasan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -322,24 +362,30 @@ export default function Edit({
                                             }
                                         >
                                             <option value="">
-                                                -- Kosongkan Jika CEO --
+                                                -- Kosongkan Jika CEO / BOD --
                                             </option>
-                                            {atasans.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.nik_internal} -{" "}
-                                                    {a.nama_lengkap}
-                                                </option>
-                                            ))}
+                                            {atasans
+                                                .filter(
+                                                    (a) => a.id !== karyawan.id,
+                                                )
+                                                .map((a) => (
+                                                    <option
+                                                        key={a.id}
+                                                        value={a.id}
+                                                    >
+                                                        {a.nik_internal} -{" "}
+                                                        {a.nama_lengkap}
+                                                    </option>
+                                                ))}
                                         </select>
                                         <InputError
                                             message={errors.atasan_id}
                                         />
                                     </div>
-
                                     <div>
                                         <InputLabel value="Departemen" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.departemen_id}
                                             onChange={(e) =>
                                                 setData(
@@ -358,7 +404,7 @@ export default function Edit({
                                     <div>
                                         <InputLabel value="Jabatan" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.jabatan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -377,7 +423,7 @@ export default function Edit({
                                     <div>
                                         <InputLabel value="Golongan Gaji" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.golongan_id}
                                             onChange={(e) =>
                                                 setData(
@@ -397,7 +443,7 @@ export default function Edit({
                                     <div>
                                         <InputLabel value="Status PTKP (Pajak PPh 21)" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md"
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                                             value={data.ptkp_id}
                                             onChange={(e) =>
                                                 setData(
@@ -431,8 +477,8 @@ export default function Edit({
                                     <div>
                                         <InputLabel value="Status Karyawan" />
                                         <select
-                                            className="mt-1 block w-full border-gray-300 rounded-md font-bold"
-                                            value={data.status_aktif}
+                                            className="mt-1 block w-full border-gray-300 rounded-md font-bold shadow-sm"
+                                            value={data.status_aktif.toString()}
                                             onChange={(e) =>
                                                 setData(
                                                     "status_aktif",
@@ -456,13 +502,160 @@ export default function Edit({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* SECTION 3: Data Anggota Keluarga */}
+                            <div className="pt-6 border-t border-gray-200">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-gray-700">
+                                        Data Anggota Keluarga & Tanggungan BPJS
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={addKeluarga}
+                                        className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 transition"
+                                    >
+                                        + Tambah Anggota Keluarga
+                                    </button>
+                                </div>
+
+                                {data.keluargas.length === 0 ? (
+                                    <p className="text-sm text-gray-500 italic bg-gray-50 p-4 rounded-md border text-center">
+                                        Belum ada data anggota keluarga yang
+                                        ditambahkan.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {data.keluargas.map((kel, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="p-4 border border-gray-200 rounded-md bg-gray-50 grid grid-cols-1 md:grid-cols-6 gap-3 items-end"
+                                            >
+                                                <div>
+                                                    <InputLabel value="Relasi" />
+                                                    <select
+                                                        className="mt-1 block w-full border-gray-300 rounded-md text-sm shadow-sm"
+                                                        value={kel.jenis_relasi}
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "jenis_relasi",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="Suami">
+                                                            Suami
+                                                        </option>
+                                                        <option value="Istri">
+                                                            Istri
+                                                        </option>
+                                                        <option value="Anak">
+                                                            Anak
+                                                        </option>
+                                                        <option value="Orang Tua">
+                                                            Orang Tua
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="Nama Lengkap" />
+                                                    <TextInput
+                                                        className="mt-1 block w-full text-sm"
+                                                        value={kel.nama_anggota}
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "nama_anggota",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="NIK Keluarga" />
+                                                    <TextInput
+                                                        className="mt-1 block w-full text-sm"
+                                                        value={
+                                                            kel.nik_keluarga ||
+                                                            ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "nik_keluarga",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <InputLabel value="Jenis Kelamin" />
+                                                    <select
+                                                        className="mt-1 block w-full border-gray-300 rounded-md text-sm shadow-sm"
+                                                        value={
+                                                            kel.jenis_kelamin
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "jenis_kelamin",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="Laki-laki">
+                                                            Laki-laki
+                                                        </option>
+                                                        <option value="Perempuan">
+                                                            Perempuan
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center space-x-2 pb-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            kel.status_tanggungan_bpjs
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleKeluargaChange(
+                                                                idx,
+                                                                "status_tanggungan_bpjs",
+                                                                e.target
+                                                                    .checked,
+                                                            )
+                                                        }
+                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-xs text-gray-700 font-medium">
+                                                        Tanggungan BPJS
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeKeluarga(idx)
+                                                        }
+                                                        className="px-3 py-2 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700 w-full transition"
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* SECTION 4: Kontak Darurat */}
                             <div>
-                                <h3 className="text-lg font-bold text-orange-600 border-b pb-2 mb-4 mt-8">
+                                <h3 className="text-lg font-bold text-orange-600 border-b pb-2 mb-4">
                                     Kontak Darurat (Emergency Contact)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-orange-50 p-4 rounded-md border border-orange-100">
                                     <div>
-                                        <InputLabel value="Nama Kontak Darurat (Cth: Istri/Orang Tua)" />
+                                        <InputLabel value="Nama Kontak Darurat" />
                                         <TextInput
                                             className="mt-1 block w-full border-orange-300"
                                             value={data.nama_kontak_darurat}
@@ -496,7 +689,7 @@ export default function Edit({
                                 </div>
                             </div>
 
-                            {/* SECTION 3: Data Sensitif */}
+                            {/* SECTION 5: Data Sensitif */}
                             <div>
                                 <h3 className="text-lg font-bold text-red-600 border-b pb-2 mb-4">
                                     Data Sensitif & Asuransi (Ter-Enkripsi)
@@ -568,6 +761,7 @@ export default function Edit({
                                 </div>
                             </div>
 
+                            {/* Action Buttons */}
                             <div className="flex justify-end space-x-3 pt-4 border-t">
                                 <Link href={route("karyawan.index")}>
                                     <SecondaryButton>Batal</SecondaryButton>

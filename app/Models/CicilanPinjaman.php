@@ -16,11 +16,19 @@ class CicilanPinjaman extends Model
         'payroll_id',
         'nominal_cicilan',
         'jatuh_tempo',
-        'status_bayar'
+        'status_bayar',
+        'metode_pelunasan',
+        'bukti_transfer',
+        'tgl_bayar'
     ];
 
     public function pinjaman()
     {
         return $this->belongsTo(PinjamanKaryawan::class, 'pinjaman_id');
+    }
+
+    public function payroll()
+    {
+        return $this->belongsTo(Payroll::class, 'payroll_id');
     }
 }

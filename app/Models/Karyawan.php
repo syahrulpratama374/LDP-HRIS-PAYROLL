@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Karyawan extends Model
 {
@@ -19,6 +20,11 @@ class Karyawan extends Model
         'no_bpjs_kesehatan', 'no_bpjs_ketenagakerjaan', 
         'nama_kontak_darurat', 'no_telp_darurat',
         'status_aktif', 'atasan_id', 'foto_profil',
+        'pendidikan_terakhir', 'nama_sekolah', 'jurusan', 'tahun_masuk_pendidikan', 'tahun_lulus_pendidikan',
+        'tgl_mulai_kerja', 'no_sk_tetap', 'kontrak_ke', 'kontrak_1_awal', 'kontrak_1_akhir', 'no_pkwt_1',
+        'kontrak_2_awal', 'kontrak_2_akhir', 'no_pkwt_2', 'pa_bulan_terakhir', 'pa_bulan_kembali',
+        'pa_nilai', 'sp_jenis', 'sp_masa_berlaku', 'sp_dari_tgl', 'sp_sampai_tgl',
+        'status_tdk_aktif', 'tgl_non_aktif', 'alasan_non_aktif'
     ];
 
     public function user()
@@ -84,5 +90,19 @@ class Karyawan extends Model
     public function kontraks()
     {
         return $this->hasMany(RiwayatKontrak::class, 'karyawan_id')->orderBy('tgl_mulai', 'desc');
+    }
+    
+    public function saldoCutis()
+    {
+        return $this->hasMany(SaldoCuti::class);
+    }
+
+    public function pengajuanCutis()
+    {
+        return $this->hasMany(PengajuanCuti::class);
+    }
+    public function ptkp(): BelongsTo
+    {
+        return $this->belongsTo(MasterPtkp::class, 'ptkp_id');
     }
 }
