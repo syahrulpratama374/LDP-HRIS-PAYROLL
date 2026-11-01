@@ -31,6 +31,7 @@ use App\Http\Controllers\Kepegawaian\{
 
 use App\Http\Controllers\Payroll\MasterKomponenPayrollController;
 use App\Http\Controllers\ItTicket\LogbookController;
+use App\Http\Controllers\Admin\RoleMenuController;
 
 // =========================================================================
 // 2. RUTE PUBLIK (TANPA LOGIN)
@@ -41,22 +42,23 @@ Route::get('/', function () {
 
 Route::get('/scan-aset/{kode_aset}', [AsetController::class, 'showPublic'])->name('aset.scan');
 Route::get('/verifikasi/surat/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('surat.verifikasi');
-
+Route::get('/v/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('keluar.verifikasi');
 
 
 // =========================================================================
-// 3. RUTE UMUM KARYAWAN (WAJIB LOGIN)
+// 3. RUTE PROTEKSI DINAMIS (WAJIB LOGIN & TEROTORISASI DATABASE)
 // =========================================================================
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
+
+    // --- DASHBOARD & PROFILE ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Profil User
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/foto', [ProfileController::class, 'updateFoto'])->name('profile.foto.update');
 
-    // Self-Service Karyawan
+    // --- SELF-SERVICE KARYAWAN (ESS) ---
     Route::get('/absensi/karyawan', [AbsensiController::class, 'create'])->name('absensi.create');
     Route::post('/absensi/karyawan', [AbsensiController::class, 'store'])->name('absensi.store');
 
@@ -87,101 +89,103 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/logbook-shift', [LogbookController::class, 'index'])->name('logbook.index');
     Route::post('/logbook-shift', [LogbookController::class, 'store'])->name('logbook.store');
-});
 
-// =========================================================================
-// 4. MODUL E-PERSURATAN LDP (WAJIB LOGIN & VERIFIED)
-// =========================================================================
-Route::middleware(['auth', 'verified'])->prefix('persuratan')->group(function () {
-    // Master Template & Rute Approval
-    Route::get('/template', [MasterTemplateController::class, 'index'])->name('template.index');
-    Route::post('/template', [MasterTemplateController::class, 'store'])->name('template.store');
+    // --- MODUL E-PERSURATAN LDP ---
+    Route::prefix('persuratan')->group(function () {
+        Route::get('/template', [MasterTemplateController::class, 'index'])->name('template.index');
+        Route::post('/template', [MasterTemplateController::class, 'store'])->name('template.store');
 
-    // Surat Keluar & Multi-Level Approval (CRUD Lengkap)
-    Route::get('/keluar', [SuratKeluarController::class, 'index'])->name('keluar.index');
-    Route::get('/keluar/create', [SuratKeluarController::class, 'create'])->name('keluar.create');
-    Route::post('/keluar', [SuratKeluarController::class, 'store'])->name('keluar.store');
-    Route::get('/keluar/{id}/edit', [SuratKeluarController::class, 'edit'])->name('keluar.edit');
-    Route::put('/keluar/{id}', [SuratKeluarController::class, 'update'])->name('keluar.update');
-    Route::delete('/keluar/{id}', [SuratKeluarController::class, 'destroy'])->name('keluar.destroy');
+        Route::get('/keluar', [SuratKeluarController::class, 'index'])->name('keluar.index');
+        Route::get('/keluar/create', [SuratKeluarController::class, 'create'])->name('keluar.create');
+        Route::post('/keluar', [SuratKeluarController::class, 'store'])->name('keluar.store');
+        Route::get('/keluar/{id}/edit', [SuratKeluarController::class, 'edit'])->name('keluar.edit');
+        Route::put('/keluar/{id}', [SuratKeluarController::class, 'update'])->name('keluar.update');
+        Route::delete('/keluar/{id}', [SuratKeluarController::class, 'destroy'])->name('keluar.destroy');
 
-    // Action Aksi: Approval, Tolak/Revisi, Void (Pembatalan), & Unduh PDF
-    Route::post('/keluar/{id}/approve', [SuratKeluarController::class, 'approve'])->name('keluar.approve');
-    Route::post('/keluar/{id}/tolak', [SuratKeluarController::class, 'tolak'])->name('keluar.tolak');
-    Route::post('/keluar/{id}/batal', [SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
-    Route::get('/keluar/{id}/pdf', [SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
+        Route::post('/keluar/{id}/approve', [SuratKeluarController::class, 'approve'])->name('keluar.approve');
+        Route::post('/keluar/{id}/tolak', [SuratKeluarController::class, 'tolak'])->name('keluar.tolak');
+        Route::post('/keluar/{id}/batal', [SuratKeluarController::class, 'batalkan'])->name('keluar.batalkan');
+        Route::get('/keluar/{id}/pdf', [SuratKeluarController::class, 'unduhPdf'])->name('keluar.pdf');
 
-    // Pengaturan Layout Aset Visual (Kop, Watermark & Banner Footer)
-    Route::get('/layout', [PengaturanLayoutController::class, 'index'])->name('layout.index');
-    Route::post('/layout', [PengaturanLayoutController::class, 'store'])->name('layout.store');
-});
+        Route::get('/layout', [PengaturanLayoutController::class, 'index'])->name('layout.index');
+        Route::post('/layout', [PengaturanLayoutController::class, 'store'])->name('layout.store');
 
-// Rute Verifikasi Publik QR Code (Ditaruh di Luar Middleware Auth agar Pihak Luar Bisa Scan)
-Route::get('/v/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('keluar.verifikasi');
+        Route::resource('masuk', SuratMasukController::class);
+    });
 
+    // --- MODUL APPROVAL CENTER & ADMINISTRASI ---
+    Route::prefix('admin')->group(function () {
+        // Approval Kehadiran & Lembur
+        Route::get('/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
+        Route::patch('/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.status');
 
-// =========================================================================
-// 5. RUTE MANAJERIAL & OPERASIONAL (BERDASARKAN ROLE)
-// =========================================================================
+        Route::get('/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
+        Route::patch('/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');
 
-// A. SPV (5), HC (3), Admin (1) -> Approval Kehadiran
-Route::middleware(['auth', 'role:1,3,5'])->group(function () {
-    Route::get('/admin/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
-    Route::patch('/admin/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.status');
+        Route::get('/delegasi', [DelegasiWewenangController::class, 'index'])->name('admin.delegasi.index');
+        Route::post('/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
+        Route::patch('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
+        Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
 
-    Route::get('/admin/delegasi', [DelegasiWewenangController::class, 'index'])->name('admin.delegasi.index');
-    Route::post('/admin/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
-    Route::patch('/admin/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
-    Route::delete('/admin/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
-    
-    Route::get('/admin/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
-    Route::patch('/admin/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');
-});
+        // Approval Finance & Kasbon
+        Route::get('/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
+        Route::post('/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
+        Route::post('/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'uploadBuktiBayar'])->name('admin.pinjaman.bayarManual');
+        Route::post('/pinjaman/cicilan/{cicilanId}/verifikasi', [PinjamanController::class, 'verifikasiPelunasan'])->name('admin.pinjaman.verifikasi');
 
-// Modul Approval Kasbon & Pinjaman (Bisa diakses Admin, HC, Finance, SPV)
-Route::middleware(['auth', 'role:1,3,4,5'])->group(function () {
-    Route::get('/admin/pinjaman', [PinjamanController::class, 'adminIndex'])->name('admin.pinjaman.index');
-    Route::post('/admin/pinjaman/{id}/status', [PinjamanController::class, 'updateStatus'])->name('admin.pinjaman.update');
-    Route::post('/admin/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'uploadBuktiBayar'])->name('admin.pinjaman.bayarManual');
-    Route::post('/admin/pinjaman/cicilan/{cicilanId}/verifikasi', [PinjamanController::class, 'verifikasiPelunasan'])->name('admin.pinjaman.verifikasi');
-});
+        // Kalkulator Payroll & Komponen Gaji
+        Route::get('/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
+        Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
+        Route::post('/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
 
-// Modul Payroll & Komponen Gaji (KHUSUS Finance (4) & Super Admin (1))
-Route::middleware(['auth', 'role:1,4'])->group(function () {
-    Route::get('/admin/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
-    Route::post('/admin/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
-    Route::post('/admin/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
+        Route::resource('komponen-gaji', MasterKomponenPayrollController::class)
+            ->names('admin.komponen')
+            ->except(['create', 'show', 'edit']);
 
-    Route::resource('/admin/komponen-gaji', MasterKomponenPayrollController::class)
-        ->names('admin.komponen')
-        ->except(['create', 'show', 'edit']);
-}); 
+        // Approval SPJ
+        Route::get('/spj', [PengajuanSpjController::class, 'adminIndex'])->name('admin.spj.index');
+        Route::post('/spj/{id}/status', [PengajuanSpjController::class, 'updateStatus'])->name('admin.spj.update');
 
-// C. SPV (5), Finance (4), Direktur (2), Admin (1) -> SPJ
-Route::middleware(['auth', 'role:1,2,4,5'])->group(function () {
-    Route::get('/admin/spj', [PengajuanSpjController::class, 'adminIndex'])->name('admin.spj.index');
-    Route::post('/admin/spj/{id}/status', [PengajuanSpjController::class, 'updateStatus'])->name('admin.spj.update');
-});
+        // IT Support, Settings, Audit & Aset
+        Route::get('/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
+        Route::post('/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
 
-// D. Khusus HC (3) & Admin (1) -> Kepegawaian & Master Data
-Route::middleware(['auth', 'role:1,3'])->group(function () {
+        Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('admin.pengaturan.index');
+        Route::post('/pengaturan', [PengaturanController::class, 'store'])->name('admin.pengaturan.store');
+
+        Route::get('/audit-trails', [AuditTrailController::class, 'index'])->name('admin.audit.index');
+
+        Route::resource('aset', AsetController::class)->names([
+            'index'   => 'admin.aset.index',
+            'create'  => 'admin.aset.create',
+            'store'   => 'admin.aset.store',
+            'edit'    => 'admin.aset.edit',
+            'update'  => 'admin.aset.update',
+            'destroy' => 'admin.aset.destroy',
+        ])->except(['show']);
+
+        // GUI Management Role & Permision Menu
+        Route::get('/role-management', [RoleMenuController::class, 'index'])->name('admin.role.index');
+        Route::post('/role-management', [RoleMenuController::class, 'updatePermissions'])->name('admin.role.update');
+
+        Route::post('/role-management/store-role', [RoleMenuController::class, 'storeRole'])->name('admin.role.storeRole');
+    });
+
+    // --- KEPEGAWAIAN, MASTER DATA & DISIPLIN ---
     Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
-    
-    // Master Data
+
     Route::prefix('master-data')->group(function () {
         Route::resource('departemen', DepartemenController::class)->except(['create', 'show', 'edit']);
         Route::resource('jabatan', JabatanController::class)->except(['create', 'show', 'edit']);
         Route::resource('golongan', GolonganController::class)->except(['create', 'show', 'edit']);
         Route::resource('shift', MasterShiftController::class)->except(['create', 'show', 'edit']);
 
-        // Master Cuti & Kalender Libur
         Route::get('/hc/master-cuti', [MasterCutiLiburController::class, 'index'])->name('hc.cuti.index');
         Route::post('/hc/master-cuti/default', [MasterCutiLiburController::class, 'updateDefaultCuti'])->name('hc.cuti.default');
         Route::post('/hc/master-cuti/libur', [MasterCutiLiburController::class, 'storeLibur'])->name('hc.libur.store');
         Route::delete('/hc/master-cuti/libur/{id}', [MasterCutiLiburController::class, 'destroyLibur'])->name('hc.libur.destroy');
     });
 
-    // Kepegawaian & Disiplin
     Route::prefix('kepegawaian')->group(function () {
         Route::resource('karyawan', KaryawanController::class);
         Route::post('karyawan/{id}/gaji', [KaryawanController::class, 'updateGaji'])->name('karyawan.updateGaji');
@@ -199,42 +203,11 @@ Route::middleware(['auth', 'role:1,3'])->group(function () {
         Route::get('/kinerja/buat', [PenilaianKinerjaController::class, 'create'])->name('admin.kinerja.create');
         Route::post('/kinerja', [PenilaianKinerjaController::class, 'store'])->name('admin.kinerja.store');
         Route::delete('/kinerja/{id}', [PenilaianKinerjaController::class, 'destroy'])->name('admin.kinerja.destroy');
-
-        Route::get('/delegasi', [DelegasiWewenangController::class, 'index'])->name('admin.delegasi.index');
-        Route::post('/delegasi', [DelegasiWewenangController::class, 'store'])->name('admin.delegasi.store');
-        Route::post('/delegasi/{id}/status', [DelegasiWewenangController::class, 'updateStatus'])->name('admin.delegasi.status');
-        Route::delete('/delegasi/{id}', [DelegasiWewenangController::class, 'destroy'])->name('admin.delegasi.destroy');
     });
 
-    // Surat Masuk
-    Route::prefix('persuratan')->group(function () {
-        Route::resource('masuk', SuratMasukController::class);
-    });
-});
-
-// E. Super Admin (1) -> Master IT & Settings
-Route::middleware(['auth', 'role:1'])->group(function () {
-    Route::get('/admin/it-ticket', [ItTicketController::class, 'adminIndex'])->name('admin.ticket.index');
-    Route::post('/admin/it-ticket/{id}', [ItTicketController::class, 'update'])->name('admin.ticket.update');
-
-    Route::get('/admin/pengaturan', [PengaturanController::class, 'index'])->name('admin.pengaturan.index');
-    Route::post('/admin/pengaturan', [PengaturanController::class, 'store'])->name('admin.pengaturan.store');
-
-    Route::get('/admin/audit-trails', [AuditTrailController::class, 'index'])->name('admin.audit.index');
-
-    Route::resource('/admin/aset', AsetController::class)->names([
-        'index'   => 'admin.aset.index',
-        'create'  => 'admin.aset.create',
-        'store'   => 'admin.aset.store',
-        'edit'    => 'admin.aset.edit',
-        'update'  => 'admin.aset.update',
-        'destroy' => 'admin.aset.destroy',
-    ])->except(['show']);
-}); 
-
-// F. Broadcast & Pengumuman Internal (Admin, Direktur, HC)
-Route::middleware(['auth', 'role:1,2,3'])->group(function () {
+    // --- BROADCAST & PENGUMUMAN ---
     Route::resource('/pengumuman', PengumumanController::class)->except(['show', 'edit', 'update']);
-});
+
+}); // <-- Kurung penutup untuk grup utama middleware dynamic.role
 
 require __DIR__ . '/auth.php';

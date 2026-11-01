@@ -12,4 +12,10 @@ class Role extends Model
     {
         return $this->hasMany(User::class);
     }
+    // Tambahkan di dalam class Role
+
+public function menus(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+{
+    return $this->belongsToMany(Menu::class, 'role_has_menus');
+}
 }

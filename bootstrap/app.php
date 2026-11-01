@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\DynamicRolePermission; // <-- 1. Tambahkan Import Ini
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,14 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
-        
+
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'dynamic.role' => DynamicRolePermission::class, // <-- 2. Tambahkan Alias Ini
         ]);
 
         // Sesuai Playbook: Seluruh user yang berhasil login diarahkan ke satu endpoint tunggal
         $middleware->redirectUsersTo('/dashboard');
-        
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
