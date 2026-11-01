@@ -27,13 +27,19 @@ class AbsensiController extends Controller
         ]);
     }
 
-    public function create()
+public function create()
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
 
+        // Pengecualian khusus Super Admin (Role ID = 1)
+        if ($user->role_id === 1 && !$karyawan) {
+            abort(403, 'Super Admin tidak diwajibkan melakukan absensi harian.');
+        }
+
+        // Jika user lain (selain Super Admin) belum dihubungkan ke data Karyawan
         if (!$karyawan) {
-            abort(403, 'Akses Ditolak: Halaman absensi ini khusus untuk Karyawan.');
+            abort(403, 'Profil Karyawan Anda belum terdaftar. Silakan hubungi bagian HC.');
         }
 
         $hariIni = Carbon::today('Asia/Jakarta')->toDateString();
@@ -53,8 +59,12 @@ class AbsensiController extends Controller
         $user = Auth::user();
         $karyawan = $user->karyawan;
 
+        if ($user->role_id === 1 && !$karyawan) {
+            return back()->withErrors(['error' => 'Super Admin tidak diwajibkan melakukan absensi harian.']);
+        }
+
         if (!$karyawan) {
-            return back()->withErrors(['error' => 'Akses Ditolak: Akun Anda tidak memiliki profil karyawan.']);
+            return back()->withErrors(['error' => 'Akses Ditolak: Akun Anda belum terhubung dengan data profil Karyawan.']);
         }
 
         $request->validate([
