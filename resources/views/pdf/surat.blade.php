@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <title>Surat Resmi - PT. Lintas Data Prima</title>
     <style>
-        /* ✅ Atur Margin Kertas A4 (Atas, Kanan, Bawah, Kiri) */
         @page {
             margin: 1.5cm 2cm 2cm 2cm;
         }
@@ -55,7 +54,8 @@
         }
         .ttd-table td { 
             vertical-align: top; 
-            padding: 5px; 
+            padding: 5px 10px; 
+            width: 50%;
         }
         .label-ttd { 
             font-weight: bold; 
@@ -64,7 +64,23 @@
             margin-bottom: 6px; 
         }
         .qr-box { 
-            margin: 5px auto; 
+            margin: 4px auto; 
+            min-height: 75px;
+            text-align: center;
+        }
+        .img-ttd-canvas {
+            max-height: 60px;
+            max-width: 150px;
+        }
+        .badge-method {
+            font-size: 7pt;
+            color: #1e40af;
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 3px;
+            font-weight: bold;
         }
         .nama-ttd { 
             font-weight: bold; 
@@ -129,7 +145,7 @@
         </tr>
     </table>
 
-    <!-- PENERIMA (TAMPILKAN JIKA DITUJUKAN KE KARYAWAN) -->
+    <!-- PENERIMA -->
     @if($surat->karyawan)
     <div class="penerima-block">
         <p style="margin:0;">Kepada Yth,</p>
@@ -149,26 +165,44 @@
             Yogyakarta, {{ \Carbon\Carbon::parse($surat->tanggal_terbit ?? now())->translatedFormat('d F Y') }}
         </div>
 
-        <table class="ttd-table">
-            <tr>
-                @foreach($surat->approvals as $appr)
-                <td>
-                    <div class="label-ttd">{{ str_replace('okeh', 'oleh', $appr->label_ttd) }}</div>
-                    
-                    <div class="qr-box">
-                        @if($surat->status === 'Terbit' && $surat->qr_code_token)
-                            <img src="data:image/svg+xml;base64,{!! base64_encode(SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(70)->generate(url('/persuratan/verifikasi/' . $surat->qr_code_token))) !!}">
-                        @else
-                            <div style="height: 70px; line-height: 70px; color: #aaa; font-style: italic; font-size: 8.5pt;">[ Menunggu TTD ]</div>
-                        @endif
-                    </div>
+    <table class="ttd-table">
+    <tr>
+        @foreach($surat->approvals as $appr)
+        <td>
+            <div class="label-ttd">{{ str_replace('okeh', 'oleh', $appr->label_ttd) }}</div>
+            
+            <div class="qr-box">
+                @if($appr->status === 'Disetujui')
+                    {{-- CEK APAKAH ADA FILE GAMBAR TTD DI STORAGE --}}
+                    @php
+                        $fullPath = $appr->ttd_image_path ? storage_path('app/public/' . $appr->ttd_image_path) : null;
+                    @endphp
 
-                    <div class="nama-ttd">{{ $appr->userAktual->name ?? '........................' }}</div>
-                    <div class="jabatan-ttd">{{ $appr->jabatan->nama_jabatan ?? '' }}</div>
-                </td>
-                @endforeach
-            </tr>
-        </table>
+                    @if($appr->jenis_ttd === 'canvas' && $fullPath && file_exists($fullPath))
+                        @php
+                            $imageData = base64_encode(file_get_contents($fullPath));
+                            $src = 'data:image/png;base64,' . $imageData;
+                        @endphp
+                        <img src="{{ $src }}" class="img-ttd-canvas"><br>
+                        <span class="badge-method">✓ TTD Digital Canvas</span>
+                    @else
+                        {{-- FALLBACK KE QR CODE --}}
+                        @if($surat->qr_code_token)
+                            <img src="data:image/svg+xml;base64,{!! base64_encode(SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(60)->generate(url('/persuratan/verifikasi/' . $surat->qr_code_token))) !!}"><br>
+                            <span class="badge-method">⚡ Enkripsi QR Valid</span>
+                        @endif
+                    @endif
+                @else
+                    <div style="height: 60px; line-height: 60px; color: #aaa; font-style: italic; font-size: 8.5pt;">[ Menunggu TTD ]</div>
+                @endif
+            </div>
+
+            <div class="nama-ttd">{{ $appr->userAktual->name ?? '........................' }}</div>
+            <div class="jabatan-ttd">{{ $appr->jabatan->nama_jabatan ?? '' }}</div>
+        </td>
+        @endforeach
+    </tr>
+</table>
     </div>
 
     <!-- LAMPIRAN BERKAS -->
@@ -180,16 +214,6 @@
                 <li>{{ $lamp->nama_file_asli }} ({{ round($lamp->file_size / 1024, 1) }} KB)</li>
             @endforeach
         </ol>
-        <!-- PROYEKSI PREVIEW GAMBAR (JIKA ADA) -->
-    <div style="margin-top: 15px;">
-        @foreach($surat->lampirans as $lamp)
-            @if(in_array(strtolower(pathinfo($lamp->nama_file_asli, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']))
-                <div style="margin-bottom: 15px; text-align: center;">
-                    <p style="font-size: 8pt; color: #666; margin-bottom: 4px;">[ Gambar Lampiran: {{ $lamp->nama_file_asli }} ]</p>
-                    <img src="{{ public_path('storage/' . $lamp->file_path) }}" style="max-width: 80%; max-height: 400px; border: 1px solid #ccc; padding: 4px;">
-                </div>
-            @endif
-        @endforeach
     </div>
     @endif
 

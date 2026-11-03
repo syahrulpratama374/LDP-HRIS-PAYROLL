@@ -10,32 +10,33 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class SuratKeluarController extends Controller
 {
     public function index()
-{
-    $suratKeluars = SuratKeluar::with([
-        'template', 
-        'karyawan', 
-        'pembuat', 
-        'lampirans',
-        'approvals.jabatan', 
-        'approvals.userAktual'
-    ])
-    ->latest()
-    ->paginate(10);
+    {
+        $suratKeluars = SuratKeluar::with([
+            'template', 
+            'karyawan', 
+            'pembuat', 
+            'lampirans',
+            'approvals.jabatan', 
+            'approvals.userAktual'
+        ])
+        ->latest()
+        ->paginate(10);
 
-    // Ambil data karyawan dari user yang sedang login
-    $userLogin = auth()->user()->load('karyawan');
+        // Ambil data karyawan dari user yang sedang login
+        $userLogin = auth()->user()->load('karyawan');
 
-    return Inertia::render('Persuratan/Keluar/Index', [
-        'suratKeluars' => $suratKeluars,
-        'auth' => [
-            'user' => $userLogin,
-        ]
-    ]);
-}
+        return Inertia::render('Persuratan/Keluar/Index', [
+            'suratKeluars' => $suratKeluars,
+            'auth' => [
+                'user' => $userLogin,
+            ]
+        ]);
+    }
 
     public function create()
     {
@@ -74,7 +75,7 @@ class SuratKeluarController extends Controller
         $surat->status_approval = 'Menunggu_Approval';
         $surat->save();
 
-        // Generasi Rute Persetujuan berdasarkan Master Template (Langsung ke Manager/Direktur)
+        // Generasi Rute Persetujuan berdasarkan Master Template
         if ($template->ruteApprovals && $template->ruteApprovals->count() > 0) {
             foreach ($template->ruteApprovals as $rute) {
                 ApprovalSuratKeluar::create([
@@ -146,16 +147,17 @@ class SuratKeluarController extends Controller
             'isi_surat_final' => 'required|string',
         ]);
 
-        // Jika surat dalam status Revisi/Ditolak, ajukan ulang ke antrean awal
         $statusApprovalBaru = ($surat->status_approval === 'Ditolak') ? 'Menunggu_Approval' : $surat->status_approval;
 
         if ($surat->status_approval === 'Ditolak') {
-            // Reset status semua tahap approval ke 'Menunggu'
+            // Reset status semua tahap approval ke 'Menunggu' & bersihkan TTD lama
             ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)->update([
-                'status' => 'Menunggu',
+                'status'         => 'Menunggu',
                 'user_id_aktual' => null,
                 'waktu_approval' => null,
-                'catatan' => null,
+                'catatan'        => null,
+                'jenis_ttd'      => null,
+                'ttd_image_path' => null,
             ]);
         }
 
@@ -181,22 +183,25 @@ class SuratKeluarController extends Controller
 
         return redirect()->route('keluar.index')->with('success', 'Draf surat berhasil dihapus.');
     }
+    
 
     public function approve(Request $request, $id)
     {
-        $surat = SuratKeluar::with(['template', 'karyawan', 'approvals' => function($q) {
-            $q->orderBy('urutan_langkah', 'asc');
-        }])->findOrFail($id);
-
+        $surat = SuratKeluar::with(['template', 'karyawan'])->findOrFail($id);
         $user = auth()->user();
         $karyawanLogin = \App\Models\Karyawan::where('user_id', $user->id)->first();
 
-        $approvalAktif = $surat->approvals->where('status', 'Menunggu')->first();
+        // 1. CARI ANTREAN
+        $approvalAktif = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
+            ->where('status', 'Menunggu')
+            ->orderBy('urutan_langkah', 'asc')
+            ->first();
 
         if (!$approvalAktif) {
             return redirect()->back()->with('error', 'Tidak ada antrean persetujuan aktif untuk surat ini.');
         }
 
+        // 2. CEK WEWENANG
         $isAuthorized = false;
         $keteranganApproval = '';
 
@@ -220,136 +225,119 @@ class SuratKeluarController extends Controller
             }
         }
 
-        if (!$isAuthorized) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki hak wewenang / delegasi Plt untuk menyetujui tahap ini.');
+        if ($user->role_id === 1) {
+            $isAuthorized = true;
+            $keteranganApproval = 'Disetujui langsung oleh Super Admin.';
         }
 
-        $approvalAktif->update([
-            'status'         => 'Disetujui',
-            'user_id_aktual' => $user->id,
-            'waktu_approval' => now(),
-            'catatan'        => $request->catatan ?? $keteranganApproval,
-        ]);
+        if (!$isAuthorized) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak wewenang untuk menyetujui tahap ini.');
+        }
 
-        $sisaMenunggu = $surat->approvals->where('status', 'Menunggu')->count();
+        // 3. OLAH GAMBAR TTD
+        $jenisTtd = $request->input('jenis_ttd') ?? 'qr_code';
+        $ttdBase64 = $request->input('ttd_base64');
+        $ttdImagePath = null;
 
-        if ($sisaMenunggu === 0) {
-            $surat->nomor_surat     = $this->generateNomorSurat($surat->template);
-            $surat->status          = 'Terbit';
-            $surat->status_approval = 'Disetujui';
-            $surat->tanggal_terbit  = now();
-            $surat->qr_code_token   = (string) Str::uuid();
-            $surat->save();
+        if ($jenisTtd === 'canvas' && !empty($ttdBase64)) {
+            $imageParts = explode(";base64,", $ttdBase64);
+            $imageBase64String = isset($imageParts[1]) ? $imageParts[1] : $ttdBase64;
+            $imageBase64 = base64_decode($imageBase64String);
+            if ($imageBase64) {
+                $fileName = 'ttd_approval_' . $approvalAktif->id . '_' . time() . '.png';
+                $ttdImagePath = 'persuratan/ttd/' . $fileName;
+                Storage::disk('public')->put($ttdImagePath, $imageBase64);
+            }
+        }
+
+        // 4. GUNAKAN DATABASE TRANSACTION UNTUK MENCEGAH DATA TERTAHAN JIKA ERROR
+        try {
+            DB::beginTransaction();
+
+            $approvalAktif->update([
+                'status'         => 'Disetujui',
+                'user_id_aktual' => $user->id,
+                'waktu_approval' => now(),
+                'catatan'        => $request->input('catatan') ?? $keteranganApproval,
+                'jenis_ttd'      => $jenisTtd,
+                'ttd_image_path' => $ttdImagePath,
+            ]);
+
+            $sisaMenunggu = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
+                ->where('status', 'Menunggu')
+                ->count();
+
+            if ($sisaMenunggu === 0) {
+                $nomorResmi = $this->generateNomorSurat($surat);
+
+                $surat->update([
+                    'nomor_surat'     => $nomorResmi,
+                    'status'          => 'Terbit',
+                    'status_approval' => 'Disetujui',
+                    'tanggal_terbit'  => now(),
+                    'qr_code_token'   => (string) Str::uuid(),
+                ]);
+
+                \App\Models\RiwayatSuratApproval::create([
+                    'surat_keluar_id' => $surat->id,
+                    'user_id'         => $user->id,
+                    'aksi'            => 'Terbit',
+                    'catatan'         => 'Surat disetujui penuh dan resmi diterbitkan.',
+                ]);
+
+                DB::commit(); // Simpan permanen ke DB jika semua sukses
+                return redirect()->back()->with('success', 'Surat selesai disetujui! Nomor Resmi: ' . $nomorResmi);
+            }
 
             \App\Models\RiwayatSuratApproval::create([
                 'surat_keluar_id' => $surat->id,
                 'user_id'         => $user->id,
-                'aksi'            => 'Terbit',
-                'catatan'         => 'Surat disetujui penuh dan resmi diterbitkan.',
+                'aksi'            => 'Disetujui Parsial',
+                'catatan'         => $keteranganApproval,
             ]);
 
-            return redirect()->back()->with('success', 'Surat selesai disetujui! Nomor Resmi: ' . $surat->nomor_surat);
+            DB::commit();
+            return redirect()->back()->with('success', 'Persetujuan disimpan. Diteruskan ke tahap berikutnya.');
+
+        } catch (\Exception $e) {
+            DB::rollBack(); // Batalkan semua proses jika ada error agar data tidak setengah matang
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat menerbitkan surat: ' . $e->getMessage());
         }
-
-        \App\Models\RiwayatSuratApproval::create([
-            'surat_keluar_id' => $surat->id,
-            'user_id'         => $user->id,
-            'aksi'            => 'Disetujui Parsial',
-            'catatan'         => $keteranganApproval,
-        ]);
-
-        return redirect()->back()->with('success', 'Persetujuan disimpan. Diteruskan ke tahap berikutnya.');
     }
 
-    public function tolak(Request $request, $id)
-    {
-        $request->validate([
-            'catatan_revisi' => 'required|string|max:500',
-        ]);
-
-        $surat = SuratKeluar::with(['approvals'])->findOrFail($id);
-        $user = auth()->user();
-        $karyawanLogin = \App\Models\Karyawan::where('user_id', $user->id)->first();
-
-        $approvalAktif = $surat->approvals->where('status', 'Menunggu')->first();
-
-        if (!$approvalAktif || ($karyawanLogin && $karyawanLogin->jabatan_id !== $approvalAktif->jabatan_id)) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki wewenang untuk meminta revisi pada tahap ini.');
-        }
-
-        $approvalAktif->update([
-            'status'         => 'Ditolak',
-            'user_id_aktual' => $user->id,
-            'waktu_approval' => now(),
-            'catatan'        => $request->catatan_revisi,
-        ]);
-
-        $surat->update([
-            'status_approval' => 'Ditolak',
-            'catatan_revisi'  => $request->catatan_revisi,
-        ]);
-
-        \App\Models\RiwayatSuratApproval::create([
-            'surat_keluar_id' => $surat->id,
-            'user_id'         => $user->id,
-            'aksi'            => 'Ditolak / Revisi',
-            'catatan'         => $request->catatan_revisi,
-        ]);
-
-        return redirect()->back()->with('success', 'Surat dikembalikan ke pembuat draf untuk direvisi.');
-    }
-
-    public function batalkan(Request $request, $id)
-    {
-        $request->validate([
-            'alasan_batal' => 'required|string|max:500',
-        ]);
-
-        $surat = SuratKeluar::findOrFail($id);
-
-        if ($surat->status !== 'Terbit') {
-            return redirect()->back()->with('error', 'Hanya surat terbit yang dapat dibatalkan (Void).');
-        }
-
-        $surat->update([
-            'status'       => 'Batal',
-            'alasan_batal' => $request->alasan_batal,
-        ]);
-
-        \App\Models\RiwayatSuratApproval::create([
-            'surat_keluar_id' => $surat->id,
-            'user_id'         => auth()->id(),
-            'aksi'            => 'Batal (Void)',
-            'catatan'         => $request->alasan_batal,
-        ]);
-
-        return redirect()->back()->with('success', 'Dokumen dibatalkan (Void). Nomor surat dinyatakan tidak berlaku.');
-    }
-
-    private function generateNomorSurat($template)
+    private function generateNomorSurat($surat)
     {
         $tahun = date('Y');
         $bulanAngka = date('n');
-        
-        $mapRomawi = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'];
-        $bulanRomawi = $mapRomawi[$bulanAngka];
 
-        $suratTerakhir = SuratKeluar::whereYear('tanggal_terbit', $tahun)
-        ->whereNotNull('nomor_surat')
-        ->orderBy('id', 'desc')
-        ->first();
+        $mapRomawi = [
+            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
+            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+        ];
+        $bulanRomawi = $mapRomawi[$bulanAngka] ?? 'XI';
 
-        $nomorUrut = 1;
-        if ($suratTerakhir && $suratTerakhir->nomor_surat) {
-            $pecahan = explode('/', $suratTerakhir->nomor_surat);
-            if (is_numeric($pecahan[0])) {
-                $nomorUrut = (int)$pecahan[0] + 1;
+        // ALGORITMA BARU: Mengambil nomor tertinggi secara absolut tanpa mempedulikan urutan ID
+        $suratTahunIni = \App\Models\SuratKeluar::whereYear('tanggal_terbit', $tahun)
+            ->whereNotNull('nomor_surat')
+            ->get();
+
+        $maxNomor = 0;
+        foreach ($suratTahunIni as $s) {
+            $pecahan = explode('/', $s->nomor_surat);
+            if (isset($pecahan[0]) && is_numeric($pecahan[0])) {
+                $nom = (int)$pecahan[0];
+                if ($nom > $maxNomor) {
+                    $maxNomor = $nom;
+                }
             }
         }
 
+        $nomorUrut = $maxNomor + 1;
         $nomorUrutFormatted = str_pad($nomorUrut, 3, '0', STR_PAD_LEFT);
-        $kodeSurat = $template->kode_surat;
-        $kodePembuat = $template->pembuat_kode;
+
+        $template = $surat->template;
+        $kodeSurat   = ($template && !empty($template->kode_surat)) ? $template->kode_surat : '1010';
+        $kodePembuat = ($template && !empty($template->pembuat_kode)) ? $template->pembuat_kode : 'ldp';
 
         return "{$nomorUrutFormatted}/{$kodeSurat}/{$kodePembuat}/{$bulanRomawi}/{$tahun}";
     }

@@ -7,9 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class ApprovalSuratKeluar extends Model
 {
     protected $fillable = [
-        'surat_keluar_id', 'urutan_langkah', 'jabatan_id', 
-        'user_id_aktual', 'label_ttd', 'status', 'waktu_approval', 'catatan'
-    ];
+    'surat_keluar_id',
+    'urutan_langkah',
+    'jabatan_id',
+    'user_id_aktual',
+    'label_ttd',
+    'status',
+    'waktu_approval',
+    'catatan',
+    'jenis_ttd',      
+    'ttd_image_path', 
+];
 
     public function suratKeluar()
     {

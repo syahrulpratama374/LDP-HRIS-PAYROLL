@@ -3,20 +3,13 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
-import DangerButton from "@/Components/DangerButton";
 import Modal from "@/Components/Modal";
-import InputLabel from "@/Components/InputLabel";
-
+import SignModal from "@/Components/SignModal"; 
 export default function Index({ auth, suratKeluars }) {
     const { user } = usePage().props.auth;
     const [selectedSurat, setSelectedSurat] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showApprovalModal, setShowApprovalModal] = useState(false);
-
-    // State Form Approval Action
-    const [actionType, setActionType] = useState("approve"); // 'approve' | 'reject'
-    const [catatan, setCatatan] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Buka Modal Tracking Timeline
     const handleOpenDetail = (surat) => {
@@ -27,35 +20,7 @@ export default function Index({ auth, suratKeluars }) {
     // Buka Modal Eksekusi TTD / Persetujuan Pimpinan
     const handleOpenApproval = (surat) => {
         setSelectedSurat(surat);
-        setCatatan("");
-        setActionType("approve");
         setShowApprovalModal(true);
-    };
-
-    // Submit Persetujuan atau Penolakan ke Backend
-    const handleSubmitApproval = (e) => {
-        e.preventDefault();
-        if (!selectedSurat) return;
-
-        setIsSubmitting(true);
-
-        const routeName =
-            actionType === "approve" ? "keluar.approve" : "keluar.tolak";
-
-        router.post(
-            route(routeName, selectedSurat.id),
-            actionType === "approve"
-                ? { catatan }
-                : { catatan_revisi: catatan },
-            {
-                onSuccess: () => {
-                    setShowApprovalModal(false);
-                    setSelectedSurat(null);
-                    setIsSubmitting(false);
-                },
-                onError: () => setIsSubmitting(false),
-            },
-        );
     };
 
     // Helper Penentu Badge Status Utama
@@ -73,6 +38,7 @@ export default function Index({ auth, suratKeluars }) {
                         Draft
                     </span>
                 );
+            case "Batal":
             case "Dibatalkan":
                 return (
                     <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800 border border-red-200">
@@ -155,10 +121,14 @@ export default function Index({ auth, suratKeluars }) {
                                             user?.karyawan?.jabatan_id ||
                                             user?.jabatan_id;
 
+                                        // Cek Wewenang Persetujuan (atau Super Admin bypass)
                                         const isMyTurn =
-                                            activeStep &&
-                                            Number(userJabatanId) ===
-                                                Number(activeStep.jabatan_id);
+                                            (activeStep &&
+                                                Number(userJabatanId) ===
+                                                    Number(
+                                                        activeStep.jabatan_id,
+                                                    )) ||
+                                            auth?.user?.role_id === 1;
 
                                         return (
                                             <tr
@@ -237,9 +207,10 @@ export default function Index({ auth, suratKeluars }) {
                                                             Tracking
                                                         </button>
 
+                                                        {/* TOMBOL PERSETUJUAN */}
                                                         {isMyTurn &&
-                                                            surat.status ===
-                                                                "Draft" && (
+                                                            surat.status !==
+                                                                "Terbit" && (
                                                                 <button
                                                                     onClick={() =>
                                                                         handleOpenApproval(
@@ -252,6 +223,7 @@ export default function Index({ auth, suratKeluars }) {
                                                                 </button>
                                                             )}
 
+                                                        {/* TOMBOL CETAK PDF */}
                                                         {surat.status ===
                                                             "Terbit" && (
                                                             <a
@@ -321,7 +293,7 @@ export default function Index({ auth, suratKeluars }) {
                                     </div>
                                 </div>
 
-                                {/* ✅ BAGIAN LAMPIRAN BERKAS PENDUKUNG */}
+                                {/* LAMPIRAN BERKAS PENDUKUNG */}
                                 <div className="mb-6 bg-blue-50/50 p-3.5 rounded-lg border border-blue-100">
                                     <h4 className="font-bold text-xs text-blue-900 mb-2 uppercase flex items-center gap-1.5">
                                         📁 Lampiran Berkas Pendukung (
@@ -452,114 +424,17 @@ export default function Index({ auth, suratKeluars }) {
                         )}
                     </Modal>
 
-                    {/* MODAL 2: EKSEKUSI PERSETUJUAN PIMPINAN */}
-                    <Modal
-                        show={showApprovalModal}
-                        onClose={() => setShowApprovalModal(false)}
-                        maxWidth="lg"
-                    >
-                        {selectedSurat && (
-                            <form
-                                onSubmit={handleSubmitApproval}
-                                className="p-6"
-                            >
-                                <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">
-                                    Persetujuan Dokumen Resmi
-                                </h3>
-
-                                <p className="text-xs text-gray-600 mb-4">
-                                    Anda akan melakukan tindakan
-                                    penandatanganan/peninjauan untuk draf surat{" "}
-                                    <strong className="text-indigo-600">
-                                        {selectedSurat.template?.nama_template}
-                                    </strong>{" "}
-                                    yang ditujukan kepada{" "}
-                                    <strong>
-                                        {selectedSurat.karyawan?.nama_lengkap}
-                                    </strong>
-                                    .
-                                </p>
-
-                                <div className="mb-4">
-                                    <InputLabel value="Opsi Tindakan Persetujuan" />
-                                    <div className="flex gap-4 mt-2">
-                                        <label className="flex items-center gap-2 cursor-pointer border p-2.5 rounded-lg flex-1 bg-green-50/50 border-green-200">
-                                            <input
-                                                type="radio"
-                                                name="actionType"
-                                                value="approve"
-                                                checked={
-                                                    actionType === "approve"
-                                                }
-                                                onChange={() =>
-                                                    setActionType("approve")
-                                                }
-                                                className="text-green-600 focus:ring-green-500"
-                                            />
-                                            <span className="text-xs font-bold text-green-800">
-                                                Setujui & Tanda Tangan
-                                            </span>
-                                        </label>
-
-                                        <label className="flex items-center gap-2 cursor-pointer border p-2.5 rounded-lg flex-1 bg-red-50/50 border-red-200">
-                                            <input
-                                                type="radio"
-                                                name="actionType"
-                                                value="reject"
-                                                checked={
-                                                    actionType === "reject"
-                                                }
-                                                onChange={() =>
-                                                    setActionType("reject")
-                                                }
-                                                className="text-red-600 focus:ring-red-500"
-                                            />
-                                            <span className="text-xs font-bold text-red-800">
-                                                Tolak / Minta Revisi
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="mb-6">
-                                    <InputLabel value="Catatan / Alasan (Opsional untuk ACC, Wajib jika Ditolak)" />
-                                    <textarea
-                                        className="mt-1 w-full border-gray-300 rounded-md shadow-sm text-xs focus:border-indigo-500"
-                                        rows="3"
-                                        value={catatan}
-                                        onChange={(e) =>
-                                            setCatatan(e.target.value)
-                                        }
-                                        placeholder="Tuliskan catatan tambahan atau instruksi revisi..."
-                                        required={actionType === "reject"}
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-3 border-t pt-4">
-                                    <SecondaryButton
-                                        onClick={() =>
-                                            setShowApprovalModal(false)
-                                        }
-                                    >
-                                        Batal
-                                    </SecondaryButton>
-                                    {actionType === "approve" ? (
-                                        <PrimaryButton disabled={isSubmitting}>
-                                            {isSubmitting
-                                                ? "Memproses..."
-                                                : "Ya, Disetujui"}
-                                        </PrimaryButton>
-                                    ) : (
-                                        <DangerButton disabled={isSubmitting}>
-                                            {isSubmitting
-                                                ? "Memproses..."
-                                                : "Tolak Surat"}
-                                        </DangerButton>
-                                    )}
-                                </div>
-                            </form>
-                        )}
-                    </Modal>
+                    {/* MODAL 2: POP-UP PERSETUJUAN TTD CANVAS & QR CODE */}
+                    {selectedSurat && (
+                        <SignModal
+                            isOpen={showApprovalModal}
+                            onClose={() => {
+                                setShowApprovalModal(false);
+                                setSelectedSurat(null);
+                            }}
+                            suratId={selectedSurat.id}
+                        />
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

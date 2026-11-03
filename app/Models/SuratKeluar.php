@@ -10,24 +10,21 @@ class SuratKeluar extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'uuid',
-        'template_id',
-        'karyawan_id',
-        'approver_id',
-        'nomor_surat',
-        'status',
-        'status_approval',
-        'jenis_ttd',
-        'file_ttd_path',
-        'qr_code_token',
-        'tanggal_terbit',
-        'file_pdf',
-        'created_by',
-        'isi_surat_final',
-        'catatan_revisi',
-        'alasan_batal',
-    ];
+        protected $fillable = [
+            'uuid',
+            'template_id',
+            'karyawan_id',
+            'nomor_surat',
+            'status',
+            'status_approval',
+            'qr_code_token',
+            'tanggal_terbit',
+            'file_pdf',
+            'created_by',
+            'isi_surat_final',
+            'catatan_revisi',
+            'alasan_batal',
+        ];
 
     // Otomatis generate UUID acak saat draf surat pertama kali dibuat
     protected static function boot()

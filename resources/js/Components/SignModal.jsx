@@ -1,80 +1,150 @@
-import React, { useRef, useState } from "react";
-import { useForm } from "@inertiajs/react";
+import React, { useRef, useState, useEffect } from "react";
+import { useForm, router } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
-import SignatureCanvas from "react-signature-canvas";
 
 export default function SignModal({ isOpen, onClose, suratId }) {
-    const sigCanvas = useRef({});
-    const [jenisTtd, setJenisTtd] = useState("Digital_Canvas"); // Default ke Canvas
+    const canvasRef = useRef(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [hasSignature, setHasSignature] = useState(false);
+    const [jenisTtd, setJenisTtd] = useState("canvas"); // Default ke Canvas
 
-    const { data, setData, post, processing, reset, clearErrors } = useForm({
-        jenis_ttd: "Digital_Canvas",
-        signature_base64: "",
+    const { data, setData, reset, clearErrors } = useForm({
+        jenis_ttd: "canvas",
+        ttd_base64: "",
+        catatan: "",
     });
 
-    // Handle ganti tab jenis TTD
+    const [processing, setProcessing] = useState(false);
+
+    // Inisialisasi Kertas Canvas Native saat Modal Dibuka
+    useEffect(() => {
+        if (isOpen && jenisTtd === "canvas" && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext("2d");
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+        }
+    }, [isOpen, jenisTtd]);
+
+    // Handler Goresan TTD (Mouse & Touch)
+    const startDrawing = (e) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        ctx.beginPath();
+        ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        setIsDrawing(true);
+        setHasSignature(true);
+    };
+
+    const draw = (e) => {
+        if (!isDrawing) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        ctx.lineTo(clientX - rect.left, clientY - rect.top);
+        ctx.stroke();
+    };
+
+    const stopDrawing = () => {
+        setIsDrawing(false);
+    };
+
+    // Bersihkan Coretan Canvas
+    const clearSignature = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        setHasSignature(false);
+        setData("ttd_base64", "");
+    };
+
+    // Handle perpindahan tab jenis TTD
     const handleTabChange = (type) => {
         setJenisTtd(type);
         setData("jenis_ttd", type);
         clearErrors();
     };
 
-    // Bersihkan coretan canvas
-    const clearSignature = () => {
-        sigCanvas.current.clear();
-        setData("signature_base64", "");
+    // Reset dan tutup modal
+    const closeModal = () => {
+        reset();
+        clearSignature();
+        setProcessing(false);
+        onClose();
     };
 
     // Proses Submit (Approve)
     const handleApprove = (e) => {
         e.preventDefault();
 
-        // Jika pilih Canvas tapi masih kosong, tolak
-        if (jenisTtd === "Digital_Canvas") {
-            if (sigCanvas.current.isEmpty()) {
-                alert("Tanda tangan tidak boleh kosong!");
+        let base64Data = "";
+
+        // Validasi jika memilih Canvas
+        if (jenisTtd === "canvas") {
+            if (canvasRef.current) {
+                base64Data = canvasRef.current.toDataURL("image/png");
+            }
+            if (!hasSignature || !base64Data) {
+                alert(
+                    "Silakan goreskan tanda tangan Anda pada kanvas terlebih dahulu.",
+                );
                 return;
             }
-            // Ambil data gambar base64 dari canvas
-            data.signature_base64 = sigCanvas.current
-                .getTrimmedCanvas()
-                .toDataURL("image/png");
         }
 
-        post(route("keluar.terbitkan", suratId), {
-            onSuccess: () => {
-                closeModal();
+        setProcessing(true);
+
+        router.post(
+            route("keluar.approve", suratId),
+            {
+                jenis_ttd: jenisTtd,
+                ttd_base64: base64Data,
+                catatan: data.catatan,
             },
-        });
-    };
-
-    const closeModal = () => {
-        reset();
-        if (
-            sigCanvas.current &&
-            typeof sigCanvas.current.clear === "function"
-        ) {
-            sigCanvas.current.clear();
-        }
-        onClose();
+            {
+                onSuccess: () => {
+                    closeModal();
+                },
+                onError: (errors) => {
+                    setProcessing(false);
+                    console.error("Approval error:", errors);
+                },
+                onFinish: () => {
+                    setProcessing(false);
+                },
+            },
+        );
     };
 
     return (
         <Modal show={isOpen} onClose={closeModal} maxWidth="md">
             <div className="p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
-                    Persetujuan Dokumen
+                    Persetujuan & Penandatanganan Dokumen
                 </h2>
 
-                {/* Tab Pemilihan */}
+                {/* TAB PEMILIHAN METODE APPROVAL */}
                 <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
                     <button
                         type="button"
-                        onClick={() => handleTabChange("Digital_Canvas")}
-                        className={`flex-1 py-2 text-sm font-bold rounded-md ${
-                            jenisTtd === "Digital_Canvas"
+                        onClick={() => handleTabChange("canvas")}
+                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                            jenisTtd === "canvas"
                                 ? "bg-white shadow text-indigo-600"
                                 : "text-gray-500 hover:text-gray-700"
                         }`}
@@ -83,9 +153,9 @@ export default function SignModal({ isOpen, onClose, suratId }) {
                     </button>
                     <button
                         type="button"
-                        onClick={() => handleTabChange("Qr_Code_Quick")}
-                        className={`flex-1 py-2 text-sm font-bold rounded-md ${
-                            jenisTtd === "Qr_Code_Quick"
+                        onClick={() => handleTabChange("qr_code")}
+                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                            jenisTtd === "qr_code"
                                 ? "bg-white shadow text-indigo-600"
                                 : "text-gray-500 hover:text-gray-700"
                         }`}
@@ -94,57 +164,78 @@ export default function SignModal({ isOpen, onClose, suratId }) {
                     </button>
                 </div>
 
-                {/* Area Konten Tab */}
-                <form onSubmit={handleApprove}>
-                    {jenisTtd === "Digital_Canvas" ? (
-                        <div className="space-y-3">
-                            <p className="text-sm text-gray-500 text-center">
+                <form onSubmit={handleApprove} className="space-y-4">
+                    {/* TAB 1: CANVAS TTD BASAH NATIVE */}
+                    {jenisTtd === "canvas" ? (
+                        <div className="space-y-2">
+                            <p className="text-xs text-gray-500 text-center">
                                 Goreskan tanda tangan Anda di dalam kotak di
-                                bawah ini.
+                                bawah ini:
                             </p>
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative">
-                                <SignatureCanvas
-                                    ref={sigCanvas}
-                                    penColor="black"
-                                    canvasProps={{
-                                        className:
-                                            "w-full h-48 cursor-crosshair rounded-lg",
-                                    }}
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-hidden">
+                                <canvas
+                                    ref={canvasRef}
+                                    width={400}
+                                    height={180}
+                                    onMouseDown={startDrawing}
+                                    onMouseMove={draw}
+                                    onMouseUp={stopDrawing}
+                                    onMouseLeave={stopDrawing}
+                                    onTouchStart={startDrawing}
+                                    onTouchMove={draw}
+                                    onTouchEnd={stopDrawing}
+                                    className="w-full h-44 cursor-crosshair rounded-lg touch-none bg-white"
                                 />
                                 <button
                                     type="button"
                                     onClick={clearSignature}
-                                    className="absolute top-2 right-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded shadow-sm hover:bg-red-200 font-bold"
+                                    className="absolute top-2 right-2 text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded shadow-sm hover:bg-red-200 font-bold transition-colors"
                                 >
-                                    Hapus (Ulang)
+                                    Reset
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="py-6 flex flex-col items-center justify-center space-y-3 bg-blue-50 border border-blue-100 rounded-lg">
+                        /* TAB 2: QUICK QR APPROVAL */
+                        <div className="py-6 flex flex-col items-center justify-center space-y-2 bg-indigo-50/60 border border-indigo-100 rounded-lg">
                             <div className="text-4xl">📱</div>
-                            <p className="text-sm text-blue-800 text-center px-4">
+                            <p className="text-xs text-indigo-900 text-center px-4 font-medium">
                                 Dokumen ini akan disahkan menggunakan{" "}
-                                <strong>Enkripsi QR Code Validasi</strong>.
-                                Tidak diperlukan coretan tanda tangan manual.
+                                <strong>Enkripsi QR Code Validasi Resmi</strong>
+                                . Tidak diperlukan coretan tanda tangan manual.
                             </p>
                         </div>
                     )}
 
-                    <div className="mt-6 flex justify-end gap-3">
+                    {/* CATATAN APPROVAL (OPSIONAL) */}
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Catatan / Keterangan (Opsional)
+                        </label>
+                        <textarea
+                            rows="2"
+                            value={data.catatan}
+                            onChange={(e) => setData("catatan", e.target.value)}
+                            placeholder="Tambahkan instruksi / catatan persetujuan jika ada..."
+                            className="w-full text-xs rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        ></textarea>
+                    </div>
+
+                    {/* TOMBOL AKSI */}
+                    <div className="mt-6 flex justify-end gap-3 pt-2 border-t">
                         <SecondaryButton
+                            type="button"
                             onClick={closeModal}
                             disabled={processing}
                         >
                             Batal
                         </SecondaryButton>
                         <PrimaryButton
-                            className="!bg-indigo-600"
+                            type="submit"
+                            className="!bg-indigo-600 hover:!bg-indigo-700"
                             disabled={processing}
                         >
-                            {processing
-                                ? "Memproses..."
-                                : "Approve & Terbitkan Sah"}
+                            {processing ? "Memproses..." : "Approve & Sahkan"}
                         </PrimaryButton>
                     </div>
                 </form>
