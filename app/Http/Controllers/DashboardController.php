@@ -93,13 +93,22 @@ class DashboardController extends Controller
                 $pendingCuti = [];
                 $pendingLembur = [];
                 $pendingSpj = [];
+                
+                // Variabel Absensi Pribadi & Pengumuman
+                $deptId = $karyawan ? $karyawan->departemen_id : null;
+                $pengumumanAktif = \App\Http\Controllers\PengumumanController::getPengumumanAktif($deptId);
+
+                $absensiHariIni = null;
+                $statistikBulanIni = ['hadir' => 0, 'terlambat' => 0, 'izin' => 0, 'alpha' => 0];
+                $absensiMingguIni = [];
 
                 if ($karyawan) {
+                    // --- 1. MANAJERIAL (Bawahan & Delegasi) ---
                     $karyawanId = $karyawan->id;
                     $hariIni = Carbon::now()->toDateString();
+                    $waktuHariIni = Carbon::now('Asia/Jakarta')->startOfDay();
 
                     $bawahanIds = Karyawan::where('atasan_id', $karyawanId)->pluck('id')->toArray();
-
                     $pemberiDelegasiIds = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanId)
                         ->where('status', 'Aktif')
                         ->whereDate('tgl_mulai', '<=', $hariIni)
@@ -115,6 +124,30 @@ class DashboardController extends Controller
                     $pendingCuti = PengajuanCuti::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingLembur = PengajuanLembur::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingSpj = PengajuanSpj::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
+                    
+                    // --- 2. ABSENSI PRIBADI SPV ---
+                    $absensiHariIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereDate('tanggal', $waktuHariIni->toDateString())
+                        ->first();
+
+                    $awalBulan = $waktuHariIni->copy()->startOfMonth();
+                    $akhirBulan = $waktuHariIni->copy()->endOfMonth();
+                    $absensiBulanIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereBetween('tanggal', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
+                        ->get(['tanggal', 'status', 'waktu_masuk', 'waktu_keluar']);
+
+                    $statistikBulanIni = [
+                        'hadir' => $absensiBulanIni->whereIn('status', ['Hadir', 'Dinas Luar'])->count(),
+                        'terlambat' => $absensiBulanIni->where('status', 'Terlambat')->count(),
+                        'izin' => $absensiBulanIni->where('status', 'Izin')->count(),
+                        'alpha' => $absensiBulanIni->where('status', 'Alpha')->count(),
+                    ];
+
+                    $awal7Hari = $waktuHariIni->copy()->subDays(6);
+                    $absensiMingguIni = Absensi::where('karyawan_id', $karyawan->id)
+                        ->whereBetween('tanggal', [$awal7Hari->toDateString(), $waktuHariIni->toDateString()])
+                        ->orderBy('tanggal')
+                        ->get(['tanggal', 'status', 'waktu_masuk', 'waktu_keluar']);
                 }
 
                 return Inertia::render('Dashboard/Supervisor', [
@@ -123,6 +156,11 @@ class DashboardController extends Controller
                     'pendingSpj' => $pendingSpj,
                     'sisaCuti' => $sisaCuti,
                     'sisaKasbon' => $sisaKasbon,
+                    // Kirim data absensi & pengumuman ke frontend Supervisor
+                    'pengumuman' => $pengumumanAktif,
+                    'absensiHariIni' => $absensiHariIni,
+                    'statistikBulanIni' => $statistikBulanIni,
+                    'absensiMingguIni' => $absensiMingguIni,
                 ]);
 
             case 6: // Karyawan
