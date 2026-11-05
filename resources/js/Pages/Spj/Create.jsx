@@ -1,6 +1,7 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function Create({ auth }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -54,30 +55,26 @@ export default function Create({ auth }) {
         <AuthenticatedLayout user={auth?.user}>
             <Head title="Ajukan SPJ" />
 
-            <div className="min-h-screen bg-[#F7F7FA]">
-                {/* =====================================================
-                    HEADER BANNER
-                ====================================================== */}
-                <div className="bg-gradient-to-r from-[#2A164E] to-[#431D6D]">
-                    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-                        <div className="relative flex min-h-[76px] items-center justify-center py-4">
-                            <div className="text-center">
-                                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3B817] sm:block">
-                                    LDP HRIS
-                                </p>
-
-                                <h1 className="text-base font-bold leading-tight text-white sm:text-xl">
-                                    Form Pengajuan SPJ
-                                </h1>
-                            </div>
-                        </div>
-                    </div>
+            {/* =====================================================
+                BANNER HEADER (Tinggi persis 64px / h-16)
+            ====================================================== */}
+            <section className="bg-gradient-to-r from-[#2A164E] to-[#431D6D] -mt-6 -mx-6 mb-6 flex h-16 flex-col justify-center md:-mt-8 md:-mx-8 md:mb-8">
+                <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center px-4 text-center">
+                    <p className="mb-1 hidden text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-[#F3B817] sm:block">
+                        LDP HRIS
+                    </p>
+                    <h1 className="text-lg font-bold leading-none text-white sm:text-xl">
+                        Form Pengajuan SPJ
+                    </h1>
                 </div>
+            </section>
 
-                {/* =====================================================
-                    CONTENT
-                ====================================================== */}
-                <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+            {/* =====================================================
+                CONTENT WRAPPER
+            ====================================================== */}
+            <div className="min-h-screen bg-[#F7F7FA] pb-12">
+                <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                    
                     {/* Notifikasi Error Validasi Plafon dari Backend */}
                     {errors.error && (
                         <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm sm:p-5">
@@ -118,7 +115,7 @@ export default function Create({ auth }) {
                         </div>
 
                         <form onSubmit={submit}>
-                            <div className="p-5 sm:p-6 space-y-8">
+                            <div className="space-y-8 p-5 sm:p-6">
                                 {/* --- BAGIAN 1: DETAIL PERJALANAN --- */}
                                 <div>
                                     <h3 className="mb-4 flex items-center text-sm font-bold text-[#431D6D]">
@@ -128,25 +125,17 @@ export default function Create({ auth }) {
                                         Detail Perjalanan
                                     </h3>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
+                                    <div className="grid grid-cols-1 gap-x-5 gap-y-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-2">
                                         {/* KOTA TUJUAN */}
                                         <div className="sm:col-span-2">
                                             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
-                                                Kota Tujuan - Nama Instansi atau
-                                                Perusahaan{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Kota Tujuan - Nama Instansi atau Perusahaan{" "}
+                                                <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="text"
                                                 value={data.tujuan}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "tujuan",
-                                                        e.target.value,
-                                                    )
-                                                }
+                                                onChange={(e) => setData("tujuan", e.target.value)}
                                                 className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20"
                                                 placeholder="Contoh: Jakarta - PT Maju Jaya"
                                                 required
@@ -161,20 +150,12 @@ export default function Create({ auth }) {
                                         {/* TANGGAL MULAI */}
                                         <div>
                                             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
-                                                Tanggal Mulai{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Tanggal Mulai <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="date"
                                                 value={data.tgl_mulai}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "tgl_mulai",
-                                                        e.target.value,
-                                                    )
-                                                }
+                                                onChange={(e) => setData("tgl_mulai", e.target.value)}
                                                 className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20"
                                                 required
                                             />
@@ -183,20 +164,12 @@ export default function Create({ auth }) {
                                         {/* TANGGAL SELESAI */}
                                         <div>
                                             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
-                                                Tanggal Selesai{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Tanggal Selesai <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="date"
                                                 value={data.tgl_selesai}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "tgl_selesai",
-                                                        e.target.value,
-                                                    )
-                                                }
+                                                onChange={(e) => setData("tgl_selesai", e.target.value)}
                                                 className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20"
                                                 required
                                             />
@@ -205,20 +178,12 @@ export default function Create({ auth }) {
                                         {/* KEPERLUAN */}
                                         <div className="sm:col-span-2">
                                             <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
-                                                Keperluan Perjalanan{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Keperluan Perjalanan <span className="text-red-500">*</span>
                                             </label>
                                             <textarea
                                                 rows="3"
                                                 value={data.keperluan}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "keperluan",
-                                                        e.target.value,
-                                                    )
-                                                }
+                                                onChange={(e) => setData("keperluan", e.target.value)}
                                                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20"
                                                 placeholder="Jelaskan agenda perjalanan dinas secara lengkap..."
                                                 required

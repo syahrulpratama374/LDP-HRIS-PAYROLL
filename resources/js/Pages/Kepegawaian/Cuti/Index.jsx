@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage } from "@inertiajs/react";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function IndexCuti({ auth, riwayatCuti }) {
     const { flash } = usePage().props;
@@ -125,30 +126,26 @@ export default function IndexCuti({ auth, riwayatCuti }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Riwayat Cuti" />
 
-            <div className="min-h-screen bg-[#F7F7FA]">
-                {/* =====================================================
-                    HEADER
-                ====================================================== */}
-                <div className="bg-gradient-to-r from-[#2A164E] to-[#431D6D]">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="relative flex min-h-[76px] items-center justify-center py-4">
-                            <div className="text-center">
-                                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3B817] sm:block">
-                                    LDP HRIS
-                                </p>
-
-                                <h1 className="text-base font-bold leading-tight text-white sm:text-xl">
-                                    Riwayat Cuti & Izin
-                                </h1>
-                            </div>
-                        </div>
-                    </div>
+            {/* =====================================================
+                BANNER HEADER (Tinggi persis 64px / h-16)
+            ====================================================== */}
+            <section className="bg-[#2A164E] -mt-6 -mx-6 md:-mt-8 md:-mx-8 mb-6 md:mb-8 h-16 flex flex-col justify-center">
+                <div className="mx-auto w-full max-w-[1600px] px-4 text-center flex flex-col items-center justify-center">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F3B817] leading-none mb-1">
+                        LDP HRIS
+                    </p>
+                    <h1 className="text-lg font-bold text-white sm:text-xl leading-none">
+                        Riwayat Cuti & Izin
+                    </h1>
                 </div>
+            </section>
 
-                {/* =====================================================
-                    CONTENT
-                ====================================================== */}
+            {/* =====================================================
+                CONTENT WRAPPER
+            ====================================================== */}
+            <div className="min-h-screen bg-[#F7F7FA] pb-12">
                 <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                    
                     {/* FLASH */}
                     {flash?.success && (
                         <div

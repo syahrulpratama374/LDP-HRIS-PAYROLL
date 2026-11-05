@@ -110,30 +110,26 @@ export default function Index({ auth, riwayatLembur = [] }) {
         <AuthenticatedLayout user={auth?.user}>
             <Head title="Riwayat Pengajuan Lembur" />
 
-            <div className="min-h-screen bg-[#F7F7FA]">
-                {/* =====================================================
-                    HEADER
-                ====================================================== */}
-                <div className="bg-gradient-to-r from-[#2A164E] to-[#431D6D]">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="relative flex min-h-[76px] items-center justify-center py-4">
-                            <div className="text-center">
-                                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3B817] sm:block">
-                                    LDP HRIS
-                                </p>
-
-                                <h1 className="text-base font-bold leading-tight text-white sm:text-xl">
-                                    Riwayat Pengajuan Lembur
-                                </h1>
-                            </div>
-                        </div>
-                    </div>
+            {/* =====================================================
+                BANNER HEADER (Tinggi persis 64px / h-16)
+            ====================================================== */}
+            <section className="bg-gradient-to-r from-[#2A164E] to-[#431D6D] -mt-6 -mx-6 mb-6 flex h-16 flex-col justify-center md:-mt-8 md:-mx-8 md:mb-8">
+                <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-4 text-center">
+                    <p className="mb-1 hidden text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-[#F3B817] sm:block">
+                        LDP HRIS
+                    </p>
+                    <h1 className="text-lg font-bold leading-none text-white sm:text-xl">
+                        Riwayat Pengajuan Lembur
+                    </h1>
                 </div>
+            </section>
 
-                {/* =====================================================
-                    CONTENT
-                ====================================================== */}
+            {/* =====================================================
+                CONTENT WRAPPER
+            ====================================================== */}
+            <div className="min-h-screen bg-[#F7F7FA] pb-12">
                 <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                    
                     {/* FLASH */}
                     {flash?.success && (
                         <div

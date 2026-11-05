@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import Webcam from "react-webcam";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function Create({ auth, absensiHariIni, karyawan }) {
     const webcamRef = useRef(null);
@@ -326,32 +327,16 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
             <Head title="Absensi Kehadiran" />
 
             <div className="min-h-screen bg-[#F7F7FA]">
+                
                 {/* =====================================================
-                    HEADER
+                    HEADER: Gunakan BannerHeader agar mepet ke navbar
                 ====================================================== */}
-
-                <div className="bg-gradient-to-r from-[#2A164E] to-[#431D6D]">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="relative flex min-h-[76px] items-center justify-center py-4">
-                            {/* JUDUL TENGAH */}
-                            <div className="text-center">
-                                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3B817] sm:block">
-                                    LDP HRIS
-                                </p>
-
-                                <h1 className="text-base font-bold leading-tight text-white sm:text-xl">
-                                    Absensi Kehadiran
-                                </h1>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <BannerHeader subtitle="LDP HRIS" title="Absensi Kehadiran" />
 
                 {/* =====================================================
-                    CONTENT
+                    CONTENT: Ubah max-w-7xl menjadi max-w-[1600px]
                 ====================================================== */}
-
-                <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+                <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 2xl:px-12">
                     {/* =================================================
                         NON ATTENDANCE
                     ================================================== */}

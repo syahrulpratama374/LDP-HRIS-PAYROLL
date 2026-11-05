@@ -1,15 +1,22 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import BannerHeader from '@/Components/BannerHeader';
 
 export default function Index({ auth, absensis }) {
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Monitor Absensi Karyawan</h2>}>
+        <AuthenticatedLayout>
             <Head title="Data Absensi" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+            {/* Ganti background dan hapus prop header bawaan */}
+            <div className="min-h-screen bg-[#F7F7FA]">
+                
+                {/* Panggil BannerHeader mepet dengan navbar */}
+                <BannerHeader subtitle="LDP HRIS" title="Monitor Absensi Karyawan" />
+
+                {/* Perlebar container menjadi max-w-[1600px] */}
+                <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 2xl:px-12">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-xl p-6 border border-slate-200">
                         
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-gray-800">Riwayat Kehadiran Harian</h3>

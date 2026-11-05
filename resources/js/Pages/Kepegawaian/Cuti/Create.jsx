@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, Link } from "@inertiajs/react";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function CreateCuti({ auth, saldoCuti, masterJenisCuti }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -62,15 +63,24 @@ export default function CreateCuti({ auth, saldoCuti, masterJenisCuti }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={
-                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Pengajuan Cuti
-                </h2>
-            }
+            // Prop header dihapus di sini
         >
             <Head title="Pengajuan Cuti" />
 
-            <div className="py-12">
+            {/* Banner Custom (Tinggi persis 64px / h-16) */}
+            <section className="bg-[#2A164E] -mt-6 -mx-6 md:-mt-8 md:-mx-8 mb-6 md:mb-8 h-16 flex flex-col justify-center">
+                <div className="mx-auto w-full max-w-[1600px] px-4 text-center flex flex-col items-center justify-center">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F3B817] leading-none mb-1">
+                        LDP HRIS
+                    </p>
+                    <h1 className="text-lg font-bold text-white sm:text-xl leading-none">
+                        Pengajuan Cuti
+                    </h1>
+                </div>
+            </section>
+
+            {/* Ubah py-12 menjadi pb-12 agar tidak ada spasi kosong berlebih di atas */}
+            <div className="pb-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     {/* Widget Informasi Saldo Cuti Tahunan */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">

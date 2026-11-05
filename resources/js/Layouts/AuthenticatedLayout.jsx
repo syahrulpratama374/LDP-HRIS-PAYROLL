@@ -22,8 +22,6 @@ import {
     Home,
 } from "lucide-react";
 
-// ====== Mapping ikon otomatis berdasarkan judul/route menu ======
-// Urutan penting: yang lebih spesifik diletakkan lebih dulu.
 const MENU_ICON_MAP = [
     { keys: ["absen", "presensi", "attendance", "kehadiran"], Icon: Calendar },
     { keys: ["cuti", "leave", "izin"], Icon: CalendarDays },
@@ -60,16 +58,35 @@ export default function AuthenticatedLayout({
     const user = propUser || auth?.user;
     const menus = auth?.menus || [];
 
-    // ====== State utama (sama seperti aslinya) ======
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    // Deteksi layar mobile
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+    const [isCollapsed, setIsCollapsed] = useState(isMobile);
     const [openSubmenus, setOpenSubmenus] = useState({});
 
-    // ====== Auto-collapse saat pindah halaman ======
-    // Hanya mengecil saat URL berubah (navigasi), bukan saat toggle submenu.
+    // ====== PERBAIKAN 1: Auto-Expand Submenu yang Aktif ======
+    useEffect(() => {
+        const activeSubmenus = {};
+        menus.forEach((menu) => {
+            if (menu.children && menu.children.length > 0) {
+                const hasActiveChild = menu.children.some(
+                    (child) => child.route_name && route().current(child.route_name)
+                );
+                if (hasActiveChild) {
+                    activeSubmenus[menu.id] = true;
+                }
+            }
+        });
+        setOpenSubmenus((prev) => ({ ...prev, ...activeSubmenus }));
+    }, [page.url, menus]); // Berjalan saat URL atau struktur menu berubah
+
+    // ====== PERBAIKAN 2: Auto-collapse saat pindah halaman HANYA untuk layar kecil ======
     const prevUrlRef = useRef(page.url);
     useEffect(() => {
         if (prevUrlRef.current !== page.url) {
-            setIsCollapsed(true);
+            if (window.innerWidth < 768) {
+                setIsCollapsed(true); // Hanya auto-collapse di HP
+            }
             prevUrlRef.current = page.url;
         }
     }, [page.url]);
@@ -87,7 +104,8 @@ export default function AuthenticatedLayout({
 
     return (
         <div className="min-h-screen bg-[#F8F7FC] flex">
-            {/* ====== Custom scrollbar (tipis, warna emas transparan) ====== */}
+            {/* PERBAIKAN 3: Disarankan memindahkan class custom-scrollbar ke resources/css/app.css 
+                Namun jika tetap ingin di sini, usahakan tidak ada di dalam loop atau element bergerak */}
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -104,7 +122,7 @@ export default function AuthenticatedLayout({
             {/* ================= SIDEBAR ================= */}
             <aside
                 className={`${
-                    isCollapsed ? "w-20" : "w-64"
+                    isCollapsed ? "w-20" : "w-64 absolute md:relative z-50"
                 } bg-gradient-to-b from-[#2A164E] via-[#341A5A] to-[#431D6D]
                 text-white flex flex-col h-screen sticky top-0 shrink-0
                 shadow-2xl shadow-[#2A164E]/40 border-r border-[#F3B817]/10
@@ -124,8 +142,6 @@ export default function AuthenticatedLayout({
                         </span>
                     </Link>
 
-                    {/* Tombol toggle: posisinya dianimasikan agar tetap di kanan saat terbuka,
-                        dan otomatis di tengah saat menyempit. */}
                     <button
                         type="button"
                         onClick={toggleSidebar}
@@ -151,7 +167,6 @@ export default function AuthenticatedLayout({
                         const isOpen = !!openSubmenus[menu.id];
                         const MenuIcon = getMenuIcon(menu);
 
-                        // ---------- Menu Tunggal ----------
                         if (!hasChildren) {
                             const isCurrent =
                                 menu.route_name && route().current(menu.route_name);
@@ -177,7 +192,7 @@ export default function AuthenticatedLayout({
                                     />
                                     <span
                                         className={`transition-opacity duration-200 ${
-                                            isCollapsed ? "opacity-0" : "opacity-100"
+                                            isCollapsed ? "opacity-0 hidden md:block" : "opacity-100"
                                         }`}
                                     >
                                         {menu.title}
@@ -186,7 +201,6 @@ export default function AuthenticatedLayout({
                             );
                         }
 
-                        // ---------- Menu Parent dengan Submenu ----------
                         return (
                             <div key={menu.id} className="space-y-0.5">
                                 <button
@@ -196,15 +210,20 @@ export default function AuthenticatedLayout({
                                         toggleSubmenu(menu.id);
                                     }}
                                     title={isCollapsed ? menu.title : ""}
-                                    className="w-full group flex items-center gap-3 px-4 py-2.5 rounded-xl
+                                    className={`w-full group flex items-center gap-3 px-4 py-2.5 rounded-xl
                                     text-sm font-medium whitespace-nowrap overflow-hidden
-                                    text-white/70 hover:bg-white/10 hover:text-white
-                                    transition-colors duration-200"
+                                    transition-colors duration-200 ${
+                                        isOpen && !isCollapsed
+                                            ? "bg-white/5 text-white" 
+                                            : "text-white/70 hover:bg-white/10 hover:text-white"
+                                    }`}
                                 >
-                                    <MenuIcon className="w-5 h-5 shrink-0 text-white/55 group-hover:text-[#F3B817] transition-colors" />
+                                    <MenuIcon className={`w-5 h-5 shrink-0 transition-colors ${
+                                        isOpen && !isCollapsed ? "text-[#F3B817]" : "text-white/55 group-hover:text-[#F3B817]"
+                                    }`} />
                                     <span
                                         className={`flex-1 text-left truncate transition-opacity duration-200 ${
-                                            isCollapsed ? "opacity-0" : "opacity-100"
+                                            isCollapsed ? "opacity-0 hidden md:block" : "opacity-100"
                                         }`}
                                     >
                                         {menu.title}
@@ -218,7 +237,6 @@ export default function AuthenticatedLayout({
                                     )}
                                 </button>
 
-                                {/* Submenu dengan transisi grid-rows agar animasi buka/tutup halus */}
                                 <div
                                     className={`grid transition-all duration-300 ease-in-out ${
                                         !isCollapsed && isOpen
@@ -227,7 +245,7 @@ export default function AuthenticatedLayout({
                                     }`}
                                 >
                                     <div className="overflow-hidden">
-                                        <div className="ml-4 pl-3 border-l border-white/10 space-y-0.5 py-1">
+                                        <div className="ml-4 pl-3 border-l border-white/10 space-y-0.5 py-1 mt-1">
                                             {menu.children.map((child) => {
                                                 const isChildCurrent =
                                                     child.route_name &&
@@ -298,14 +316,24 @@ export default function AuthenticatedLayout({
                 </div>
             </aside>
 
+            {/* Jika di mobile dan sidebar terbuka, buat backdrop gelap transparan untuk menutup sidebar */}
+            {isMobile && !isCollapsed && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setIsCollapsed(true)}
+                />
+            )}
+
             {/* ================= MAIN CONTENT ================= */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
                 {header && (
                     <header className="bg-white border-b border-gray-200/80 px-6 md:px-8 py-4 shadow-sm sticky top-0 z-10">
                         {header}
                     </header>
                 )}
-                <main className="p-6 md:p-8 flex-1 overflow-y-auto">{children}</main>
+                <main className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                    {children}
+                </main>
             </div>
         </div>
     );
