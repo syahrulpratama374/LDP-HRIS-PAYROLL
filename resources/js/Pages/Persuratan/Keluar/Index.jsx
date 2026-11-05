@@ -4,7 +4,7 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import Modal from "@/Components/Modal";
-import SignModal from "@/Components/SignModal"; 
+import SignModal from "@/Components/SignModal";
 export default function Index({ auth, suratKeluars }) {
     const { user } = usePage().props.auth;
     const [selectedSurat, setSelectedSurat] = useState(null);
@@ -208,7 +208,8 @@ export default function Index({ auth, suratKeluars }) {
                                                         </button>
 
                                                         {/* TOMBOL PERSETUJUAN */}
-                                                        {isMyTurn &&
+                                                        {surat.can_approve &&
+                                                            isMyTurn &&
                                                             surat.status !==
                                                                 "Terbit" && (
                                                                 <button
