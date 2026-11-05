@@ -27,8 +27,13 @@ class SuratKeluarController extends Controller
         ->latest()
         ->paginate(10);
 
-        // Ambil data karyawan dari user yang sedang login
         $userLogin = auth()->user()->load('karyawan');
+
+        // --- TAMBAHAN BARU: Tempelkan status hak akses ke masing-masing surat ---
+        $suratKeluars->getCollection()->transform(function ($surat) use ($userLogin) {
+            $surat->can_approve = $this->checkCanApprove($surat, $userLogin);
+            return $surat;
+        });
 
         return Inertia::render('Persuratan/Keluar/Index', [
             'suratKeluars' => $suratKeluars,
@@ -37,6 +42,7 @@ class SuratKeluarController extends Controller
             ]
         ]);
     }
+
 
     public function create()
     {
@@ -183,15 +189,16 @@ class SuratKeluarController extends Controller
 
         return redirect()->route('keluar.index')->with('success', 'Draf surat berhasil dihapus.');
     }
-    
 
     public function approve(Request $request, $id)
     {
-        $surat = SuratKeluar::with(['template', 'karyawan'])->findOrFail($id);
+        $surat = SuratKeluar::with(['template'])->findOrFail($id);
         $user = auth()->user();
-        $karyawanLogin = \App\Models\Karyawan::where('user_id', $user->id)->first();
+        
+        // Ambil data karyawan login beserta jabatan dan departemennya
+        $karyawanLogin = \App\Models\Karyawan::with(['jabatan', 'departemen'])->where('user_id', $user->id)->first();
 
-        // 1. CARI ANTREAN
+        // 1. CARI ANTREAN AKTIF
         $approvalAktif = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
             ->where('status', 'Menunggu')
             ->orderBy('urutan_langkah', 'asc')
@@ -201,16 +208,48 @@ class SuratKeluarController extends Controller
             return redirect()->back()->with('error', 'Tidak ada antrean persetujuan aktif untuk surat ini.');
         }
 
-        // 2. CEK WEWENANG
         $isAuthorized = false;
         $keteranganApproval = '';
 
-        if ($karyawanLogin && $karyawanLogin->jabatan_id === $approvalAktif->jabatan_id) {
+        // 2. BYPASS SUPER ADMIN (Role ID 1)
+        if ($user->role_id === 1) { 
             $isAuthorized = true;
-            $keteranganApproval = 'Disetujui oleh pejabat bersangkutan.';
-        } else if ($karyawanLogin) {
+            $keteranganApproval = 'Disetujui langsung oleh Super Admin.';
+        } 
+        // 3. VALIDASI JABATAN DAN DEPARTEMEN NORMAL
+        else if ($karyawanLogin && $karyawanLogin->jabatan_id === $approvalAktif->jabatan_id) {
+            
+            $userPembuat = \App\Models\User::with('karyawan.departemen')->find($surat->created_by);
+            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
+            
+            // Cek apakah penyetuju adalah Direksi (CEO/Managing Director/Direktur)
+            $isDirektur = false;
+            if ($karyawanLogin->jabatan) {
+                $namaJabatan = strtolower($karyawanLogin->jabatan->nama_jabatan);
+                if (str_contains($namaJabatan, 'direktur') || str_contains($namaJabatan, 'ceo') || str_contains($namaJabatan, 'managing') || str_contains($namaJabatan, 'bod')) {
+                    $isDirektur = true;
+                }
+            }
+
+            // ATURAN KETAT:
+            // 1. Direksi BEBAS menyetujui surat dari departemen manapun.
+            // 2. Jika penyetuju bukan Direksi, mereka WAJIB memiliki departemen_id yang SAMA dengan pembuat surat.
+            if ($isDirektur) {
+                $isAuthorized = true;
+                $keteranganApproval = 'Disetujui oleh Jajaran Direksi.';
+            } else if ($karyawanPembuat && ($karyawanLogin->departemen_id === $karyawanPembuat->departemen_id)) {
+                $isAuthorized = true;
+                $keteranganApproval = 'Disetujui oleh pejabat berwenang di departemen.';
+            } else {
+                return redirect()->back()->with('error', 'Akses Ditolak: Anda bukan atasan/pejabat di departemen yang mengeluarkan surat ini.');
+            }
+
+        } 
+        // 4. VALIDASI DELEGASI WEWENANG (PLT)
+        else if ($karyawanLogin) {
             $today = now()->toDateString();
-            $delegasi = \App\Models\DelegasiWewenang::where('penerima_id', $karyawanLogin->id)
+            $delegasi = \App\Models\DelegasiWewenang::with('pemberi')
+                ->where('penerima_id', $karyawanLogin->id)
                 ->where('status', 'Disetujui')
                 ->where('tgl_mulai', '<=', $today)
                 ->where('tgl_selesai', '>=', $today)
@@ -220,21 +259,24 @@ class SuratKeluarController extends Controller
                 ->first();
 
             if ($delegasi) {
-                $isAuthorized = true;
-                $keteranganApproval = "Disetujui oleh Plt. atas nama {$delegasi->pemberi->nama_lengkap}.";
+                // Cek lagi apakah yang memberi wewenang berasal dari departemen pembuat surat
+                $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
+                $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
+
+                if ($karyawanPembuat && ($delegasi->pemberi->departemen_id === $karyawanPembuat->departemen_id)) {
+                    $isAuthorized = true;
+                    $keteranganApproval = "Disetujui oleh Plt. atas nama {$delegasi->pemberi->nama_lengkap}.";
+                }
             }
         }
 
-        if ($user->role_id === 1) {
-            $isAuthorized = true;
-            $keteranganApproval = 'Disetujui langsung oleh Super Admin.';
-        }
-
+        // Eksekusi Tolak jika tidak punya wewenang
         if (!$isAuthorized) {
             return redirect()->back()->with('error', 'Anda tidak memiliki hak wewenang untuk menyetujui tahap ini.');
         }
 
-        // 3. OLAH GAMBAR TTD
+        // --- (BAGIAN OLAH GAMBAR TTD DAN DATABASE TRANSACTION SAMA PERSIS SEPERTI SEBELUMNYA) ---
+        
         $jenisTtd = $request->input('jenis_ttd') ?? 'qr_code';
         $ttdBase64 = $request->input('ttd_base64');
         $ttdImagePath = null;
@@ -250,7 +292,6 @@ class SuratKeluarController extends Controller
             }
         }
 
-        // 4. GUNAKAN DATABASE TRANSACTION UNTUK MENCEGAH DATA TERTAHAN JIKA ERROR
         try {
             DB::beginTransaction();
 
@@ -285,7 +326,7 @@ class SuratKeluarController extends Controller
                     'catatan'         => 'Surat disetujui penuh dan resmi diterbitkan.',
                 ]);
 
-                DB::commit(); // Simpan permanen ke DB jika semua sukses
+                DB::commit();
                 return redirect()->back()->with('success', 'Surat selesai disetujui! Nomor Resmi: ' . $nomorResmi);
             }
 
@@ -300,23 +341,28 @@ class SuratKeluarController extends Controller
             return redirect()->back()->with('success', 'Persetujuan disimpan. Diteruskan ke tahap berikutnya.');
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Batalkan semua proses jika ada error agar data tidak setengah matang
+            DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat menerbitkan surat: ' . $e->getMessage());
         }
     }
 
+
+
     private function generateNomorSurat($surat)
     {
-        $tahun = date('Y');
-        $bulanAngka = date('n');
+        // 1. Gunakan 'now()' Laravel agar mutlak mematuhi timezone Asia/Jakarta di .env
+        $waktuSekarang = now(); 
+        $tahun = $waktuSekarang->year;
+        $bulanAngka = $waktuSekarang->month;
 
+        // 2. Mapping Bulan Romawi
         $mapRomawi = [
             1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
             7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
         ];
         $bulanRomawi = $mapRomawi[$bulanAngka] ?? 'XI';
 
-        // ALGORITMA BARU: Mengambil nomor tertinggi secara absolut tanpa mempedulikan urutan ID
+        // 3. Pencarian Urutan Nomor Maksimal
         $suratTahunIni = \App\Models\SuratKeluar::whereYear('tanggal_terbit', $tahun)
             ->whereNotNull('nomor_surat')
             ->get();
@@ -333,14 +379,20 @@ class SuratKeluarController extends Controller
         }
 
         $nomorUrut = $maxNomor + 1;
-        $nomorUrutFormatted = str_pad($nomorUrut, 3, '0', STR_PAD_LEFT);
+        $nomorUrutFormatted = str_pad($nomorUrut, 3, '0', STR_PAD_LEFT); 
 
+        // 4. Set Komponen Surat
         $template = $surat->template;
-        $kodeSurat   = ($template && !empty($template->kode_surat)) ? $template->kode_surat : '1010';
-        $kodePembuat = ($template && !empty($template->pembuat_kode)) ? $template->pembuat_kode : 'ldp';
+        $kodeSurat = ($template && !empty($template->kode_surat)) ? $template->kode_surat : 'UMUM';
+        
+        // Menggunakan "Kode Pembuat" yang sudah Anda sediakan langsung di UI Form Master Template
+        $kodePembuat = ($template && !empty($template->pembuat_kode)) ? $template->pembuat_kode : 'LDP-CORP';
 
         return "{$nomorUrutFormatted}/{$kodeSurat}/{$kodePembuat}/{$bulanRomawi}/{$tahun}";
     }
+    
+
+
 
     public function verifikasi($uuid)
     {
@@ -374,5 +426,61 @@ class SuratKeluarController extends Controller
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream($filename);
+    }
+
+    /**
+     * Fungsi Helper: Cek apakah user yang login berhak menyetujui surat ini
+     */
+    private function checkCanApprove($surat, $user)
+    {
+        if (!$user) return false;
+        if ($user->role_id === 1) return true; // Super Admin bebas
+
+        $karyawanLogin = \App\Models\Karyawan::with(['jabatan'])->where('user_id', $user->id)->first();
+        if (!$karyawanLogin) return false;
+
+        $approvalAktif = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
+            ->where('status', 'Menunggu')
+            ->orderBy('urutan_langkah', 'asc')
+            ->first();
+
+        if (!$approvalAktif) return false;
+
+        // Cek Jabatan Normal
+        if ($karyawanLogin->jabatan_id === $approvalAktif->jabatan_id) {
+            $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
+            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
+
+            $isDirektur = false;
+            if ($karyawanLogin->jabatan) {
+                $namaJabatan = strtolower($karyawanLogin->jabatan->nama_jabatan);
+                if (str_contains($namaJabatan, 'direktur') || str_contains($namaJabatan, 'ceo') || str_contains($namaJabatan, 'managing') || str_contains($namaJabatan, 'bod')) {
+                    $isDirektur = true;
+                }
+            }
+
+            if ($isDirektur) return true;
+            if ($karyawanPembuat && ($karyawanLogin->departemen_id === $karyawanPembuat->departemen_id)) return true;
+        }
+
+        // Cek Delegasi
+        $today = now()->toDateString();
+        $delegasi = \App\Models\DelegasiWewenang::with('pemberi')
+            ->where('penerima_id', $karyawanLogin->id)
+            ->where('status', 'Disetujui')
+            ->where('tgl_mulai', '<=', $today)
+            ->where('tgl_selesai', '>=', $today)
+            ->whereHas('pemberi', function($q) use ($approvalAktif) {
+                $q->where('jabatan_id', $approvalAktif->jabatan_id);
+            })
+            ->first();
+
+        if ($delegasi) {
+            $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
+            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
+            if ($karyawanPembuat && ($delegasi->pemberi->departemen_id === $karyawanPembuat->departemen_id)) return true;
+        }
+
+        return false;
     }
 }
