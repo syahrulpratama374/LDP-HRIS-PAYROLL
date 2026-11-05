@@ -15,11 +15,8 @@ export default function IndexCuti({ auth, riwayatCuti }) {
 
     const formatTanggalLengkap = (tanggal) => {
         if (!tanggal) return "-";
-
         const date = new Date(tanggal);
-
         if (isNaN(date)) return tanggal;
-
         return date.toLocaleDateString("id-ID", {
             day: "2-digit",
             month: "long",
@@ -29,15 +26,11 @@ export default function IndexCuti({ auth, riwayatCuti }) {
 
     const formatTanggalPeriode = (tanggal) => {
         if (!tanggal) return "-";
-
         const date = new Date(tanggal);
-
         if (isNaN(date)) return tanggal;
-
         const day = String(date.getDate()).padStart(2, "0");
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
-
         return `${day}/${month}/${year}`;
     };
 
@@ -49,11 +42,9 @@ export default function IndexCuti({ auth, riwayatCuti }) {
         if (status === "Disetujui") {
             return "border-green-200 bg-green-50 text-green-700";
         }
-
         if (status === "Ditolak") {
             return "border-red-200 bg-red-50 text-red-700";
         }
-
         return "border-yellow-200 bg-yellow-50 text-yellow-700";
     };
 
@@ -63,24 +54,24 @@ export default function IndexCuti({ auth, riwayatCuti }) {
 
     const filteredCuti = useMemo(() => {
         const keyword = search.trim().toLowerCase();
-
         if (!keyword) {
             return riwayatCuti;
         }
 
         return riwayatCuti.filter((cuti) => {
-            const jenis = cuti.jenis_cuti?.toLowerCase() || "";
+            // UPDATE: Baca nama cuti dari relasi master_jenis_cuti
+            const jenis =
+                cuti.master_jenis_cuti?.nama_cuti?.toLowerCase() ||
+                cuti.jenis_cuti?.toLowerCase() ||
+                "";
             const status = cuti.status_approval?.toLowerCase() || "";
             const alasan = cuti.alasan?.toLowerCase() || "";
-
             const tanggalPengajuan = formatTanggalLengkap(
                 cuti.created_at,
             ).toLowerCase();
-
             const periodeMulai = formatTanggalPeriode(
                 cuti.tanggal_mulai,
             ).toLowerCase();
-
             const periodeSelesai = formatTanggalPeriode(
                 cuti.tanggal_selesai,
             ).toLowerCase();
@@ -106,7 +97,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
 
     const getFileExtension = (path) => {
         if (!path) return "";
-
         return path.split(".").pop()?.toLowerCase() || "";
     };
 
@@ -126,7 +116,8 @@ export default function IndexCuti({ auth, riwayatCuti }) {
         setSelectedDocument({
             url: getDocumentUrl(cuti.dokumen_bukti_path),
             path: cuti.dokumen_bukti_path,
-            jenis: cuti.jenis_cuti,
+            // UPDATE: Baca nama cuti dari relasi
+            jenis: cuti.master_jenis_cuti?.nama_cuti || cuti.jenis_cuti || "-",
         });
     };
 
@@ -194,11 +185,7 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                             stroke="currentColor"
                                             strokeWidth="2"
                                         >
-                                            <circle
-                                                cx="11"
-                                                cy="11"
-                                                r="7"
-                                            />
+                                            <circle cx="11" cy="11" r="7" />
                                             <path d="m20 20-3.5-3.5" />
                                         </svg>
 
@@ -250,19 +237,15 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Tgl Pengajuan
                                         </th>
-
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Jenis Cuti
                                         </th>
-
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Periode
                                         </th>
-
                                         <th className="whitespace-nowrap px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Status
                                         </th>
-
                                         <th className="whitespace-nowrap px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wide text-gray-500 sm:px-5">
                                             Aksi
                                         </th>
@@ -281,7 +264,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                                         ? "Data pengajuan tidak ditemukan."
                                                         : "Belum ada riwayat pengajuan cuti."}
                                                 </p>
-
                                                 {search && (
                                                     <button
                                                         type="button"
@@ -311,7 +293,11 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                                 {/* JENIS CUTI */}
                                                 <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                                                     <span className="text-sm font-semibold text-[#431D6D]">
-                                                        {cuti.jenis_cuti}
+                                                        {/* UPDATE: Baca nama cuti dari relasi */}
+                                                        {cuti.master_jenis_cuti
+                                                            ?.nama_cuti ||
+                                                            cuti.jenis_cuti ||
+                                                            "-"}
                                                     </span>
                                                 </td>
 
@@ -320,11 +306,9 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                                     {formatTanggalPeriode(
                                                         cuti.tanggal_mulai,
                                                     )}
-
                                                     <span className="mx-1.5 text-gray-400">
                                                         -
                                                     </span>
-
                                                     {formatTanggalPeriode(
                                                         cuti.tanggal_selesai,
                                                     )}
@@ -333,13 +317,9 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                                 {/* STATUS */}
                                                 <td className="whitespace-nowrap px-4 py-3 text-center sm:px-5">
                                                     <span
-                                                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(
-                                                            cuti.status_approval,
-                                                        )}`}
+                                                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(cuti.status_approval)}`}
                                                     >
-                                                        {
-                                                            cuti.status_approval
-                                                        }
+                                                        {cuti.status_approval}
                                                     </span>
                                                 </td>
 
@@ -379,7 +359,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#F3B817]">
                                     LDP HRIS
                                 </p>
-
                                 <h3 className="mt-0.5 text-base font-bold text-white">
                                     Detail Pengajuan Cuti
                                 </h3>
@@ -393,9 +372,12 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                     <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                                         Jenis Cuti
                                     </p>
-
                                     <p className="mt-1 text-sm font-semibold text-[#431D6D]">
-                                        {selectedCuti.jenis_cuti}
+                                        {/* UPDATE: Baca nama cuti di modal */}
+                                        {selectedCuti.master_jenis_cuti
+                                            ?.nama_cuti ||
+                                            selectedCuti.jenis_cuti ||
+                                            "-"}
                                     </p>
                                 </div>
 
@@ -403,11 +385,8 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                     <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                                         Status
                                     </p>
-
                                     <span
-                                        className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(
-                                            selectedCuti.status_approval,
-                                        )}`}
+                                        className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(selectedCuti.status_approval)}`}
                                     >
                                         {selectedCuti.status_approval}
                                     </span>
@@ -417,7 +396,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                     <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                                         Periode
                                     </p>
-
                                     <p className="mt-1 text-sm font-semibold text-gray-800">
                                         {formatTanggalPeriode(
                                             selectedCuti.tanggal_mulai,
@@ -437,7 +415,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                 <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400">
                                     Alasan Pengajuan
                                 </p>
-
                                 <div className="max-h-32 overflow-y-auto rounded-lg border border-gray-100 bg-[#F7F7FA] px-3.5 py-3 text-sm leading-relaxed text-gray-700">
                                     {selectedCuti.alasan || "-"}
                                 </div>
@@ -449,7 +426,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400">
                                         Lampiran / Surat Dokter
                                     </p>
-
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -457,7 +433,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                         }
                                         className="inline-flex items-center gap-2 rounded-lg border border-[#431D6D]/20 bg-[#F3EDF8] px-3.5 py-2 text-xs font-semibold text-[#431D6D] transition hover:bg-[#EDE2F3]"
                                     >
-                                        {/* DOWNLOAD ICON */}
                                         <svg
                                             className="h-4 w-4"
                                             viewBox="0 0 24 24"
@@ -471,7 +446,6 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                             <path d="m7 10 5 5 5-5" />
                                             <path d="M5 21h14" />
                                         </svg>
-
                                         Lihat / Unduh Lampiran
                                     </button>
                                 </div>
@@ -504,14 +478,12 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#F3B817]">
                                     Lampiran Pengajuan
                                 </p>
-
                                 <h3 className="truncate text-sm font-bold text-white sm:text-base">
                                     {selectedDocument.jenis}
                                 </h3>
                             </div>
 
                             <div className="flex shrink-0 items-center gap-2">
-                                {/* DOWNLOAD */}
                                 <a
                                     href={selectedDocument.url}
                                     download
@@ -530,18 +502,14 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                         <path d="m7 10 5 5 5-5" />
                                         <path d="M5 21h14" />
                                     </svg>
-
                                     <span className="hidden sm:inline">
                                         Download
                                     </span>
                                 </a>
 
-                                {/* CLOSE */}
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setSelectedDocument(null)
-                                    }
+                                    onClick={() => setSelectedDocument(null)}
                                     className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-white/80 transition hover:bg-white/10 hover:text-white"
                                 >
                                     &times;
@@ -571,12 +539,10 @@ export default function IndexCuti({ auth, riwayatCuti }) {
                                         <p className="text-sm font-semibold text-gray-700">
                                             Preview tidak tersedia
                                         </p>
-
                                         <p className="mt-1 text-xs text-gray-400">
                                             Format file ini tidak dapat
                                             ditampilkan langsung.
                                         </p>
-
                                         <a
                                             href={selectedDocument.url}
                                             download

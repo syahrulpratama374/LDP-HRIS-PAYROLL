@@ -26,4 +26,9 @@ class PengajuanCuti extends Model
     {
         return $this->belongsTo(Karyawan::class);
     }
+
+    public function masterJenisCuti()
+{
+    return $this->belongsTo(MasterJenisCuti::class, 'jenis_cuti_id');
+}
 }

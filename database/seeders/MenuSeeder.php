@@ -72,16 +72,21 @@ class MenuSeeder extends Seeder
         ];
         foreach ($subKepegawaian as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 
+        // Inisialisasi $masterDataGroup DULU sebelum dipakai di bawahnya!
         $masterDataGroup = DB::table('menus')->insertGetId([
             'parent_id' => null, 'title' => 'Master Data', 'route_name' => null, 'order' => 7, 'created_at' => now(), 'updated_at' => now()
         ]);
+        
         $subMaster = [
             ['parent_id' => $masterDataGroup, 'title' => 'Departemen', 'route_name' => 'departemen.index', 'order' => 1],
             ['parent_id' => $masterDataGroup, 'title' => 'Jabatan', 'route_name' => 'jabatan.index', 'order' => 2],
             ['parent_id' => $masterDataGroup, 'title' => 'Golongan', 'route_name' => 'golongan.index', 'order' => 3],
             ['parent_id' => $masterDataGroup, 'title' => 'Jam Shift', 'route_name' => 'shift.index', 'order' => 4],
+            // TARUH DI SINI (Di dalam $subMaster setelah $masterDataGroup didefinisikan):
+            ['parent_id' => $masterDataGroup, 'title' => 'Master Jenis Cuti', 'route_name' => 'master-cuti.index', 'order' => 5],
         ];
         foreach ($subMaster as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
+
 
         // 6. PARENT: FINANCE & PAYROLL
         $financeGroup = DB::table('menus')->insertGetId([
