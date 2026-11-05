@@ -32,6 +32,7 @@ use App\Http\Controllers\Kepegawaian\{
 use App\Http\Controllers\Payroll\MasterKomponenPayrollController;
 use App\Http\Controllers\ItTicket\LogbookController;
 use App\Http\Controllers\Admin\RoleMenuController;
+use App\Http\Controllers\MasterJenisCutiController;
 
 // =========================================================================
 // 2. RUTE PUBLIK (TANPA LOGIN)
@@ -118,6 +119,7 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         // Approval Kehadiran & Lembur
         Route::get('/cuti', [PengajuanCutiController::class, 'adminIndex'])->name('admin.cuti.index');
         Route::patch('/cuti/{id}/status', [PengajuanCutiController::class, 'updateStatus'])->name('admin.cuti.status');
+        Route::resource('/master-cuti', MasterJenisCutiController::class)->except(['create', 'show', 'edit']);
 
         Route::get('/lembur', [PengajuanLemburController::class, 'adminIndex'])->name('admin.lembur.index');
         Route::patch('/lembur/{id}/status', [PengajuanLemburController::class, 'updateStatus'])->name('admin.lembur.status');

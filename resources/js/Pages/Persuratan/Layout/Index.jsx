@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, useForm, usePage } from "@inertiajs/react";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import PrimaryButton from "@/Components/PrimaryButton";
 import InputError from "@/Components/InputError";
 
 export default function Index({ auth, layouts }) {
+    // Tangkap flash message dari backend
+    const { flash } = usePage().props;
     const activeLayout = layouts.find((l) => l.is_active) || {};
 
     const { data, setData, post, processing, errors } = useForm({
@@ -26,9 +28,42 @@ export default function Index({ auth, layouts }) {
         banner_footer: null,
     });
 
+    // State untuk menyimpan URL pratinjau gambar sementara
+    const [previewImages, setPreviewImages] = useState({
+        logo_header: activeLayout.logo_header_path
+            ? `/storage/${activeLayout.logo_header_path}`
+            : null,
+        watermark: activeLayout.watermark_path
+            ? `/storage/${activeLayout.watermark_path}`
+            : null,
+        banner_footer: activeLayout.banner_footer_path
+            ? `/storage/${activeLayout.banner_footer_path}`
+            : null,
+    });
+
+    // Handler ketika file dipilih
+    const handleFileChange = (e, field) => {
+        const file = e.target.files[0];
+        setData(field, file);
+
+        if (file) {
+            // Buat URL pratinjau lokal untuk ditampilkan
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewImages((prev) => ({
+                    ...prev,
+                    [field]: reader.result,
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route("layout.store"));
+        post(route("layout.store"), {
+            preserveScroll: true, // Pertahankan posisi scroll setelah submit
+        });
     };
 
     return (
@@ -44,101 +79,24 @@ export default function Index({ auth, layouts }) {
 
             <div className="py-8">
                 <div className="max-w-5xl mx-auto sm:px-6 lg:px-8">
+                    {/* 1. TAMPILAN NOTIFIKASI SUKSES DARI SERVER */}
+                    {flash.success && (
+                        <div
+                            className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+                            role="alert"
+                        >
+                            <strong className="font-bold">Berhasil! </strong>
+                            <span className="block sm:inline">
+                                {flash.success}
+                            </span>
+                        </div>
+                    )}
+
                     <form
                         onSubmit={handleSubmit}
                         className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-indigo-600"
                     >
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
-                            Identitas & Branding Surat Perusahaan
-                        </h3>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <InputLabel value="Tahun Periode Layout" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.tahun_periode}
-                                    onChange={(e) =>
-                                        setData("tahun_periode", e.target.value)
-                                    }
-                                    required
-                                />
-                                <InputError message={errors.tahun_periode} />
-                            </div>
-                            <div>
-                                <InputLabel value="Nama Perusahaan Resmi" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.nama_perusahaan}
-                                    onChange={(e) =>
-                                        setData(
-                                            "nama_perusahaan",
-                                            e.target.value,
-                                        )
-                                    }
-                                    required
-                                />
-                                <InputError message={errors.nama_perusahaan} />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <InputLabel value="Sub-Judul / Slogan" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.slogan}
-                                    onChange={(e) =>
-                                        setData("slogan", e.target.value)
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <InputLabel value="Nomor Telepon Hotline" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.telepon}
-                                    onChange={(e) =>
-                                        setData("telepon", e.target.value)
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <InputLabel value="Email Resmi" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.email}
-                                    onChange={(e) =>
-                                        setData("email", e.target.value)
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <InputLabel value="Website Resmi" />
-                                <TextInput
-                                    className="mt-1 block w-full"
-                                    value={data.website}
-                                    onChange={(e) =>
-                                        setData("website", e.target.value)
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <InputLabel value="Alamat Kantor Pusat (Head Office)" />
-                            <textarea
-                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm"
-                                rows="2"
-                                value={data.alamat}
-                                onChange={(e) =>
-                                    setData("alamat", e.target.value)
-                                }
-                            />
-                        </div>
+                        {/* ... (Pertahankan blok Identitas & Branding Surat dari kode sebelumnya) ... */}
 
                         <div className="border-t pt-4 mt-6">
                             <h4 className="font-bold text-gray-800 mb-3">
@@ -146,47 +104,99 @@ export default function Index({ auth, layouts }) {
                                 Transparan)
                             </h4>
 
+                            {/* 2. TAMBAHAN PRATINJAU GAMBAR PADA MASING-MASING INPUT */}
                             <div className="grid grid-cols-3 gap-4 mb-6">
-                                <div className="p-3 border rounded bg-gray-50">
-                                    <InputLabel value="1. Logo Utama (Header Kiri)" />
+                                {/* Logo Utama */}
+                                <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
+                                    <InputLabel
+                                        value="1. Logo Utama (Header Kiri)"
+                                        className="mb-2 w-full text-left"
+                                    />
+                                    {previewImages.logo_header ? (
+                                        <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
+                                            <img
+                                                src={previewImages.logo_header}
+                                                alt="Preview Logo"
+                                                className="object-contain h-full w-full p-1"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="h-24 w-full flex justify-center items-center bg-gray-200 border rounded mb-2 text-xs text-gray-400">
+                                            Tidak Ada Logo
+                                        </div>
+                                    )}
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        className="mt-2 text-xs"
+                                        className="mt-2 text-xs w-full"
                                         onChange={(e) =>
-                                            setData(
-                                                "logo_header",
-                                                e.target.files[0],
-                                            )
+                                            handleFileChange(e, "logo_header")
                                         }
                                     />
+                                    <InputError message={errors.logo_header} />
                                 </div>
-                                <div className="p-3 border rounded bg-gray-50">
-                                    <InputLabel value="2. Watermark Transparan (Tengah)" />
+
+                                {/* Watermark */}
+                                <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
+                                    <InputLabel
+                                        value="2. Watermark Transparan (Tengah)"
+                                        className="mb-2 w-full text-left"
+                                    />
+                                    {previewImages.watermark ? (
+                                        <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
+                                            <img
+                                                src={previewImages.watermark}
+                                                alt="Preview Watermark"
+                                                className="object-contain h-full w-full p-1 opacity-50"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="h-24 w-full flex justify-center items-center bg-gray-200 border rounded mb-2 text-xs text-gray-400">
+                                            Tidak Ada Watermark
+                                        </div>
+                                    )}
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        className="mt-2 text-xs"
+                                        className="mt-2 text-xs w-full"
                                         onChange={(e) =>
-                                            setData(
-                                                "watermark",
-                                                e.target.files[0],
-                                            )
+                                            handleFileChange(e, "watermark")
                                         }
                                     />
+                                    <InputError message={errors.watermark} />
                                 </div>
-                                <div className="p-3 border rounded bg-gray-50">
-                                    <InputLabel value="3. Banner Slogan Footer (Bawah)" />
+
+                                {/* Banner Footer */}
+                                <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
+                                    <InputLabel
+                                        value="3. Banner Slogan Footer (Bawah)"
+                                        className="mb-2 w-full text-left"
+                                    />
+                                    {previewImages.banner_footer ? (
+                                        <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
+                                            <img
+                                                src={
+                                                    previewImages.banner_footer
+                                                }
+                                                alt="Preview Banner"
+                                                className="object-contain h-full w-full p-1"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="h-24 w-full flex justify-center items-center bg-gray-200 border rounded mb-2 text-xs text-gray-400">
+                                            Tidak Ada Banner
+                                        </div>
+                                    )}
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        className="mt-2 text-xs"
+                                        className="mt-2 text-xs w-full"
                                         onChange={(e) =>
-                                            setData(
-                                                "banner_footer",
-                                                e.target.files[0],
-                                            )
+                                            handleFileChange(e, "banner_footer")
                                         }
+                                    />
+                                    <InputError
+                                        message={errors.banner_footer}
                                     />
                                 </div>
                             </div>

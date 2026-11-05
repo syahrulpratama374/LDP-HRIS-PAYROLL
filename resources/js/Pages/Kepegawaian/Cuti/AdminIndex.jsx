@@ -14,7 +14,7 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
     const handleApproval = (id, status, namaKaryawan) => {
         if (
             confirm(
-                `Anda yakin ingin ${status.toUpperCase()} pengajuan cuti dari ${namaKaryawan}?`
+                `Anda yakin ingin ${status.toUpperCase()} pengajuan cuti dari ${namaKaryawan}?`,
             )
         ) {
             router.patch(
@@ -24,7 +24,7 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                 },
                 {
                     preserveScroll: true,
-                }
+                },
             );
         }
     };
@@ -67,12 +67,21 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
 
         return pengajuan.filter((item) => {
             const nama = item.karyawan?.nama_lengkap?.toLowerCase() || "";
-            const jabatan = item.karyawan?.jabatan?.nama_jabatan?.toLowerCase() || "";
-            const jenisCuti = item.jenis_cuti?.toLowerCase() || "";
+            const jabatan =
+                item.karyawan?.jabatan?.nama_jabatan?.toLowerCase() || "";
+            // UPDATE: Baca nama cuti dari relasi master_jenis_cuti
+            const jenisCuti =
+                item.master_jenis_cuti?.nama_cuti?.toLowerCase() ||
+                item.jenis_cuti?.toLowerCase() ||
+                "";
             const status = item.status_approval?.toLowerCase() || "";
             const alasan = item.alasan?.toLowerCase() || "";
-            const tglMulai = formatTanggalSingkat(item.tanggal_mulai).toLowerCase();
-            const tglSelesai = formatTanggalSingkat(item.tanggal_selesai).toLowerCase();
+            const tglMulai = formatTanggalSingkat(
+                item.tanggal_mulai,
+            ).toLowerCase();
+            const tglSelesai = formatTanggalSingkat(
+                item.tanggal_selesai,
+            ).toLowerCase();
 
             return (
                 nama.includes(keyword) ||
@@ -114,12 +123,10 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                     CONTENT
                 ====================================================== */}
                 <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-                    
                     {/* =================================================
                         MAIN CARD
                     ================================================== */}
                     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-                        
                         {/* CARD HEADER & SEARCHBAR */}
                         <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -129,7 +136,9 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                                         Daftar Pengajuan Cuti Bawahan
                                     </h2>
                                     <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
-                                        Persetujuan ini akan memicu sistem untuk memotong saldo cuti tahunan Karyawan terkait.
+                                        Persetujuan ini akan memicu sistem untuk
+                                        memotong saldo cuti tahunan Karyawan
+                                        terkait.
                                     </p>
                                 </div>
 
@@ -150,7 +159,9 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                                         <input
                                             type="text"
                                             value={search}
-                                            onChange={(e) => setSearch(e.target.value)}
+                                            onChange={(e) =>
+                                                setSearch(e.target.value)
+                                            }
                                             placeholder="Cari karyawan atau cuti..."
                                             className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20 sm:text-sm"
                                         />
@@ -161,7 +172,8 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                             {/* HASIL SEARCH */}
                             {search && (
                                 <p className="mt-2 text-[11px] text-gray-400">
-                                    Menampilkan {filteredPengajuan.length} dari {pengajuan.length} pengajuan
+                                    Menampilkan {filteredPengajuan.length} dari{" "}
+                                    {pengajuan.length} pengajuan
                                 </p>
                             )}
                         </div>
@@ -194,7 +206,10 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                                 <tbody className="divide-y divide-gray-100 bg-white">
                                     {filteredPengajuan.length === 0 ? (
                                         <tr>
-                                            <td colSpan="5" className="px-5 py-8 text-center">
+                                            <td
+                                                colSpan="5"
+                                                className="px-5 py-8 text-center"
+                                            >
                                                 <p className="text-sm font-semibold text-gray-500">
                                                     {search
                                                         ? "Data pengajuan tidak ditemukan."
@@ -204,7 +219,9 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                                                 {search && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => setSearch("")}
+                                                        onClick={() =>
+                                                            setSearch("")
+                                                        }
                                                         className="mt-2 text-xs font-semibold text-[#431D6D] hover:underline"
                                                     >
                                                         Hapus pencarian
@@ -214,68 +231,128 @@ export default function AdminIndex({ auth, pengajuan = [] }) {
                                         </tr>
                                     ) : (
                                         filteredPengajuan.map((item) => (
-                                            <tr key={item.id} className="transition hover:bg-[#F7F7FA]">
+                                            <tr
+                                                key={item.id}
+                                                className="transition hover:bg-[#F7F7FA]"
+                                            >
                                                 {/* KARYAWAN */}
                                                 <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                                                     <div className="text-sm font-bold text-gray-800">
-                                                        {item.karyawan?.nama_lengkap}
+                                                        {
+                                                            item.karyawan
+                                                                ?.nama_lengkap
+                                                        }
                                                     </div>
                                                     <div className="mt-0.5 text-[11px] text-gray-500">
-                                                        {item.karyawan?.jabatan?.nama_jabatan || "Staff"}
+                                                        {item.karyawan?.jabatan
+                                                            ?.nama_jabatan ||
+                                                            "Staff"}
                                                     </div>
                                                 </td>
 
                                                 {/* DETAIL CUTI */}
                                                 <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                                                     <div className="text-sm font-semibold text-[#431D6D]">
-                                                        {item.jenis_cuti}
+                                                        {/* UPDATE: Baca nama cuti dari relasi */}
+                                                        {item.master_jenis_cuti
+                                                            ?.nama_cuti ||
+                                                            item.jenis_cuti ||
+                                                            "-"}
                                                     </div>
                                                     <div className="mt-0.5 text-xs text-gray-600">
-                                                        {formatTanggalSingkat(item.tanggal_mulai)} 
-                                                        <span className="mx-1 text-gray-400">-</span> 
-                                                        {formatTanggalSingkat(item.tanggal_selesai)}
+                                                        {formatTanggalSingkat(
+                                                            item.tanggal_mulai,
+                                                        )}
+                                                        <span className="mx-1 text-gray-400">
+                                                            -
+                                                        </span>
+                                                        {formatTanggalSingkat(
+                                                            item.tanggal_selesai,
+                                                        )}
                                                     </div>
                                                 </td>
 
                                                 {/* ALASAN */}
                                                 <td className="px-4 py-3 text-sm text-gray-700 sm:px-5">
-                                                    <p className="line-clamp-2 max-w-xs text-xs" title={item.alasan}>
+                                                    <p
+                                                        className="line-clamp-2 max-w-xs text-xs"
+                                                        title={item.alasan}
+                                                    >
                                                         {item.alasan || "-"}
                                                     </p>
                                                 </td>
 
                                                 {/* STATUS */}
                                                 <td className="whitespace-nowrap px-4 py-3 text-center sm:px-5">
-                                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(item.status_approval)}`}>
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusStyle(item.status_approval)}`}
+                                                    >
                                                         {item.status_approval}
                                                     </span>
                                                 </td>
 
                                                 {/* AKSI */}
                                                 <td className="whitespace-nowrap px-4 py-3 text-center sm:px-5">
-                                                    {item.status_approval === "Pending" ? (
+                                                    {item.status_approval ===
+                                                    "Pending" ? (
                                                         <div className="flex items-center justify-center gap-2">
                                                             {/* Tombol Setuju */}
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleApproval(item.id, "Disetujui", item.karyawan?.nama_lengkap)}
+                                                                onClick={() =>
+                                                                    handleApproval(
+                                                                        item.id,
+                                                                        "Disetujui",
+                                                                        item
+                                                                            .karyawan
+                                                                            ?.nama_lengkap,
+                                                                    )
+                                                                }
                                                                 className="flex h-7 w-7 items-center justify-center rounded border border-green-200 bg-green-50 text-green-600 transition hover:bg-green-600 hover:text-white"
                                                                 title="Setujui"
                                                             >
-                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                <svg
+                                                                    className="h-4 w-4"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2.5"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        d="M5 13l4 4L19 7"
+                                                                    />
                                                                 </svg>
                                                             </button>
 
                                                             {/* Tombol Tolak */}
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleApproval(item.id, "Ditolak", item.karyawan?.nama_lengkap)}
+                                                                onClick={() =>
+                                                                    handleApproval(
+                                                                        item.id,
+                                                                        "Ditolak",
+                                                                        item
+                                                                            .karyawan
+                                                                            ?.nama_lengkap,
+                                                                    )
+                                                                }
                                                                 className="flex h-7 w-7 items-center justify-center rounded border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-600 hover:text-white"
                                                                 title="Tolak"
                                                             >
-                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                <svg
+                                                                    className="h-4 w-4"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2.5"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        d="M6 18L18 6M6 6l12 12"
+                                                                    />
                                                                 </svg>
                                                             </button>
                                                         </div>
