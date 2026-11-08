@@ -25,6 +25,7 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
+        "browser-image-compression": "^2.0.2",
         "lucide-react": "^1.56.0",
         "prop-types": "^15.8.1",
         "react-image-crop": "^11.1.2",

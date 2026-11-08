@@ -3,6 +3,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import Webcam from "react-webcam";
 import BannerHeader from "@/Components/BannerHeader";
+import imageCompression from "browser-image-compression";
 
 export default function Create({ auth, absensiHariIni, karyawan }) {
     const webcamRef = useRef(null);
@@ -132,13 +133,13 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
         second: "2-digit",
         hour12: false,
     });
-
     // =========================================================
-    // CLOCK IN / OUT
+    // CLOCK IN / OUT (Dengan Kompresi)
     // =========================================================
 
     const handleAbsen = useCallback(
-        (tipe) => {
+        async (tipe) => {
+            // Tambahkan 'async' di sini
             if (!isLocationReady) {
                 alert("Lokasi belum terdeteksi. Silakan tunggu GPS.");
                 return;
@@ -158,32 +159,59 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
 
             setIsSubmitting(true);
 
-            router.post(
-                route("absensi.store"),
-                {
-                    image: imageSrc,
-                    koordinat,
-                    tipe,
-                    catatan_logbook: catatanLogbook,
-                },
-                {
-                    preserveScroll: true,
+            try {
+                // 1. Ubah format gambar dari Base64 (Bawaan Webcam) menjadi File
+                const imageFile = await imageCompression.getFilefromDataUrl(
+                    imageSrc,
+                    "absen.jpg",
+                );
 
-                    onSuccess: () => {
-                        setIsSubmitting(false);
-                        setBukaKameraPulang(false);
-                        setCatatanLogbook("");
+                // 2. Setting Kompresi (Maksimal ukuran 100KB, Resolusi Max 800px)
+                const options = {
+                    maxSizeMB: 0.1, // 0.1 MB = 100 KB
+                    maxWidthOrHeight: 800,
+                    useWebWorker: true,
+                };
+
+                // 3. Proses Kompresi
+                const compressedFile = await imageCompression(
+                    imageFile,
+                    options,
+                );
+
+                // 4. Ubah kembali ke Base64 untuk dikirim ke Laravel (karena controller Anda menerima Base64)
+                const compressedImageSrc =
+                    await imageCompression.getDataUrlFromFile(compressedFile);
+
+                // 5. Kirim ke Server
+                router.post(
+                    route("absensi.store"),
+                    {
+                        image: compressedImageSrc, // Gunakan gambar yang sudah dikompres
+                        koordinat,
+                        tipe,
+                        catatan_logbook: catatanLogbook,
                     },
-
-                    onError: (errors) => {
-                        setIsSubmitting(false);
-
-                        if (errors.error) {
-                            alert(errors.error);
-                        }
+                    {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            setIsSubmitting(false);
+                            setBukaKameraPulang(false);
+                            setCatatanLogbook("");
+                        },
+                        onError: (errors) => {
+                            setIsSubmitting(false);
+                            if (errors.error) {
+                                alert(errors.error);
+                            }
+                        },
                     },
-                },
-            );
+                );
+            } catch (error) {
+                console.error("Gagal melakukan kompresi foto:", error);
+                alert("Terjadi kesalahan saat memproses foto absensi.");
+                setIsSubmitting(false);
+            }
         },
         [koordinat, isLocationReady, catatanLogbook],
     );
@@ -327,7 +355,6 @@ export default function Create({ auth, absensiHariIni, karyawan }) {
             <Head title="Absensi Kehadiran" />
 
             <div className="min-h-screen bg-[#F7F7FA]">
-                
                 {/* =====================================================
                     HEADER: Gunakan BannerHeader agar mepet ke navbar
                 ====================================================== */}

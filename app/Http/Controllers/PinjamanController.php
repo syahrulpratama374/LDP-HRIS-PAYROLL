@@ -177,7 +177,7 @@ class PinjamanController extends Controller
             // PERBAIKAN: Perhitungan matematika sisa pinjaman
             $sisaBaru = max(0, $pinjaman->sisa_pinjaman - $cicilan->nominal_cicilan);
             $pinjaman->update([
-                'sisa_pinjaman' => $sisaBaru,
+                'sisa_pinjaman' => $sisaBaru, 
                 'status' => $sisaBaru <= 0 ? 'Lunas' : 'Berjalan'
             ]);
         }

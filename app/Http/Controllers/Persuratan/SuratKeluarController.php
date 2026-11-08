@@ -291,6 +291,12 @@ class SuratKeluarController extends Controller
                 Storage::disk('public')->put($ttdImagePath, $imageBase64);
             }
         }
+        if ($jenisTtd === 'upload_gambar' && $request->hasFile('ttd_file')) {
+            $file = $request->file('ttd_file');
+            $fileName = 'ttd_approval_upload_' . $approvalAktif->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            // Simpan langsung menggunakan path yang sama persis dengan canvas agar tidak error
+            $ttdImagePath = $file->storeAs('persuratan/ttd', $fileName, 'public');
+        }
 
         try {
             DB::beginTransaction();

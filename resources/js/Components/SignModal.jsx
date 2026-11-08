@@ -8,11 +8,12 @@ export default function SignModal({ isOpen, onClose, suratId }) {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
-    const [jenisTtd, setJenisTtd] = useState("canvas"); // Default ke Canvas
+    const [jenisTtd, setJenisTtd] = useState("canvas"); // canvas, qr_code, upload_gambar
 
     const { data, setData, reset, clearErrors } = useForm({
         jenis_ttd: "canvas",
         ttd_base64: "",
+        ttd_file: null, // Tambahan state untuk file upload
         catatan: "",
     });
 
@@ -93,6 +94,10 @@ export default function SignModal({ isOpen, onClose, suratId }) {
         e.preventDefault();
 
         let base64Data = "";
+        let payload = {
+            jenis_ttd: jenisTtd,
+            catatan: data.catatan,
+        };
 
         // Validasi jika memilih Canvas
         if (jenisTtd === "canvas") {
@@ -105,30 +110,34 @@ export default function SignModal({ isOpen, onClose, suratId }) {
                 );
                 return;
             }
+            payload.ttd_base64 = base64Data;
+        }
+
+        // Validasi jika memilih Upload Gambar
+        if (jenisTtd === "upload_gambar") {
+            if (!data.ttd_file) {
+                alert("Silakan pilih file gambar tanda tangan (PNG/JPG).");
+                return;
+            }
+            payload.ttd_file = data.ttd_file;
         }
 
         setProcessing(true);
 
-        router.post(
-            route("keluar.approve", suratId),
-            {
-                jenis_ttd: jenisTtd,
-                ttd_base64: base64Data,
-                catatan: data.catatan,
+        // Mengirim data menggunakan router Inertia
+        // Inertia otomatis mengubah ini menjadi FormData (multipart/form-data) jika ada file
+        router.post(route("keluar.approve", suratId), payload, {
+            onSuccess: () => {
+                closeModal();
             },
-            {
-                onSuccess: () => {
-                    closeModal();
-                },
-                onError: (errors) => {
-                    setProcessing(false);
-                    console.error("Approval error:", errors);
-                },
-                onFinish: () => {
-                    setProcessing(false);
-                },
+            onError: (errors) => {
+                setProcessing(false);
+                console.error("Approval error:", errors);
             },
-        );
+            onFinish: () => {
+                setProcessing(false);
+            },
+        });
     };
 
     return (
@@ -143,30 +152,41 @@ export default function SignModal({ isOpen, onClose, suratId }) {
                     <button
                         type="button"
                         onClick={() => handleTabChange("canvas")}
-                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                        className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-md transition-all ${
                             jenisTtd === "canvas"
                                 ? "bg-white shadow text-indigo-600"
                                 : "text-gray-500 hover:text-gray-700"
                         }`}
                     >
-                        ✍️ Gambar TTD
+                        ✍️ Draw
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleTabChange("upload_gambar")}
+                        className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-md transition-all ${
+                            jenisTtd === "upload_gambar"
+                                ? "bg-white shadow text-indigo-600"
+                                : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                        🖼️ Upload
                     </button>
                     <button
                         type="button"
                         onClick={() => handleTabChange("qr_code")}
-                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+                        className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-md transition-all ${
                             jenisTtd === "qr_code"
                                 ? "bg-white shadow text-indigo-600"
                                 : "text-gray-500 hover:text-gray-700"
                         }`}
                     >
-                        ⚡ Quick QR Approve
+                        ⚡ QR
                     </button>
                 </div>
 
                 <form onSubmit={handleApprove} className="space-y-4">
                     {/* TAB 1: CANVAS TTD BASAH NATIVE */}
-                    {jenisTtd === "canvas" ? (
+                    {jenisTtd === "canvas" && (
                         <div className="space-y-2">
                             <p className="text-xs text-gray-500 text-center">
                                 Goreskan tanda tangan Anda di dalam kotak di
@@ -195,8 +215,29 @@ export default function SignModal({ isOpen, onClose, suratId }) {
                                 </button>
                             </div>
                         </div>
-                    ) : (
-                        /* TAB 2: QUICK QR APPROVAL */
+                    )}
+
+                    {/* TAB 2: UPLOAD FILE GAMBAR */}
+                    {jenisTtd === "upload_gambar" && (
+                        <div className="py-6 flex flex-col items-center justify-center space-y-3 bg-gray-50 border border-gray-200 rounded-lg px-4">
+                            <div className="text-3xl">🖼️</div>
+                            <p className="text-xs text-gray-600 text-center font-medium">
+                                Unggah file scan tanda tangan Anda (Latar
+                                belakang transparan disarankan).
+                            </p>
+                            <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg"
+                                onChange={(e) =>
+                                    setData("ttd_file", e.target.files[0])
+                                }
+                                className="block w-full text-xs text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            />
+                        </div>
+                    )}
+
+                    {/* TAB 3: QUICK QR APPROVAL */}
+                    {jenisTtd === "qr_code" && (
                         <div className="py-6 flex flex-col items-center justify-center space-y-2 bg-indigo-50/60 border border-indigo-100 rounded-lg">
                             <div className="text-4xl">📱</div>
                             <p className="text-xs text-indigo-900 text-center px-4 font-medium">

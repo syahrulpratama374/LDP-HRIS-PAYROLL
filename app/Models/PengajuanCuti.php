@@ -14,7 +14,7 @@ class PengajuanCuti extends Model
     // Sesuaikan dengan nama kolom yang baru di tabel
     protected $fillable = [
         'karyawan_id',
-        'jenis_cuti',
+        'jenis_cuti_id',
         'tanggal_mulai',
         'tanggal_selesai',
         'alasan',

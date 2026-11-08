@@ -7,7 +7,6 @@ import PrimaryButton from "@/Components/PrimaryButton";
 import InputError from "@/Components/InputError";
 
 export default function Index({ auth, layouts }) {
-    // Tangkap flash message dari backend
     const { flash } = usePage().props;
     const activeLayout = layouts.find((l) => l.is_active) || {};
 
@@ -28,7 +27,6 @@ export default function Index({ auth, layouts }) {
         banner_footer: null,
     });
 
-    // State untuk menyimpan URL pratinjau gambar sementara
     const [previewImages, setPreviewImages] = useState({
         logo_header: activeLayout.logo_header_path
             ? `/storage/${activeLayout.logo_header_path}`
@@ -41,13 +39,11 @@ export default function Index({ auth, layouts }) {
             : null,
     });
 
-    // Handler ketika file dipilih
     const handleFileChange = (e, field) => {
         const file = e.target.files[0];
         setData(field, file);
 
         if (file) {
-            // Buat URL pratinjau lokal untuk ditampilkan
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreviewImages((prev) => ({
@@ -62,7 +58,8 @@ export default function Index({ auth, layouts }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route("layout.store"), {
-            preserveScroll: true, // Pertahankan posisi scroll setelah submit
+            preserveScroll: true,
+            forceFormData: true, // Wajib ditambahkan agar file gambar terkirim ke Laravel
         });
     };
 
@@ -79,12 +76,8 @@ export default function Index({ auth, layouts }) {
 
             <div className="py-8">
                 <div className="max-w-5xl mx-auto sm:px-6 lg:px-8">
-                    {/* 1. TAMPILAN NOTIFIKASI SUKSES DARI SERVER */}
                     {flash.success && (
-                        <div
-                            className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
-                            role="alert"
-                        >
+                        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
                             <strong className="font-bold">Berhasil! </strong>
                             <span className="block sm:inline">
                                 {flash.success}
@@ -96,20 +89,134 @@ export default function Index({ auth, layouts }) {
                         onSubmit={handleSubmit}
                         className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-indigo-600"
                     >
-                        {/* ... (Pertahankan blok Identitas & Branding Surat dari kode sebelumnya) ... */}
+                        <h4 className="font-bold text-gray-800 mb-4">
+                            Informasi Perusahaan
+                        </h4>
 
+                        {/* BLOK IDENTITAS TEKS (Sekarang bisa diketik karena ada onChange) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <InputLabel value="Nama Perusahaan" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.nama_perusahaan}
+                                    onChange={(e) =>
+                                        setData(
+                                            "nama_perusahaan",
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={errors.nama_perusahaan}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Slogan" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.slogan}
+                                    onChange={(e) =>
+                                        setData("slogan", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.slogan}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <InputLabel value="Alamat" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.alamat}
+                                    onChange={(e) =>
+                                        setData("alamat", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.alamat}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Telepon" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.telepon}
+                                    onChange={(e) =>
+                                        setData("telepon", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.telepon}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Email" />
+                                <TextInput
+                                    type="email"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.email}
+                                    onChange={(e) =>
+                                        setData("email", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.email}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Website" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.website}
+                                    onChange={(e) =>
+                                        setData("website", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.website}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Tahun Periode" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.tahun_periode}
+                                    onChange={(e) =>
+                                        setData("tahun_periode", e.target.value)
+                                    }
+                                />
+                                <InputError
+                                    message={errors.tahun_periode}
+                                    className="mt-2"
+                                />
+                            </div>
+                        </div>
+
+                        {/* BLOK UPLOAD GAMBAR */}
                         <div className="border-t pt-4 mt-6">
                             <h4 className="font-bold text-gray-800 mb-3">
                                 Upload File Gambar Branding (PNG / JPG
                                 Transparan)
                             </h4>
 
-                            {/* 2. TAMBAHAN PRATINJAU GAMBAR PADA MASING-MASING INPUT */}
-                            <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 {/* Logo Utama */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
                                     <InputLabel
-                                        value="1. Logo Utama (Header Kiri)"
+                                        value="1. Logo Utama (Header)"
                                         className="mb-2 w-full text-left"
                                     />
                                     {previewImages.logo_header ? (
@@ -139,7 +246,7 @@ export default function Index({ auth, layouts }) {
                                 {/* Watermark */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
                                     <InputLabel
-                                        value="2. Watermark Transparan (Tengah)"
+                                        value="2. Watermark Transparan"
                                         className="mb-2 w-full text-left"
                                     />
                                     {previewImages.watermark ? (
@@ -169,7 +276,7 @@ export default function Index({ auth, layouts }) {
                                 {/* Banner Footer */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
                                     <InputLabel
-                                        value="3. Banner Slogan Footer (Bawah)"
+                                        value="3. Banner Slogan Footer"
                                         className="mb-2 w-full text-left"
                                     />
                                     {previewImages.banner_footer ? (
@@ -203,8 +310,13 @@ export default function Index({ auth, layouts }) {
                         </div>
 
                         <div className="flex justify-end border-t pt-4">
-                            <PrimaryButton disabled={processing}>
-                                Simpan & Aktifkan Layout
+                            <PrimaryButton
+                                disabled={processing}
+                                className="!bg-indigo-600 hover:!bg-indigo-700"
+                            >
+                                {processing
+                                    ? "Menyimpan..."
+                                    : "Simpan & Aktifkan Layout"}
                             </PrimaryButton>
                         </div>
                     </form>

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage, useForm } from "@inertiajs/react";
+import imageCompression from "browser-image-compression";
 
 export default function Index({ auth, pinjaman = [] }) {
     const { flash, errors } = usePage().props;
@@ -16,7 +17,7 @@ export default function Index({ auth, pinjaman = [] }) {
         e.preventDefault();
         if (!selectedCicilan) return;
 
-        formBayar.post(route("pinjaman.bayarManual", selectedCicilan.id), {
+        formBayar.post(route("pinjaman.uploadBuktiBayar", selectedCicilan.id), {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
@@ -337,12 +338,36 @@ export default function Index({ auth, pinjaman = [] }) {
                                 <input
                                     type="file"
                                     accept="image/png, image/jpeg, image/jpg"
-                                    onChange={(e) =>
-                                        formBayar.setData(
-                                            "bukti_transfer",
-                                            e.target.files[0],
-                                        )
-                                    }
+                                    onChange={async (e) => {
+                                        const imageFile = e.target.files[0];
+                                        if (imageFile) {
+                                            try {
+                                                // Konfigurasi kompresi (Maks 100KB)
+                                                const options = {
+                                                    maxSizeMB: 0.1,
+                                                    maxWidthOrHeight: 800,
+                                                    useWebWorker: true,
+                                                };
+                                                const compressedFile =
+                                                    await imageCompression(
+                                                        imageFile,
+                                                        options,
+                                                    );
+                                                formBayar.setData(
+                                                    "bukti_transfer",
+                                                    compressedFile,
+                                                );
+                                            } catch (error) {
+                                                console.error(
+                                                    "Gagal kompresi:",
+                                                    error,
+                                                );
+                                                alert(
+                                                    "Terjadi kesalahan saat mengecilkan ukuran foto.",
+                                                );
+                                            }
+                                        }
+                                    }}
                                     className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#2A164E] file:text-white pointer-events-auto"
                                     required
                                 />
