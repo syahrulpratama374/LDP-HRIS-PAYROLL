@@ -34,6 +34,7 @@ class MenuSeeder extends Seeder
             ['parent_id' => $pengajuanGroup, 'title' => 'Perjalanan Dinas (SPJ)', 'route_name' => 'spj.index', 'order' => 3],
             ['parent_id' => $pengajuanGroup, 'title' => 'Kasbon & Pinjaman', 'route_name' => 'pinjaman.index', 'order' => 4],
             ['parent_id' => $pengajuanGroup, 'title' => 'Logbook Shift NOC', 'route_name' => 'logbook.index', 'order' => 5],
+            ['parent_id' => $pengajuanGroup, 'title' => 'IT Helpdesk', 'route_name' => 'ticket.index', 'order' => 6],
         ];
         foreach ($subPengajuan as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 
@@ -107,6 +108,9 @@ class MenuSeeder extends Seeder
             ['parent_id' => $sistemGroup, 'title' => 'Aset & QR Code', 'route_name' => 'admin.aset.index', 'order' => 1],
             ['parent_id' => $sistemGroup, 'title' => 'Audit Trail (Log Forensik)', 'route_name' => 'admin.audit.index', 'order' => 2],
             ['parent_id' => $sistemGroup, 'title' => 'Pengaturan Hak Akses', 'route_name' => 'admin.role.index', 'order' => 3],
+            ['parent_id' => $sistemGroup, 'title' => 'Pengaturan Parameter Sistem', 'route_name' => 'admin.pengaturan.index', 'order' => 4],
+
+            ['parent_id' => $sistemGroup, 'title' => 'Monitoring IT Ticket', 'route_name' => 'admin.ticket.index', 'order' => 5],
         ];
         foreach ($subSistem as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 

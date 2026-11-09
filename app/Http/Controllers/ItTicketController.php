@@ -7,6 +7,7 @@ use App\Models\RiwayatItTicket;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image; // Pastikan package ini sudah diinstal
 
 class ItTicketController extends Controller
 {
@@ -33,12 +34,25 @@ class ItTicketController extends Controller
             'modul' => 'required|string|max:100',
             'prioritas' => 'required|in:Rendah,Sedang,Tinggi,Darurat',
             'deskripsi' => 'required|string',
-            'file_lampiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'file_lampiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048', // Batas asli sebelum kompresi
         ]);
 
         $filePath = null;
         if ($request->hasFile('file_lampiran')) {
-            $filePath = $request->file('file_lampiran')->store('it_tickets', 'public');
+            $file = $request->file('file_lampiran');
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            // Kompresi otomatis ke WebP HANYA jika file adalah gambar
+            if (in_array($extension, ['jpg', 'jpeg', 'png'])) {
+                $filename = 'it_tickets/' . uniqid() . '.webp';
+                $image = Image::make($file)->encode('webp', 75); // Kualitas 75%
+                
+                Storage::disk('public')->put($filename, (string) $image);
+                $filePath = $filename;
+            } else {
+                // Jika PDF, simpan normal tanpa kompresi
+                $filePath = $file->store('it_tickets', 'public');
+            }
         }
 
         $ticket = ItTicket::create([
@@ -61,12 +75,36 @@ class ItTicketController extends Controller
             'catatan' => 'Tiket kendala berhasil dibuat oleh pelapor.',
         ]);
 
-        return redirect()->route('ticket.index')->with('success', 'Tiket kendala berhasil dilaporkan ke tim IT.');
+        return redirect()->route('ticket.index')->with('success', 'Tiket kendala berhasil dilaporkan ke tim operasional.');
     }
-
-    // [ADMIN IT] Menampilkan seluruh antrean tiket masuk
-    public function adminIndex()
+// [ADMIN IT/GA] Menampilkan seluruh antrean tiket masuk
+    public function adminIndex(Request $request)
     {
+        $user = $request->user();
+        $user->load('role', 'karyawan.departemen'); 
+
+        $roleName = $user->role->nama_role ?? '';
+        $deptKode = strtoupper($user->karyawan->departemen->kode_departemen ?? '');
+        $deptName = strtolower($user->karyawan->departemen->nama_departemen ?? '');
+
+        // 1. Cek Admin Sistem
+        $isSistemAdmin = ($roleName === 'Admin');
+
+        // 2. Cek Divisi Support (Gunakan pencocokan Kode / Frasa Lengkap)
+        // DILARANG menggunakan str_contains($deptName, 'it') karena akan mencocokkan "Human CapITal" atau "AudIT"
+        $allowedKodes = ['IT', 'GA']; 
+        
+        $isDivisiSupport = in_array($deptKode, $allowedKodes) || 
+                           str_contains($deptName, 'information technology') || 
+                           str_contains($deptName, 'teknologi informasi') || 
+                           str_contains($deptName, 'general affair') || 
+                           $deptName === 'it' || 
+                           $deptName === 'ga';
+
+        if (!$isSistemAdmin && !$isDivisiSupport) {
+            abort(403, 'Akses Ditolak: Halaman ini khusus untuk Sistem Admin dan Departemen GA/IT.');
+        }
+
         $tickets = ItTicket::with(['user.karyawan.departemen', 'riwayats'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -76,9 +114,30 @@ class ItTicketController extends Controller
         ]);
     }
 
-    // [ADMIN IT] Memperbarui progress & status penanganan tiket
+    // [ADMIN IT/GA] Memperbarui progress & status penanganan tiket
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        $user->load('role', 'karyawan.departemen');
+
+        $roleName = $user->role->nama_role ?? '';
+        $deptKode = strtoupper($user->karyawan->departemen->kode_departemen ?? '');
+        $deptName = strtolower($user->karyawan->departemen->nama_departemen ?? '');
+
+        $isSistemAdmin = ($roleName === 'Admin');
+        $allowedKodes = ['IT', 'GA'];
+
+        $isDivisiSupport = in_array($deptKode, $allowedKodes) || 
+                           str_contains($deptName, 'information technology') || 
+                           str_contains($deptName, 'teknologi informasi') || 
+                           str_contains($deptName, 'general affair') || 
+                           $deptName === 'it' || 
+                           $deptName === 'ga';
+
+        if (!$isSistemAdmin && !$isDivisiSupport) {
+            abort(403, 'Akses Ditolak: Anda tidak berada di departemen yang berwenang mengeksekusi tiket ini.');
+        }
+
         $request->validate([
             'status' => 'required|in:Pending,Diproses,Selesai,Ditolak',
             'persentase_progress' => 'required|integer|min:0|max:100',
@@ -96,7 +155,7 @@ class ItTicketController extends Controller
         // Catat audit trail perbaikan
         RiwayatItTicket::create([
             'ticket_id' => $ticket->id,
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'progress_sebelumnya' => $progressLama,
             'progress_baru' => $request->persentase_progress,
             'catatan' => $request->catatan,

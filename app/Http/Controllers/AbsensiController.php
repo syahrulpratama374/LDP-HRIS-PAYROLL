@@ -27,17 +27,15 @@ class AbsensiController extends Controller
         ]);
     }
 
-public function create()
+    public function create()
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
 
-        // Pengecualian khusus Super Admin (Role ID = 1)
         if ($user->role_id === 1 && !$karyawan) {
             abort(403, 'Super Admin tidak diwajibkan melakukan absensi harian.');
         }
 
-        // Jika user lain (selain Super Admin) belum dihubungkan ke data Karyawan
         if (!$karyawan) {
             abort(403, 'Profil Karyawan Anda belum terdaftar. Silakan hubungi bagian HC.');
         }
@@ -48,9 +46,18 @@ public function create()
             ->where('tanggal', $hariIni)
             ->first();
 
+        // Ambil data shift untuk ditampilkan di dropdown (Khusus departemen yang wajib logbook/NOC)
+        $shifts = [];
+        $isNoc = $karyawan->departemen && $karyawan->departemen->is_wajib_logbook;
+        if ($isNoc) {
+            $shifts = MasterShift::orderBy('jam_masuk')->get();
+        }
+
         return Inertia::render('Kepegawaian/Absensi/Create', [
             'absensiHariIni' => $absensiHariIni,
-            'karyawan' => $karyawan
+            'karyawan' => $karyawan,
+            'shifts' => $shifts,
+            'isNoc' => $isNoc
         ]);
     }
 
@@ -62,7 +69,6 @@ public function create()
         if ($user->role_id === 1 && !$karyawan) {
             return back()->withErrors(['error' => 'Super Admin tidak diwajibkan melakukan absensi harian.']);
         }
-
         if (!$karyawan) {
             return back()->withErrors(['error' => 'Akses Ditolak: Akun Anda belum terhubung dengan data profil Karyawan.']);
         }
@@ -71,13 +77,14 @@ public function create()
             'image' => 'required|string',
             'koordinat' => 'required|string',
             'tipe' => 'required|in:masuk,keluar',
-            'catatan_logbook' => 'nullable|string|max:500' 
+            'catatan_logbook' => 'nullable|string|max:500',
+            'shift_id' => 'nullable|exists:master_shifts,id' // Validasi untuk dropdown shift
         ]);
 
         $waktuSekarang = Carbon::now('Asia/Jakarta');
         $tanggal = $waktuSekarang->toDateString();
 
-        // --- MULAI BLOK VALIDASI GEOFENCING ---
+        // --- VALIDASI GEOFENCING ---
         $titikKantor = Pengaturan::where('kunci', 'koordinat_kantor')->value('nilai') ?? '-7.8014,110.3644';
         $radiusMaksimal = (int) (Pengaturan::where('kunci', 'radius_absensi')->value('nilai') ?? 50);
         
@@ -98,18 +105,16 @@ public function create()
         if (!$sedangSPJ && $jarakMeter > $radiusMaksimal) {
             return back()->withErrors(['error' => "Gagal: Anda di luar jangkauan kantor. Jarak Anda " . round($jarakMeter) . "m (Batas: {$radiusMaksimal}m)."]);
         }
-        // --- SELESAI BLOK VALIDASI GEOFENCING ---
 
-        // PROSES GAMBAR BASE64
+        // --- PROSES GAMBAR ---
         $image_parts = explode(";base64,", $request->image);
         $image_base64 = base64_decode($image_parts[1]);
-
         $fileName = $karyawan->id . '_' . $request->tipe . '_' . $waktuSekarang->format('Ymd_His') . '.jpg';
         $filePath = 'absensi/' . $fileName;
-
         Storage::disk('public')->put($filePath, $image_base64);
 
         $absensi = Absensi::where('karyawan_id', $karyawan->id)->where('tanggal', $tanggal)->first();
+        $isNoc = $karyawan->departemen && $karyawan->departemen->is_wajib_logbook;
 
         // ==============================================================
         // LOGIKA CLOCK IN (MASUK)
@@ -117,21 +122,35 @@ public function create()
         if ($request->tipe === 'masuk') {
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
+            // Default pengaturan absensi staf reguler
             $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai') ?? '08:00';
             $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15);
+            $namaShift = 'Reguler';
+
+            // JIKA DIA TIM NOC, TIMPA JAM MASUKNYA DENGAN JAM SHIFT
+            if ($isNoc) {
+                if (!$request->shift_id) {
+                    return back()->withErrors(['error' => 'Tim Operasional/NOC wajib memilih Jam Shift saat Clock In.']);
+                }
+                
+                $shiftAktif = MasterShift::find($request->shift_id);
+                $jamMasukStandar = $shiftAktif->jam_masuk;
+                $namaShift = $shiftAktif->nama_shift;
+            }
             
+            // Kalkulasi Keterlambatan
             $batasWaktuMasuk = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta')->addMinutes($toleransiMenit);
             
             $status = 'Hadir';
-            $catatan = null;
+            $catatan = $namaShift; // Simpan nama shift di catatan agar HR tahu
 
             if ($sedangSPJ) {
                 $status = 'Dinas Luar';
-                $catatan = 'Bypass Radius: SPJ Aktif';
+                $catatan .= ' | Bypass Radius: SPJ Aktif';
             } elseif ($waktuSekarang->greaterThan($batasWaktuMasuk)) {
                 $status = 'Terlambat';
                 $selisih = $batasWaktuMasuk->diffInMinutes($waktuSekarang);
-                $catatan = "Terlambat {$selisih} menit";
+                $catatan .= " | Terlambat {$selisih} menit";
             }
 
             Absensi::create([
@@ -157,25 +176,20 @@ public function create()
             $catatanKeluar = $absensi->catatan;
             
             if ($request->filled('catatan_logbook')) {
-                $tambahanLogbook = 'Logbook Handover: ' . $request->catatan_logbook;
+                $tambahanLogbook = 'Handover: ' . $request->catatan_logbook;
                 $catatanKeluar = $catatanKeluar ? $catatanKeluar . ' | ' . $tambahanLogbook : $tambahanLogbook;
 
-                // JEMBATAN OTOMATIS KE TABEL LOGBOOK SHIFT (DINAMIS 100%)
-                if ($karyawan->departemen && $karyawan->departemen->is_wajib_logbook) {
-                    $shiftDefault = MasterShift::first(); 
-                    
-                    if ($shiftDefault) {
-                        LogbookShift::create([
-                            'karyawan_id' => $karyawan->id,
-                            'shift_id' => $shiftDefault->id,
-                            'tanggal' => $tanggal,
-                            'catatan_handover' => $request->catatan_logbook,
-                        ]);
-                    }
+                // SIMPAN KE LOGBOOK
+                if ($isNoc && $request->shift_id) {
+                    LogbookShift::create([
+                        'karyawan_id' => $karyawan->id,
+                        'shift_id' => $request->shift_id, // Sekarang menggunakan shift_id yang riil dipilih Karyawan
+                        'tanggal' => $tanggal,
+                        'catatan_handover' => $request->catatan_logbook,
+                    ]);
                 }
             }
 
-            // Pembaruan Absensi (Berlaku untuk SEMUA KARYAWAN)
             $absensi->update([
                 'waktu_keluar' => $waktuSekarang,
                 'koordinat_keluar' => $request->koordinat,
@@ -186,6 +200,8 @@ public function create()
             return back()->with('success', 'Clock Out berhasil dicatat! Selamat beristirahat.');
         }
     }
+
+    // PERBAIKAN RUMUS MATEMATIKA YANG HILANG OPERATORNYA
     private function hitungJarakMeter($lat1, $lon1, $lat2, $lon2)
     {
         $earthRadius = 6371000; 

@@ -20,6 +20,7 @@ import {
     BarChart3,
     ClipboardList,
     Home,
+    Headset,
 } from "lucide-react";
 
 const MENU_ICON_MAP = [
@@ -28,7 +29,10 @@ const MENU_ICON_MAP = [
     { keys: ["lembur", "overtime", "shift"], Icon: Clock },
     { keys: ["dashboard", "beranda", "home"], Icon: LayoutDashboard },
     { keys: ["karyawan", "employee", "pegawai", "staff"], Icon: Users },
-    { keys: ["departemen", "department", "divisi", "division", "unit"], Icon: Building2 },
+    {
+        keys: ["departemen", "department", "divisi", "division", "unit"],
+        Icon: Building2,
+    },
     { keys: ["jabatan", "position", "role"], Icon: Briefcase },
     { keys: ["laporan", "report", "rekap"], Icon: FileBarChart },
     { keys: ["gaji", "payroll", "penggajian", "salary"], Icon: Wallet },
@@ -38,10 +42,12 @@ const MENU_ICON_MAP = [
     { keys: ["pengajuan", "request", "form"], Icon: ClipboardList },
     { keys: ["profil", "profile"], Icon: User },
     { keys: ["user", "akun"], Icon: User },
+    { keys: ["ticket", "helpdesk", "it", "support"], Icon: Headset },
 ];
 
 function getMenuIcon(menu) {
-    const source = `${menu?.title || ""} ${menu?.route_name || ""}`.toLowerCase();
+    const source =
+        `${menu?.title || ""} ${menu?.route_name || ""}`.toLowerCase();
     for (const { keys, Icon } of MENU_ICON_MAP) {
         if (keys.some((k) => source.includes(k))) return Icon;
     }
@@ -56,7 +62,50 @@ export default function AuthenticatedLayout({
     const page = usePage();
     const { auth } = page.props;
     const user = propUser || auth?.user;
-    const menus = auth?.menus || [];
+    const rawMenus = auth?.menus || [];
+
+    // =========================================================================
+    // PERBAIKAN: FILTER MENU DINAMIS BERDASARKAN ROLE & DEPARTEMEN
+    // =========================================================================
+    const userDeptKode = (
+        user?.karyawan?.departemen?.kode_departemen || ""
+    ).toUpperCase();
+    const userDeptName = (
+        user?.karyawan?.departemen?.nama_departemen || ""
+    ).toLowerCase();
+    const userRoleName = user?.role?.nama_role || "";
+
+    const isSupportTeam =
+        userRoleName === "Admin" ||
+        ["IT", "GA"].includes(userDeptKode) ||
+        userDeptName.includes("information technology") ||
+        userDeptName.includes("general affair") ||
+        userDeptName === "it" ||
+        userDeptName === "ga";
+
+    const menus = rawMenus
+        .map((menu) => {
+            if (!menu.children || menu.children.length === 0) return menu;
+
+            // Filter sub-menu di dalam parent
+            const filteredChildren = menu.children.filter((child) => {
+                // Sembunyikan 'Monitoring IT Ticket' jika bukan tim Admin/IT/GA
+                if (
+                    child.route_name === "admin.ticket.index" &&
+                    !isSupportTeam
+                ) {
+                    return false;
+                }
+                return true;
+            });
+
+            return { ...menu, children: filteredChildren };
+        })
+        .filter((menu) => {
+            // Hapus menu parent jika seluruh anak menunya kosong setelah difilter
+            if (menu.children && menu.children.length === 0) return false;
+            return true;
+        });
 
     // Deteksi layar mobile
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
@@ -64,13 +113,14 @@ export default function AuthenticatedLayout({
     const [isCollapsed, setIsCollapsed] = useState(isMobile);
     const [openSubmenus, setOpenSubmenus] = useState({});
 
-    // ====== PERBAIKAN 1: Auto-Expand Submenu yang Aktif ======
+    // ====== Auto-Expand Submenu yang Aktif ======
     useEffect(() => {
         const activeSubmenus = {};
         menus.forEach((menu) => {
             if (menu.children && menu.children.length > 0) {
                 const hasActiveChild = menu.children.some(
-                    (child) => child.route_name && route().current(child.route_name)
+                    (child) =>
+                        child.route_name && route().current(child.route_name),
                 );
                 if (hasActiveChild) {
                     activeSubmenus[menu.id] = true;
@@ -78,14 +128,14 @@ export default function AuthenticatedLayout({
             }
         });
         setOpenSubmenus((prev) => ({ ...prev, ...activeSubmenus }));
-    }, [page.url, menus]); // Berjalan saat URL atau struktur menu berubah
+    }, [page.url, menus]);
 
-    // ====== PERBAIKAN 2: Auto-collapse saat pindah halaman HANYA untuk layar kecil ======
+    // ====== Auto-collapse saat pindah halaman HANYA untuk layar kecil ======
     const prevUrlRef = useRef(page.url);
     useEffect(() => {
         if (prevUrlRef.current !== page.url) {
             if (window.innerWidth < 768) {
-                setIsCollapsed(true); // Hanya auto-collapse di HP
+                setIsCollapsed(true);
             }
             prevUrlRef.current = page.url;
         }
@@ -104,8 +154,6 @@ export default function AuthenticatedLayout({
 
     return (
         <div className="min-h-screen bg-[#F8F7FC] flex">
-            {/* PERBAIKAN 3: Disarankan memindahkan class custom-scrollbar ke resources/css/app.css 
-                Namun jika tetap ingin di sini, usahakan tidak ada di dalam loop atau element bergerak */}
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -134,7 +182,9 @@ export default function AuthenticatedLayout({
                     <Link
                         href={route("dashboard")}
                         className={`flex-1 overflow-hidden pr-10 transition-opacity duration-200 ${
-                            isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+                            isCollapsed
+                                ? "opacity-0 pointer-events-none"
+                                : "opacity-100"
                         }`}
                     >
                         <span className="whitespace-nowrap text-lg font-bold tracking-wider bg-gradient-to-r from-[#F3B817] to-[#FFD966] bg-clip-text text-transparent">
@@ -163,17 +213,23 @@ export default function AuthenticatedLayout({
                 {/* -------- MENU NAVIGASI -------- */}
                 <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
                     {menus.map((menu) => {
-                        const hasChildren = menu.children && menu.children.length > 0;
+                        const hasChildren =
+                            menu.children && menu.children.length > 0;
                         const isOpen = !!openSubmenus[menu.id];
                         const MenuIcon = getMenuIcon(menu);
 
                         if (!hasChildren) {
                             const isCurrent =
-                                menu.route_name && route().current(menu.route_name);
+                                menu.route_name &&
+                                route().current(menu.route_name);
                             return (
                                 <Link
                                     key={menu.id}
-                                    href={menu.route_name ? route(menu.route_name) : "#"}
+                                    href={
+                                        menu.route_name
+                                            ? route(menu.route_name)
+                                            : "#"
+                                    }
                                     title={isCollapsed ? menu.title : ""}
                                     className={`group flex items-center gap-3 px-4 py-2.5 rounded-xl
                                     text-sm font-medium whitespace-nowrap overflow-hidden
@@ -192,7 +248,9 @@ export default function AuthenticatedLayout({
                                     />
                                     <span
                                         className={`transition-opacity duration-200 ${
-                                            isCollapsed ? "opacity-0 hidden md:block" : "opacity-100"
+                                            isCollapsed
+                                                ? "opacity-0 hidden md:block"
+                                                : "opacity-100"
                                         }`}
                                     >
                                         {menu.title}
@@ -214,16 +272,22 @@ export default function AuthenticatedLayout({
                                     text-sm font-medium whitespace-nowrap overflow-hidden
                                     transition-colors duration-200 ${
                                         isOpen && !isCollapsed
-                                            ? "bg-white/5 text-white" 
+                                            ? "bg-white/5 text-white"
                                             : "text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
                                 >
-                                    <MenuIcon className={`w-5 h-5 shrink-0 transition-colors ${
-                                        isOpen && !isCollapsed ? "text-[#F3B817]" : "text-white/55 group-hover:text-[#F3B817]"
-                                    }`} />
+                                    <MenuIcon
+                                        className={`w-5 h-5 shrink-0 transition-colors ${
+                                            isOpen && !isCollapsed
+                                                ? "text-[#F3B817]"
+                                                : "text-white/55 group-hover:text-[#F3B817]"
+                                        }`}
+                                    />
                                     <span
                                         className={`flex-1 text-left truncate transition-opacity duration-200 ${
-                                            isCollapsed ? "opacity-0 hidden md:block" : "opacity-100"
+                                            isCollapsed
+                                                ? "opacity-0 hidden md:block"
+                                                : "opacity-100"
                                         }`}
                                     >
                                         {menu.title}
@@ -249,13 +313,17 @@ export default function AuthenticatedLayout({
                                             {menu.children.map((child) => {
                                                 const isChildCurrent =
                                                     child.route_name &&
-                                                    route().current(child.route_name);
+                                                    route().current(
+                                                        child.route_name,
+                                                    );
                                                 return (
                                                     <Link
                                                         key={child.id}
                                                         href={
                                                             child.route_name
-                                                                ? route(child.route_name)
+                                                                ? route(
+                                                                      child.route_name,
+                                                                  )
                                                                 : "#"
                                                         }
                                                         className={`block px-3 py-1.5 rounded-lg text-[13px]
@@ -284,9 +352,11 @@ export default function AuthenticatedLayout({
                             isCollapsed ? "justify-center" : "px-1"
                         }`}
                     >
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F3B817] to-[#E8A900]
+                        <div
+                            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F3B817] to-[#E8A900]
                         text-[#2A164E] flex items-center justify-center font-bold text-sm shrink-0
-                        ring-2 ring-[#F3B817]/30">
+                        ring-2 ring-[#F3B817]/30"
+                        >
                             {user?.name?.charAt(0)?.toUpperCase() || "U"}
                         </div>
                         {!isCollapsed && (
@@ -295,7 +365,9 @@ export default function AuthenticatedLayout({
                                     {user?.name || "User LDP"}
                                 </p>
                                 <p className="text-[10px] text-white/50 truncate">
-                                    {user?.role?.nama_role || user?.email || "Karyawan"}
+                                    {user?.role?.nama_role ||
+                                        user?.email ||
+                                        "Karyawan"}
                                 </p>
                             </div>
                         )}
@@ -316,9 +388,9 @@ export default function AuthenticatedLayout({
                 </div>
             </aside>
 
-            {/* Jika di mobile dan sidebar terbuka, buat backdrop gelap transparan untuk menutup sidebar */}
+            {/* Backdrop Mobile */}
             {isMobile && !isCollapsed && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
                     onClick={() => setIsCollapsed(true)}
                 />

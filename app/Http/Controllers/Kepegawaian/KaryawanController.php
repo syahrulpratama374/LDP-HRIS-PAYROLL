@@ -168,7 +168,7 @@ class KaryawanController extends Controller
         'atasans' => Karyawan::where('status_aktif', true)->where('id', '!=', $id)->orderBy('nama_lengkap')->get(),
     ]);
 }
-    public function update(Request $request, $id)
+   public function update(Request $request, $id)
     {
         $karyawan = Karyawan::findOrFail($id);
 
@@ -189,7 +189,10 @@ class KaryawanController extends Controller
             'jabatan_id' => 'required|exists:jabatans,id',
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
-            'atasan_id' => 'nullable|exists:karyawans,id|different:id',
+            
+            // FIX 1: Gunakan not_in:$id bukan different:id
+            'atasan_id' => 'nullable|exists:karyawans,id|not_in:' . $karyawan->id, 
+            
             'no_ktp' => 'required|string',
             'npwp' => 'nullable|string',
             'no_rek_bca' => 'nullable|string',
@@ -198,9 +201,18 @@ class KaryawanController extends Controller
             'nama_kontak_darurat' => 'required|string|max:150',
             'no_telp_darurat' => 'required|string|max:20',
             'status_aktif' => 'required|boolean',
+
+            // FIX 2: Tambahkan validasi untuk form dinamis Keluarga
+            'keluargas' => 'nullable|array',
+            'keluargas.*.jenis_relasi' => 'required|string',
+            'keluargas.*.nama_anggota' => 'required|string|max:150',
+            'keluargas.*.nik_keluarga' => 'nullable|string',
+            'keluargas.*.tgl_lahir' => 'nullable|date',
+            'keluargas.*.jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'keluargas.*.status_tanggungan_bpjs' => 'boolean',
         ]);
 
-        // GATEKEEPER EXIT CLEARANCE
+        // GATEKEEPER EXIT CLEARANCE (Tetap dipertahankan)
         if ($karyawan->status_aktif == true && $validated['status_aktif'] == false) {
             $asetDitahan = \App\Models\Aset::where('penanggung_jawab_id', $id)->where('status', 'Dipakai')->count();
             $hutangKasbon = \App\Models\PinjamanKaryawan::where('karyawan_id', $id)->whereIn('status', ['Pending', 'Menunggu Pencairan', 'Menunggu Approval Direktur', 'Berjalan'])->count();
@@ -214,7 +226,7 @@ class KaryawanController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update akun user tapi HINDARI mengubah role_id
+            // Update akun user
             $user = User::findOrFail($karyawan->user_id);
             $user->update([
                 'name' => $validated['nama_lengkap'],
@@ -222,12 +234,13 @@ class KaryawanController extends Controller
                 'email' => $validated['email_kantor'],
             ]);
 
+            // Update Biodata Karyawan
             $karyawan->update([
                 'departemen_id' => $validated['departemen_id'],
                 'jabatan_id' => $validated['jabatan_id'],
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
-                'atasan_id' => $validated['atasan_id'],
+                'atasan_id' => $validated['atasan_id'] ?? null,
                 'nik_internal' => $validated['nik_internal'],
                 'nama_lengkap' => $validated['nama_lengkap'],
                 'jenis_kelamin' => $validated['jenis_kelamin'],
@@ -238,17 +251,37 @@ class KaryawanController extends Controller
                 'alamat_ktp' => $validated['alamat_ktp'],
                 'alamat_domisili' => $validated['alamat_domisili'],
                 'email_kantor' => $validated['email_kantor'],
-                'no_telp' => $validated['no_telp'],
+                'no_telp' => $validated['no_telp'] ?? null,
                 'tgl_bergabung' => $validated['tgl_bergabung'],
+                
+                // Gunakan !empty untuk menghindari error passing null ke Crypt
                 'no_ktp_encrypted' => Crypt::encryptString($validated['no_ktp']),
-                'npwp_encrypted' => $validated['npwp'] ? Crypt::encryptString($validated['npwp']) : null,
-                'no_rek_bca_encrypted' => $validated['no_rek_bca'] ? Crypt::encryptString($validated['no_rek_bca']) : null,
-                'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'],
-                'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'],
+                'npwp_encrypted' => !empty($validated['npwp']) ? Crypt::encryptString($validated['npwp']) : null,
+                'no_rek_bca_encrypted' => !empty($validated['no_rek_bca']) ? Crypt::encryptString($validated['no_rek_bca']) : null,
+                
+                'no_bpjs_kesehatan' => $validated['no_bpjs_kesehatan'] ?? null,
+                'no_bpjs_ketenagakerjaan' => $validated['no_bpjs_ketenagakerjaan'] ?? null,
                 'nama_kontak_darurat' => $validated['nama_kontak_darurat'],
                 'no_telp_darurat' => $validated['no_telp_darurat'],
                 'status_aktif' => $validated['status_aktif'],
             ]);
+
+            // FIX 3: UPDATE KELUARGA (Hapus data lama, simpan data baru dari form)
+            \App\Models\KeluargaKaryawan::where('karyawan_id', $karyawan->id)->delete();
+            
+            if (!empty($request->keluargas)) {
+                foreach ($request->keluargas as $kel) {
+                    \App\Models\KeluargaKaryawan::create([
+                        'karyawan_id' => $karyawan->id,
+                        'jenis_relasi' => $kel['jenis_relasi'],
+                        'nama_anggota' => $kel['nama_anggota'],
+                        'nik_keluarga_encrypted' => !empty($kel['nik_keluarga']) ? Crypt::encryptString($kel['nik_keluarga']) : null,
+                        'tgl_lahir' => !empty($kel['tgl_lahir']) ? $kel['tgl_lahir'] : null,
+                        'jenis_kelamin' => $kel['jenis_kelamin'],
+                        'status_tanggungan_bpjs' => $kel['status_tanggungan_bpjs'] ?? false,
+                    ]);
+                }
+            }
 
             DB::commit();
             return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
@@ -257,7 +290,7 @@ class KaryawanController extends Controller
             return back()->withErrors(['error' => 'Gagal memperbarui data: ' . $e->getMessage()]);
         }
     }
-
+    
     public function destroy($id)
     {
         $karyawan = Karyawan::findOrFail($id);
