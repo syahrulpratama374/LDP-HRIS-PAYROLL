@@ -65,7 +65,7 @@ export default function AuthenticatedLayout({
     const rawMenus = auth?.menus || [];
 
     // =========================================================================
-    // PERBAIKAN: FILTER MENU DINAMIS BERDASARKAN ROLE & DEPARTEMEN
+    // FILTER MENU DINAMIS BERDASARKAN ROLE & DEPARTEMEN
     // =========================================================================
     const userDeptKode = (
         user?.karyawan?.departemen?.kode_departemen || ""
@@ -77,11 +77,14 @@ export default function AuthenticatedLayout({
 
     const isSupportTeam =
         userRoleName === "Admin" ||
-        ["IT", "GA"].includes(userDeptKode) ||
+        ["IT", "GA", "HC", "HR"].includes(userDeptKode) ||
         userDeptName.includes("information technology") ||
         userDeptName.includes("general affair") ||
+        userDeptName.includes("human capital") ||
+        userDeptName.includes("human resource") ||
         userDeptName === "it" ||
-        userDeptName === "ga";
+        userDeptName === "ga" ||
+        userDeptName === "hc";
 
     const menus = rawMenus
         .map((menu) => {
@@ -96,17 +99,9 @@ export default function AuthenticatedLayout({
                 ) {
                     return false;
                 }
-
-                // Sembunyikan 'Plotting Roster Shift' jika bukan tim Support/Admin
-                if (
-                    child.route_name === "jadwal-shift.index" &&
-                    !isSupportTeam
-                ) {
-                    return false;
-                }
-
                 return true;
             });
+
             return { ...menu, children: filteredChildren };
         })
         .filter((menu) => {
@@ -161,7 +156,7 @@ export default function AuthenticatedLayout({
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F7FC] flex">
+        <div className="flex min-h-screen bg-[#F8F7FC]">
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -178,24 +173,20 @@ export default function AuthenticatedLayout({
             {/* ================= SIDEBAR ================= */}
             <aside
                 className={`${
-                    isCollapsed ? "w-20" : "w-64 absolute md:relative z-50"
-                } bg-gradient-to-b from-[#2A164E] via-[#341A5A] to-[#431D6D]
-                text-white flex flex-col h-screen sticky top-0 shrink-0
-                shadow-2xl shadow-[#2A164E]/40 border-r border-[#F3B817]/10
-                overflow-hidden transition-[width] duration-300 ease-in-out
-                will-change-[width]`}
+                    isCollapsed ? "w-20" : "absolute z-50 w-64 md:relative"
+                } sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden bg-gradient-to-b from-[#2A164E] via-[#341A5A] to-[#431D6D] text-white border-r border-[#F3B817]/10 shadow-2xl shadow-[#2A164E]/40 transition-[width] duration-300 ease-in-out will-change-[width]`}
             >
                 {/* -------- HEADER: LOGO + TOGGLE -------- */}
-                <div className="relative h-16 flex items-center border-b border-white/10 px-4 shrink-0">
+                <div className="relative flex h-16 shrink-0 items-center border-b border-white/10 px-4">
                     <Link
                         href={route("dashboard")}
                         className={`flex-1 overflow-hidden pr-10 transition-opacity duration-200 ${
                             isCollapsed
-                                ? "opacity-0 pointer-events-none"
+                                ? "pointer-events-none opacity-0"
                                 : "opacity-100"
                         }`}
                     >
-                        <span className="whitespace-nowrap text-lg font-bold tracking-wider bg-gradient-to-r from-[#F3B817] to-[#FFD966] bg-clip-text text-transparent">
+                        <span className="whitespace-nowrap bg-gradient-to-r from-[#F3B817] to-[#FFD966] bg-clip-text text-lg font-bold tracking-wider text-transparent">
                             LDP HRIS & ERP
                         </span>
                     </Link>
@@ -204,22 +195,20 @@ export default function AuthenticatedLayout({
                         type="button"
                         onClick={toggleSidebar}
                         title={isCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
-                        className={`absolute top-1/2 -translate-y-1/2 p-2 rounded-lg
-                        text-white/70 hover:text-[#F3B817] hover:bg-white/10
-                        transition-all duration-300 ${
+                        className={`absolute top-1/2 -translate-y-1/2 rounded-lg p-2 text-white/70 transition-all duration-300 hover:bg-white/10 hover:text-[#F3B817] ${
                             isCollapsed ? "right-6" : "right-3"
                         }`}
                     >
                         {isCollapsed ? (
-                            <PanelLeftOpen className="w-5 h-5" />
+                            <PanelLeftOpen className="h-5 w-5" />
                         ) : (
-                            <PanelLeftClose className="w-5 h-5" />
+                            <PanelLeftClose className="h-5 w-5" />
                         )}
                     </button>
                 </div>
 
                 {/* -------- MENU NAVIGASI -------- */}
-                <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
+                <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
                     {menus.map((menu) => {
                         const hasChildren =
                             menu.children && menu.children.length > 0;
@@ -239,16 +228,14 @@ export default function AuthenticatedLayout({
                                             : "#"
                                     }
                                     title={isCollapsed ? menu.title : ""}
-                                    className={`group flex items-center gap-3 px-4 py-2.5 rounded-xl
-                                    text-sm font-medium whitespace-nowrap overflow-hidden
-                                    transition-colors duration-200 ${
+                                    className={`group flex items-center gap-3 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
                                         isCurrent
-                                            ? "bg-gradient-to-r from-[#F3B817] to-[#E8A900] text-[#2A164E] font-semibold shadow-lg shadow-[#F3B817]/25"
+                                            ? "bg-gradient-to-r from-[#F3B817] to-[#E8A900] font-semibold text-[#2A164E] shadow-lg shadow-[#F3B817]/25"
                                             : "text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
                                 >
                                     <MenuIcon
-                                        className={`w-5 h-5 shrink-0 transition-colors ${
+                                        className={`h-5 w-5 shrink-0 transition-colors ${
                                             isCurrent
                                                 ? "text-[#2A164E]"
                                                 : "text-white/55 group-hover:text-[#F3B817]"
@@ -257,7 +244,7 @@ export default function AuthenticatedLayout({
                                     <span
                                         className={`transition-opacity duration-200 ${
                                             isCollapsed
-                                                ? "opacity-0 hidden md:block"
+                                                ? "hidden opacity-0 md:block"
                                                 : "opacity-100"
                                         }`}
                                     >
@@ -276,25 +263,23 @@ export default function AuthenticatedLayout({
                                         toggleSubmenu(menu.id);
                                     }}
                                     title={isCollapsed ? menu.title : ""}
-                                    className={`w-full group flex items-center gap-3 px-4 py-2.5 rounded-xl
-                                    text-sm font-medium whitespace-nowrap overflow-hidden
-                                    transition-colors duration-200 ${
+                                    className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
                                         isOpen && !isCollapsed
                                             ? "bg-white/5 text-white"
                                             : "text-white/70 hover:bg-white/10 hover:text-white"
                                     }`}
                                 >
                                     <MenuIcon
-                                        className={`w-5 h-5 shrink-0 transition-colors ${
+                                        className={`h-5 w-5 shrink-0 transition-colors ${
                                             isOpen && !isCollapsed
                                                 ? "text-[#F3B817]"
                                                 : "text-white/55 group-hover:text-[#F3B817]"
                                         }`}
                                     />
                                     <span
-                                        className={`flex-1 text-left truncate transition-opacity duration-200 ${
+                                        className={`flex-1 truncate text-left transition-opacity duration-200 ${
                                             isCollapsed
-                                                ? "opacity-0 hidden md:block"
+                                                ? "hidden opacity-0 md:block"
                                                 : "opacity-100"
                                         }`}
                                     >
@@ -302,7 +287,7 @@ export default function AuthenticatedLayout({
                                     </span>
                                     {!isCollapsed && (
                                         <ChevronDown
-                                            className={`w-4 h-4 shrink-0 text-white/40 transition-transform duration-300 ${
+                                            className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-300 ${
                                                 isOpen ? "rotate-180" : ""
                                             }`}
                                         />
@@ -317,7 +302,7 @@ export default function AuthenticatedLayout({
                                     }`}
                                 >
                                     <div className="overflow-hidden">
-                                        <div className="ml-4 pl-3 border-l border-white/10 space-y-0.5 py-1 mt-1">
+                                        <div className="mt-1 ml-4 space-y-0.5 border-l border-white/10 py-1 pl-3">
                                             {menu.children.map((child) => {
                                                 const isChildCurrent =
                                                     child.route_name &&
@@ -334,10 +319,9 @@ export default function AuthenticatedLayout({
                                                                   )
                                                                 : "#"
                                                         }
-                                                        className={`block px-3 py-1.5 rounded-lg text-[13px]
-                                                        transition-colors duration-200 truncate ${
+                                                        className={`block truncate rounded-lg px-3 py-1.5 text-[13px] transition-colors duration-200 ${
                                                             isChildCurrent
-                                                                ? "bg-[#F3B817]/15 text-[#F3B817] font-semibold"
+                                                                ? "bg-[#F3B817]/15 font-semibold text-[#F3B817]"
                                                                 : "text-white/60 hover:bg-white/5 hover:text-white"
                                                         }`}
                                                     >
@@ -354,25 +338,21 @@ export default function AuthenticatedLayout({
                 </nav>
 
                 {/* -------- FOOTER: PROFIL + LOGOUT -------- */}
-                <div className="p-3 border-t border-white/10 bg-black/10 space-y-3 shrink-0">
+                <div className="shrink-0 space-y-3 border-t border-white/10 bg-black/10 p-3">
                     <div
                         className={`flex items-center gap-3 ${
                             isCollapsed ? "justify-center" : "px-1"
                         }`}
                     >
-                        <div
-                            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F3B817] to-[#E8A900]
-                        text-[#2A164E] flex items-center justify-center font-bold text-sm shrink-0
-                        ring-2 ring-[#F3B817]/30"
-                        >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#F3B817] to-[#E8A900] text-sm font-bold text-[#2A164E] ring-2 ring-[#F3B817]/30">
                             {user?.name?.charAt(0)?.toUpperCase() || "U"}
                         </div>
                         {!isCollapsed && (
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-white truncate">
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-semibold text-white">
                                     {user?.name || "User LDP"}
                                 </p>
-                                <p className="text-[10px] text-white/50 truncate">
+                                <p className="truncate text-[10px] text-white/50">
                                     {user?.role?.nama_role ||
                                         user?.email ||
                                         "Karyawan"}
@@ -385,12 +365,11 @@ export default function AuthenticatedLayout({
                         type="button"
                         onClick={handleLogout}
                         title="Keluar / Logout"
-                        className={`w-full flex items-center justify-center gap-2 py-2
-                        bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200
-                        rounded-lg text-xs font-semibold transition-colors duration-200
-                        border border-red-500/20 ${isCollapsed ? "px-0" : "px-3"}`}
+                        className={`flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 py-2 text-xs font-semibold text-red-300 transition-colors duration-200 hover:bg-red-500/20 hover:text-red-200 ${
+                            isCollapsed ? "px-0" : "px-3"
+                        }`}
                     >
-                        <LogOut className="w-4 h-4 shrink-0" />
+                        <LogOut className="h-4 w-4 shrink-0" />
                         {!isCollapsed && <span>Logout</span>}
                     </button>
                 </div>
@@ -399,19 +378,19 @@ export default function AuthenticatedLayout({
             {/* Backdrop Mobile */}
             {isMobile && !isCollapsed && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
                     onClick={() => setIsCollapsed(true)}
                 />
             )}
 
             {/* ================= MAIN CONTENT ================= */}
-            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+            <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
                 {header && (
-                    <header className="bg-white border-b border-gray-200/80 px-6 md:px-8 py-4 shadow-sm sticky top-0 z-10">
+                    <header className="sticky top-0 z-10 border-b border-gray-200/80 bg-white px-6 py-4 shadow-sm md:px-8">
                         {header}
                     </header>
                 )}
-                <main className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                <main className="custom-scrollbar flex-1 overflow-y-auto p-6 md:p-8">
                     {children}
                 </main>
             </div>

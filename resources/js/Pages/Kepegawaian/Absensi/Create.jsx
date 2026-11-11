@@ -12,6 +12,7 @@ export default function Create({
     shifts = [],
     isNoc = false,
     scheduledShiftId = null,
+    bukaAbsenMenit = 60,
 }) {
     const webcamRef = useRef(null);
 
@@ -39,7 +40,7 @@ export default function Create({
     }, [scheduledShiftId]);
 
     // =========================================================
-    // CLOCK
+    // CLOCK REALTIME
     // =========================================================
 
     useEffect(() => {
@@ -49,6 +50,38 @@ export default function Create({
 
         return () => clearInterval(timer);
     }, []);
+
+    // =========================================================
+    // DETEKSI BATAS JAM BUKA ABSEN SHIFT (PILHAN B)
+    // =========================================================
+
+    const shiftDetail = shifts.find(
+        (s) => String(s.id) === String(selectedShift),
+    );
+
+    let isShiftBelumBuka = false;
+    let jamBukaAbsenStr = "";
+    let jamMasukShiftStr = "";
+
+    if (isNoc && shiftDetail) {
+        jamMasukShiftStr = shiftDetail.jam_masuk;
+
+        const [h, m] = jamMasukShiftStr.split(":").map(Number);
+        const shiftTime = new Date(waktu);
+        shiftTime.setHours(h, m, 0, 0);
+
+        const openTime = new Date(shiftTime.getTime() - bukaAbsenMenit * 60000);
+
+        jamBukaAbsenStr = openTime.toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+        });
+
+        if (waktu < openTime) {
+            isShiftBelumBuka = true;
+        }
+    }
 
     // =========================================================
     // GPS
@@ -102,7 +135,7 @@ export default function Create({
     );
 
     // =========================================================
-    // FORMAT
+    // FORMAT UTILITY
     // =========================================================
 
     const formatTanggal = (date) => {
@@ -146,7 +179,7 @@ export default function Create({
     });
 
     // =========================================================
-    // CLOCK IN / OUT (Dengan Kompresi)
+    // CLOCK IN / OUT HANDLER
     // =========================================================
 
     const handleAbsen = useCallback(
@@ -159,6 +192,13 @@ export default function Create({
             if (isNoc && !selectedShift) {
                 alert(
                     "Tim Operasional/NOC wajib memilih Jam Shift sebelum melakukan absensi!",
+                );
+                return;
+            }
+
+            if (isNoc && tipe === "masuk" && isShiftBelumBuka) {
+                alert(
+                    `Absensi belum dibuka. Shift Anda dimulai pukul ${jamMasukShiftStr} (Absen dibuka pukul ${jamBukaAbsenStr} WIB).`,
                 );
                 return;
             }
@@ -228,11 +268,20 @@ export default function Create({
                 setIsSubmitting(false);
             }
         },
-        [koordinat, isLocationReady, catatanLogbook, selectedShift, isNoc],
+        [
+            koordinat,
+            isLocationReady,
+            catatanLogbook,
+            selectedShift,
+            isNoc,
+            isShiftBelumBuka,
+            jamMasukShiftStr,
+            jamBukaAbsenStr,
+        ],
     );
 
     // =========================================================
-    // DATA KARYAWAN & BADGE
+    // DATA KARYAWAN & BADGE STATUS
     // =========================================================
 
     const nama = karyawan?.nama_lengkap || auth?.user?.name || "Karyawan";
@@ -279,7 +328,7 @@ export default function Create({
     const badge = getStatusBadge();
 
     // =========================================================
-    // ICONS
+    // SVG ICONS
     // =========================================================
 
     const ClockIcon = ({ className = "w-5 h-5" }) => (
@@ -342,7 +391,7 @@ export default function Create({
     );
 
     // =========================================================
-    // RENDER
+    // RENDER VIEW
     // =========================================================
 
     return (
@@ -475,7 +524,7 @@ export default function Create({
                                                         <div className="absolute inset-0 flex items-center justify-center">
                                                             <div className="h-44 w-32 rounded-[50%] border-2 border-white/50 sm:h-56 sm:w-44 md:h-60 md:w-48" />
                                                         </div>
-                                                        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/45 px-2.5 py-1.5 backdrop-blur-sm sm:left-4 sm:top-4">
+                                                        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/45 px-2.5 py-1.5 backdrop-blur-sm sm:top-4 sm:left-4">
                                                             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
                                                             <span className="text-[9px] font-bold uppercase tracking-wider text-white sm:text-[10px]">
                                                                 Live
@@ -517,7 +566,7 @@ export default function Create({
                                                     </div>
                                                 )}
 
-                                            {/* ACTION AREA: DROPDOWN & BUTTONS */}
+                                            {/* ACTION AREA */}
                                             <div className="mt-4 space-y-3 sm:mt-5">
                                                 {/* DROPDOWN PILIHAN SHIFT (KHUSUS NOC) */}
                                                 {isNoc &&
@@ -534,8 +583,8 @@ export default function Create({
                                                                     *
                                                                 </span>
                                                                 {scheduledShiftId && (
-                                                                    <span className="ml-2 text-[11px] font-normal text-amber-700 italic">
-                                                                        (Terselek
+                                                                    <span className="ml-2 text-[11px] font-normal italic text-amber-700">
+                                                                        (Terseleksi
                                                                         otomatis
                                                                         dari
                                                                         roster
@@ -600,6 +649,65 @@ export default function Create({
                                                         </div>
                                                     )}
 
+                                                {/* ======================================================= */}
+                                                {/* WARNING BANNER JIKA ABSEN BELUM DIBUKA (PILIHAN B) */}
+                                                {/* ======================================================= */}
+                                                {!sudahMasuk &&
+                                                    isNoc &&
+                                                    selectedShift &&
+                                                    isShiftBelumBuka && (
+                                                        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+                                                            <div className="flex items-start gap-3">
+                                                                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-800">
+                                                                    <ClockIcon className="h-4 w-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950">
+                                                                        Absensi
+                                                                        Belum
+                                                                        Dibuka
+                                                                    </h4>
+                                                                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                                                        Shift{" "}
+                                                                        <span className="font-semibold text-amber-950">
+                                                                            {
+                                                                                shiftDetail?.nama_shift
+                                                                            }
+                                                                        </span>{" "}
+                                                                        dimulai
+                                                                        pukul{" "}
+                                                                        <span className="font-bold">
+                                                                            {
+                                                                                jamMasukShiftStr
+                                                                            }{" "}
+                                                                            WIB
+                                                                        </span>
+                                                                        .
+                                                                        Absensi
+                                                                        hanya
+                                                                        bisa
+                                                                        dilakukan
+                                                                        mulai
+                                                                        pukul{" "}
+                                                                        <span className="font-bold text-amber-950 underline underline-offset-2">
+                                                                            {
+                                                                                jamBukaAbsenStr
+                                                                            }{" "}
+                                                                            WIB
+                                                                        </span>{" "}
+                                                                        (
+                                                                        {
+                                                                            bukaAbsenMenit
+                                                                        }{" "}
+                                                                        menit
+                                                                        sebelum
+                                                                        shift).
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                 {/* CLOCK IN BUTTON */}
                                                 {!sudahMasuk && (
                                                     <button
@@ -610,23 +718,38 @@ export default function Create({
                                                             !isLocationReady ||
                                                             isSubmitting ||
                                                             (isNoc &&
-                                                                !selectedShift)
+                                                                !selectedShift) ||
+                                                            (isNoc &&
+                                                                isShiftBelumBuka)
                                                         }
                                                         className={`flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-xl text-sm font-semibold transition-all ${
                                                             !isLocationReady ||
                                                             isSubmitting ||
                                                             (isNoc &&
-                                                                !selectedShift)
+                                                                !selectedShift) ||
+                                                            (isNoc &&
+                                                                isShiftBelumBuka)
                                                                 ? "cursor-not-allowed bg-gray-200 text-gray-400"
                                                                 : "bg-[#2A164E] text-white hover:bg-[#431D6D] active:scale-[0.99]"
                                                         }`}
                                                     >
                                                         <CameraIcon
-                                                            className={`h-5 w-5 ${!isLocationReady || isSubmitting || (isNoc && !selectedShift) ? "text-gray-400" : "text-[#F3B817]"}`}
+                                                            className={`h-5 w-5 ${
+                                                                !isLocationReady ||
+                                                                isSubmitting ||
+                                                                (isNoc &&
+                                                                    !selectedShift) ||
+                                                                (isNoc &&
+                                                                    isShiftBelumBuka)
+                                                                    ? "text-gray-400"
+                                                                    : "text-[#F3B817]"
+                                                            }`}
                                                         />
                                                         {isSubmitting
                                                             ? "Merekam Kehadiran..."
-                                                            : "Clock In Sekarang"}
+                                                            : isShiftBelumBuka
+                                                              ? `Belum Waktunya Absen (Buka ${jamBukaAbsenStr})`
+                                                              : "Clock In Sekarang"}
                                                     </button>
                                                 )}
 
@@ -648,7 +771,7 @@ export default function Create({
                                                         </button>
                                                     )}
 
-                                                {/* CLOCK OUT FORM (LOGBOOK & SUBMIT) */}
+                                                {/* CLOCK OUT FORM */}
                                                 {sudahMasuk &&
                                                     !sudahKeluar &&
                                                     bukaKameraPulang && (

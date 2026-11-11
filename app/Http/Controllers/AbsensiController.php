@@ -45,14 +45,14 @@ class AbsensiController extends Controller
 
         $karyawans = $query->orderBy('nama_lengkap')->get();
 
-        // 2. Data SPJ Aktif (Dinas Luar)
+        // 2. Data SPJ Aktif
         $spjKaryawanIds = \App\Models\PengajuanSpj::where('status_approval', 'Selesai')
             ->where('tgl_mulai', '<=', $tanggal)
             ->where('tgl_selesai', '>=', $tanggal)
             ->pluck('karyawan_id')
             ->toArray();
 
-        // 3. Data Cuti/Izin Approved (Fallback jika record absensi belum terinjeksi)
+        // 3. Data Cuti/Izin Approved
         $cutiKaryawan = \App\Models\PengajuanCuti::with('masterJenisCuti')
             ->where('status_approval', 'Disetujui')
             ->where('tanggal_mulai', '<=', $tanggal)
@@ -60,7 +60,7 @@ class AbsensiController extends Controller
             ->get()
             ->keyBy('karyawan_id');
 
-        // 4. Data Lembur Approved pada Tanggal Ini
+        // 4. Data Lembur Approved
         $lemburKaryawan = \App\Models\PengajuanLembur::where('status_approval', 'Disetujui')
             ->where('tanggal', $tanggal)
             ->get()
@@ -77,7 +77,6 @@ class AbsensiController extends Controller
             $menitTerlambat = 0;
             $catatan = null;
 
-            // Format Data Lembur (jika ada SPL disetujui)
             $infoLembur = null;
             if ($dataLembur) {
                 $infoLembur = [
@@ -131,7 +130,6 @@ class AbsensiController extends Controller
             ];
         });
 
-        // Rekapitulasi Statistik Stat Cards
         $stats = [
             'total_karyawan' => $processed->count(),
             'tepat_waktu' => $processed->where('status_absensi', 'Tepat Waktu')->count(),
@@ -174,7 +172,9 @@ class AbsensiController extends Controller
             ->where('tanggal', $hariIni)
             ->first();
 
-        // Ambil data shift untuk ditampilkan di dropdown (Khusus departemen NOC / Wajib Logbook)
+        // Ambil pengaturan jendela buka absen (default 60 menit sebelum shift)
+        $bukaAbsenMenit = (int) (Pengaturan::where('kunci', 'buka_absen_menit')->value('nilai') ?? 60);
+
         $shifts = [];
         $scheduledShiftId = null;
         $isNoc = $karyawan->departemen && $karyawan->departemen->is_wajib_logbook;
@@ -182,7 +182,6 @@ class AbsensiController extends Controller
         if ($isNoc) {
             $shifts = MasterShift::orderBy('jam_masuk')->get();
 
-            // Auto-detect apakah HC sudah membuatkan jadwal shift untuk karyawan ini pada hari ini
             $jadwalRoster = JadwalShiftKaryawan::where('karyawan_id', $karyawan->id)
                 ->where('tanggal', $hariIni)
                 ->first();
@@ -197,7 +196,8 @@ class AbsensiController extends Controller
             'karyawan' => $karyawan,
             'shifts' => $shifts,
             'isNoc' => $isNoc,
-            'scheduledShiftId' => $scheduledShiftId // ID shift otomatis yang dikunci jika roster sudah ada
+            'scheduledShiftId' => $scheduledShiftId,
+            'bukaAbsenMenit' => $bukaAbsenMenit, // <-- Dikirimsan ke Frontend React
         ]);
     }
 
@@ -262,14 +262,12 @@ class AbsensiController extends Controller
         if ($request->tipe === 'masuk') {
             if ($absensi) return back()->withErrors(['error' => 'Anda sudah melakukan Clock In hari ini.']);
 
-            // Default pengaturan absensi staf reguler
             $jamMasukStandar = Pengaturan::where('kunci', 'jam_masuk_operasional')->value('nilai') ?? '08:00';
             $toleransiMenit = (int) (Pengaturan::where('kunci', 'toleransi_keterlambatan')->value('nilai') ?? 15);
+            $bukaAbsenMenit = (int) (Pengaturan::where('kunci', 'buka_absen_menit')->value('nilai') ?? 60);
             $namaShift = 'Reguler';
 
-            // JIKA DIA TIM NOC, PROSES SHIFT-NYA
             if ($isNoc) {
-                // Utamakan Jadwal Roster dari DB jika ada, untuk mencegah kecurangan API
                 $jadwalRoster = JadwalShiftKaryawan::where('karyawan_id', $karyawan->id)
                     ->where('tanggal', $tanggal)
                     ->first();
@@ -285,8 +283,20 @@ class AbsensiController extends Controller
                 $namaShift = $shiftAktif->nama_shift;
             }
             
+            // -------------------------------------------------------------
+            // VALIDASI JENDELA WAKTU ABSEN (BATAS AWAL BUKA ABSEN)
+            // -------------------------------------------------------------
+            $jamMasukCarbon = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta');
+            $batasBukaAbsen = $jamMasukCarbon->copy()->subMinutes($bukaAbsenMenit);
+
+            if ($isNoc && $waktuSekarang->lessThan($batasBukaAbsen)) {
+                return back()->withErrors([
+                    'error' => "Gagal: Absensi belum dibuka. Shift {$namaShift} ({$jamMasukStandar}) baru dibuka pada pukul " . $batasBukaAbsen->format('H:i') . " WIB."
+                ]);
+            }
+
             // Kalkulasi Keterlambatan
-            $batasWaktuMasuk = Carbon::parse($tanggal . ' ' . $jamMasukStandar, 'Asia/Jakarta')->addMinutes($toleransiMenit);
+            $batasWaktuMasuk = $jamMasukCarbon->copy()->addMinutes($toleransiMenit);
             
             $status = 'Hadir';
             $catatan = $namaShift;
@@ -326,7 +336,6 @@ class AbsensiController extends Controller
                 $tambahanLogbook = 'Handover: ' . $request->catatan_logbook;
                 $catatanKeluar = $catatanKeluar ? $catatanKeluar . ' | ' . $tambahanLogbook : $tambahanLogbook;
 
-                // SIMPAN KE LOGBOOK
                 if ($isNoc && $request->shift_id) {
                     LogbookShift::create([
                         'karyawan_id' => $karyawan->id,
@@ -348,7 +357,6 @@ class AbsensiController extends Controller
         }
     }
 
-    // PERBAIKAN RUMUS MATEMATIKA HAVERSINE (Jarak Meter)
     private function hitungJarakMeter($lat1, $lon1, $lat2, $lon2)
     {
         $earthRadius = 6371000; 
