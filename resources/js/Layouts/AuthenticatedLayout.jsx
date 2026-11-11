@@ -26,7 +26,7 @@ import {
 const MENU_ICON_MAP = [
     { keys: ["absen", "presensi", "attendance", "kehadiran"], Icon: Calendar },
     { keys: ["cuti", "leave", "izin"], Icon: CalendarDays },
-    { keys: ["lembur", "overtime", "shift"], Icon: Clock },
+    { keys: ["lembur", "overtime", "shift", "roster", "jadwal"], Icon: Clock },
     { keys: ["dashboard", "beranda", "home"], Icon: LayoutDashboard },
     { keys: ["karyawan", "employee", "pegawai", "staff"], Icon: Users },
     {
@@ -96,9 +96,17 @@ export default function AuthenticatedLayout({
                 ) {
                     return false;
                 }
+
+                // Sembunyikan 'Plotting Roster Shift' jika bukan tim Support/Admin
+                if (
+                    child.route_name === "jadwal-shift.index" &&
+                    !isSupportTeam
+                ) {
+                    return false;
+                }
+
                 return true;
             });
-
             return { ...menu, children: filteredChildren };
         })
         .filter((menu) => {

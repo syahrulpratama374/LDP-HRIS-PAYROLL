@@ -69,7 +69,9 @@ class MenuSeeder extends Seeder
         $subKepegawaian = [
             ['parent_id' => $kepegawaianGroup, 'title' => 'Data Karyawan', 'route_name' => 'karyawan.index', 'order' => 1],
             ['parent_id' => $kepegawaianGroup, 'title' => 'Monitor Absensi', 'route_name' => 'absensi.index', 'order' => 2],
-            ['parent_id' => $kepegawaianGroup, 'title' => 'Broadcast Internal', 'route_name' => 'pengumuman.index', 'order' => 3],
+            ['parent_id' => $kepegawaianGroup, 'title' => 'Plotting Roster Shift', 'route_name' => 'jadwal-shift.index', 'order' => 3],
+            ['parent_id' => $kepegawaianGroup, 'title' => 'Broadcast Internal', 'route_name' => 'pengumuman.index', 'order' => 4],
+            
         ];
         foreach ($subKepegawaian as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 

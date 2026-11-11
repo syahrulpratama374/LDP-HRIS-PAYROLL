@@ -9,7 +9,7 @@ use App\Http\Controllers\{
     PengajuanSpjController, PayrollController, ItTicketController, 
     SuratPeringatanController, PenilaianKinerjaController, DelegasiWewenangController,
     JabatanController, GolonganController, AuditTrailController, PengaturanController,
-    AsetController, PengumumanController
+    AsetController, PengumumanController, JadwalShiftController, 
 };
 
 use App\Http\Controllers\Persuratan\{
@@ -195,6 +195,9 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::post('karyawan/{id}/dokumen', [KaryawanController::class, 'uploadDokumen'])->name('karyawan.dokumen.store');
         Route::delete('karyawan/{id}/dokumen/{dokumen_id}', [KaryawanController::class, 'deleteDokumen'])->name('karyawan.dokumen.destroy');
         Route::post('karyawan/{id}/foto', [KaryawanController::class, 'uploadFotoProfil'])->name('karyawan.foto.store');
+
+        Route::get('/jadwal-shift', [JadwalShiftController::class, 'index'])->name('jadwal-shift.index');
+        Route::post('/jadwal-shift', [JadwalShiftController::class, 'store'])->name('jadwal-shift.store');
         
         Route::get('/surat-peringatan', [SuratPeringatanController::class, 'index'])->name('admin.sp.index');
         Route::get('/surat-peringatan/buat', [SuratPeringatanController::class, 'create'])->name('admin.sp.create');

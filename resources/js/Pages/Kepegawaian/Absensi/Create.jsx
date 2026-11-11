@@ -5,13 +5,13 @@ import Webcam from "react-webcam";
 import BannerHeader from "@/Components/BannerHeader";
 import imageCompression from "browser-image-compression";
 
-// 1. TAMBAHKAN PROPS `shifts` DAN `isNoc`
 export default function Create({
     auth,
     absensiHariIni,
     karyawan,
     shifts = [],
     isNoc = false,
+    scheduledShiftId = null,
 }) {
     const webcamRef = useRef(null);
 
@@ -28,8 +28,15 @@ export default function Create({
     const [bukaKameraPulang, setBukaKameraPulang] = useState(false);
     const [catatanLogbook, setCatatanLogbook] = useState("");
 
-    // 2. STATE UNTUK MENYIMPAN PILIHAN SHIFT (KHUSUS NOC)
+    // STATE PILIHAN SHIFT (KHUSUS NOC)
     const [selectedShift, setSelectedShift] = useState("");
+
+    // AUTO-SELECT SHIFT JIKA ADA JADWAL ROSTER DARI HC
+    useEffect(() => {
+        if (scheduledShiftId) {
+            setSelectedShift(scheduledShiftId);
+        }
+    }, [scheduledShiftId]);
 
     // =========================================================
     // CLOCK
@@ -149,7 +156,6 @@ export default function Create({
                 return;
             }
 
-            // 3. VALIDASI WAJIB PILIH SHIFT JIKA NOC
             if (isNoc && !selectedShift) {
                 alert(
                     "Tim Operasional/NOC wajib memilih Jam Shift sebelum melakukan absensi!",
@@ -191,7 +197,6 @@ export default function Create({
                 const compressedImageSrc =
                     await imageCompression.getDataUrlFromFile(compressedFile);
 
-                // 4. KIRIM DATA KE SERVER (Termasuk shift_id)
                 router.post(
                     route("absensi.store"),
                     {
@@ -199,7 +204,7 @@ export default function Create({
                         koordinat,
                         tipe,
                         catatan_logbook: catatanLogbook,
-                        shift_id: selectedShift, // <--- Data shift dikirim ke backend
+                        shift_id: selectedShift,
                     },
                     {
                         preserveScroll: true,
@@ -207,7 +212,7 @@ export default function Create({
                             setIsSubmitting(false);
                             setBukaKameraPulang(false);
                             setCatatanLogbook("");
-                            setSelectedShift(""); // Reset shift
+                            setSelectedShift("");
                         },
                         onError: (errors) => {
                             setIsSubmitting(false);
@@ -223,11 +228,11 @@ export default function Create({
                 setIsSubmitting(false);
             }
         },
-        [koordinat, isLocationReady, catatanLogbook, selectedShift, isNoc], // Jangan lupa update dependency array
+        [koordinat, isLocationReady, catatanLogbook, selectedShift, isNoc],
     );
 
     // =========================================================
-    // DATA KARYAWAN & BADGE (Tidak Ada Perubahan)
+    // DATA KARYAWAN & BADGE
     // =========================================================
 
     const nama = karyawan?.nama_lengkap || auth?.user?.name || "Karyawan";
@@ -274,7 +279,7 @@ export default function Create({
     const badge = getStatusBadge();
 
     // =========================================================
-    // ICONS (Tidak Ada Perubahan)
+    // ICONS
     // =========================================================
 
     const ClockIcon = ({ className = "w-5 h-5" }) => (
@@ -337,7 +342,7 @@ export default function Create({
     );
 
     // =========================================================
-    // RETURN
+    // RENDER
     // =========================================================
 
     return (
@@ -350,7 +355,6 @@ export default function Create({
                 <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 2xl:px-12">
                     {statusNonKehadiran && (
                         <div className="mx-auto max-w-xl">
-                            {/* BLOK NON-KEHADIRAN (SAMA SEPERTI SEBELUMNYA) */}
                             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                                 <div className="h-1 bg-gradient-to-r from-[#2A164E] to-[#431D6D]" />
                                 <div className="px-5 py-9 text-center sm:px-8 sm:py-11">
@@ -513,9 +517,9 @@ export default function Create({
                                                     </div>
                                                 )}
 
-                                            {/* 5. ACTION AREA: DROPDOWN & BUTTONS */}
+                                            {/* ACTION AREA: DROPDOWN & BUTTONS */}
                                             <div className="mt-4 space-y-3 sm:mt-5">
-                                                {/* DROPDOWN PILIHAN SHIFT (Hanya Muncul Jika isNoc = true & Sedang Buka Kamera) */}
+                                                {/* DROPDOWN PILIHAN SHIFT (KHUSUS NOC) */}
                                                 {isNoc &&
                                                     (!sudahMasuk ||
                                                         (sudahMasuk &&
@@ -529,6 +533,15 @@ export default function Create({
                                                                 <span className="text-red-500">
                                                                     *
                                                                 </span>
+                                                                {scheduledShiftId && (
+                                                                    <span className="ml-2 text-[11px] font-normal text-amber-700 italic">
+                                                                        (Terselek
+                                                                        otomatis
+                                                                        dari
+                                                                        roster
+                                                                        HC)
+                                                                    </span>
+                                                                )}
                                                             </label>
                                                             <select
                                                                 value={
@@ -540,7 +553,10 @@ export default function Create({
                                                                             .value,
                                                                     )
                                                                 }
-                                                                className="w-full rounded-lg border border-amber-300 bg-white p-2.5 text-sm text-gray-700 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                                                                disabled={Boolean(
+                                                                    scheduledShiftId,
+                                                                )}
+                                                                className="w-full rounded-lg border border-amber-300 bg-white p-2.5 text-sm text-gray-700 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                                                                 required
                                                             >
                                                                 <option
@@ -643,7 +659,7 @@ export default function Create({
                                                                         Catatan
                                                                         Logbook
                                                                     </label>
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md">
+                                                                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600">
                                                                         Wajib
                                                                         bagi NOC
                                                                     </span>
@@ -771,7 +787,7 @@ export default function Create({
                                 )}
                             </div>
 
-                            {/* SIDE INFORMATION (Tidak Ada Perubahan Signifikan) */}
+                            {/* SIDE INFORMATION */}
                             <div className="lg:col-span-2">
                                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm lg:sticky lg:top-6">
                                     <div className="hidden px-6 py-6 lg:block">

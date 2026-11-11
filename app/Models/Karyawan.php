@@ -105,4 +105,8 @@ class Karyawan extends Model
     {
         return $this->belongsTo(MasterPtkp::class, 'ptkp_id');
     }
+    public function absensis()
+    {
+        return $this->hasMany(Absensi::class, 'karyawan_id');
+    }
 }
