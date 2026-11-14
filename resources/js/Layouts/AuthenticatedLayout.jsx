@@ -88,7 +88,11 @@ export default function AuthenticatedLayout({
 
     const menus = rawMenus
         .map((menu) => {
-            if (!menu.children || menu.children.length === 0) return menu;
+            const initialChildCount = menu.children ? menu.children.length : 0;
+
+            if (initialChildCount === 0) {
+                return { ...menu, _hadChildren: false };
+            }
 
             // Filter sub-menu di dalam parent
             const filteredChildren = menu.children.filter((child) => {
@@ -102,11 +106,15 @@ export default function AuthenticatedLayout({
                 return true;
             });
 
-            return { ...menu, children: filteredChildren };
+            return {
+                ...menu,
+                children: filteredChildren,
+                _hadChildren: true,
+            };
         })
         .filter((menu) => {
-            // Hapus menu parent jika seluruh anak menunya kosong setelah difilter
-            if (menu.children && menu.children.length === 0) return false;
+            // Hapus menu parent HANYA jika sebelumnya punya anak menu, namun habis setelah difilter
+            if (menu._hadChildren && menu.children.length === 0) return false;
             return true;
         });
 
