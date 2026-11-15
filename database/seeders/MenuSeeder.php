@@ -87,6 +87,8 @@ class MenuSeeder extends Seeder
             ['parent_id' => $masterDataGroup, 'title' => 'Jam Shift', 'route_name' => 'shift.index', 'order' => 4],
             // TARUH DI SINI (Di dalam $subMaster setelah $masterDataGroup didefinisikan):
             ['parent_id' => $masterDataGroup, 'title' => 'Master Jenis Cuti', 'route_name' => 'master-cuti.index', 'order' => 5],
+            ['parent_id' => $masterDataGroup, 'title' => 'Master PTKP', 'route_name' => 'ptkp.index', 'order' => 6],
+            ['parent_id' => $masterDataGroup, 'title' => 'Master Tarif TER', 'route_name' => 'tarif-ter.index', 'order' => 7],
         ];
         foreach ($subMaster as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 
@@ -99,6 +101,7 @@ class MenuSeeder extends Seeder
             ['parent_id' => $financeGroup, 'title' => 'Approval Kasbon', 'route_name' => 'admin.pinjaman.index', 'order' => 1],
             ['parent_id' => $financeGroup, 'title' => 'Kalkulator Payroll', 'route_name' => 'admin.payroll.index', 'order' => 2],
             ['parent_id' => $financeGroup, 'title' => 'Master Komponen Gaji', 'route_name' => 'admin.komponen.index', 'order' => 3],
+            ['parent_id' => $financeGroup, 'title' => 'Komponen Payroll Karyawan', 'route_name' => 'admin.komponen.karyawan.index', 'order' => 4],
         ];
         foreach ($subFinance as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 
