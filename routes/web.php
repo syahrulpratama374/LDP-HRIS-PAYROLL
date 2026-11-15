@@ -187,6 +187,8 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::resource('jabatan', JabatanController::class)->except(['create', 'show', 'edit']);
         Route::resource('golongan', GolonganController::class)->except(['create', 'show', 'edit']);
         Route::resource('shift', MasterShiftController::class)->except(['create', 'show', 'edit']);
+        Route::resource('ptkp', \App\Http\Controllers\MasterPtkpController::class)->except(['create', 'show', 'edit']);
+        Route::resource('tarif-ter', \App\Http\Controllers\MasterTarifTerController::class)->except(['create', 'show', 'edit']);
 
         Route::get('/hc/master-cuti', [MasterCutiLiburController::class, 'index'])->name('hc.cuti.index');
         Route::post('/hc/master-cuti/default', [MasterCutiLiburController::class, 'updateDefaultCuti'])->name('hc.cuti.default');
