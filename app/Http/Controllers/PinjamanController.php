@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\PinjamanKaryawan;
 use App\Models\CicilanPinjaman;
 use App\Models\AuditTrail;
+use App\Services\KasbonLimitService;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +15,22 @@ use Illuminate\Support\Facades\DB;
 
 class PinjamanController extends Controller
 {
+    public function __construct(private KasbonLimitService $limit)
+    {
+    }
+
+    /** Kirim WhatsApp tanpa pernah menggagalkan transaksi utama. */
+    private function notifikasiWa($karyawan, string $pesan): void
+    {
+        try {
+            if ($karyawan && $karyawan->no_telp) {
+                WhatsAppService::sendNotification($karyawan->no_telp, $pesan);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Notifikasi WhatsApp kasbon gagal: ' . $e->getMessage());
+        }
+    }
+
     public function index(Request $request)
     {
         $karyawan = $request->user()->karyawan;
@@ -35,7 +53,8 @@ class PinjamanController extends Controller
         $karyawan = $request->user()->karyawan;
         return Inertia::render('Pinjaman/Create', [
             'karyawan' => $karyawan,
-            'departemen' => $karyawan ? $karyawan->departemen : null
+            'departemen' => $karyawan ? $karyawan->departemen : null,
+            'plafon' => $karyawan ? $this->limit->plafon($karyawan->id) : null,
         ]);
     }
 
@@ -54,17 +73,46 @@ class PinjamanController extends Controller
             return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
         }
 
-        // PERBAIKAN: departemen_id tetap disimpan agar Atasan Divisi dapat memfilter pengajuan dari anggotanya
-        PinjamanKaryawan::create([
-            'karyawan_id' => $karyawan->id,
-            'jenis_kasbon' => $request->jenis_kasbon,
-            'departemen_id' => $karyawan->departemen_id, 
-            'total_pinjaman' => $request->total_pinjaman,
-            'tenor_bulan' => $request->jenis_kasbon === 'Divisi' ? 1 : $request->tenor_bulan,
-            'sisa_pinjaman' => $request->total_pinjaman,
-            'alasan_pinjaman' => $request->alasan_pinjaman,
-            'status' => 'Pending',
-        ]);
+        $tenor = $request->jenis_kasbon === 'Divisi' ? 1 : (int) $request->tenor_bulan;
+
+        try {
+            $pinjaman = DB::transaction(function () use ($request, $karyawan, $tenor) {
+                // Kunci baris karyawan agar pengajuan ganda bersamaan tidak lolos cek limit
+                \App\Models\Karyawan::whereKey($karyawan->id)->lockForUpdate()->first();
+
+                $hasil = $this->limit->evaluasi($karyawan->id, (float) $request->total_pinjaman, $tenor);
+                if (!$hasil['layak']) {
+                    throw new \DomainException(implode(' ', $hasil['alasan']));
+                }
+
+                // departemen_id tetap disimpan agar Atasan Divisi dapat memfilter pengajuan dari anggotanya
+                $pinjaman = PinjamanKaryawan::create([
+                    'karyawan_id' => $karyawan->id,
+                    'jenis_kasbon' => $request->jenis_kasbon,
+                    'departemen_id' => $karyawan->departemen_id,
+                    'total_pinjaman' => $request->total_pinjaman,
+                    'tenor_bulan' => $tenor,
+                    'sisa_pinjaman' => $request->total_pinjaman,
+                    'alasan_pinjaman' => $request->alasan_pinjaman,
+                    'status' => 'Pending',
+                ]);
+
+                AuditTrail::create([
+                    'user_id' => $request->user()->id,
+                    'modul' => 'Kasbon',
+                    'aksi' => "Pengajuan kasbon #{$pinjaman->id} (Rp " . number_format($pinjaman->total_pinjaman, 0, ',', '.') . ", {$tenor} bulan)",
+                    'data_lama' => null,
+                    'data_baru' => json_encode(['status' => 'Pending', 'total_pinjaman' => $pinjaman->total_pinjaman, 'tenor_bulan' => $tenor]),
+                    'waktu' => now(),
+                ]);
+
+                return $pinjaman;
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors(['total_pinjaman' => $e->getMessage()])->withInput();
+        }
+
+        $this->notifikasiWa($karyawan, "Pengajuan kasbon #{$pinjaman->id} sebesar Rp " . number_format($pinjaman->total_pinjaman, 0, ',', '.') . ' berhasil dikirim dan menunggu persetujuan.');
 
         return redirect()->route('pinjaman.index')->with('success', 'Pengajuan kasbon berhasil dikirim.');
     }
@@ -113,7 +161,7 @@ class PinjamanController extends Controller
         $targetStatus = $request->status;
 
         try {
-            DB::transaction(function () use ($user, $id, $targetStatus) {
+            $pinjamanFinal = DB::transaction(function () use ($user, $id, $targetStatus) {
                 $pinjaman = PinjamanKaryawan::with('karyawan')->lockForUpdate()->findOrFail($id);
                 $statusLama = $pinjaman->status;
                 $role = (int) $user->role_id;
@@ -158,6 +206,14 @@ class PinjamanController extends Controller
                     throw new \DomainException('Anda tidak berwenang memproses pengajuan ini.');
                 }
 
+                // Cek ulang limit saat kasbon akan berjalan (gaji/kasbon lain bisa berubah sejak pengajuan)
+                if ($pinjaman->status === 'Berjalan') {
+                    $hasil = $this->limit->evaluasi($pinjaman->karyawan_id, (float) $pinjaman->total_pinjaman, (int) $pinjaman->tenor_bulan, $pinjaman->id);
+                    if (!$hasil['layak']) {
+                        throw new \DomainException('Tidak dapat disetujui: ' . implode(' ', $hasil['alasan']));
+                    }
+                }
+
                 $pinjaman->save();
 
                 // Generate jadwal angsuran saat status menjadi 'Berjalan'
@@ -191,7 +247,11 @@ class PinjamanController extends Controller
                     'data_baru' => json_encode(['status' => $pinjaman->status]),
                     'waktu' => now(),
                 ]);
+
+                return $pinjaman;
             });
+
+            $this->notifikasiWa($pinjamanFinal->karyawan, "Status pengajuan kasbon #{$pinjamanFinal->id} Anda kini: {$pinjamanFinal->status}.");
         } catch (\DomainException $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Throwable $e) {

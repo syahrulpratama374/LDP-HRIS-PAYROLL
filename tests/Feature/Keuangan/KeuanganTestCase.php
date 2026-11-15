@@ -87,6 +87,17 @@ abstract class KeuanganTestCase extends TestCase
         ], $o));
     }
 
+    protected function buatGaji(int $karyawanId, float $nominal = 5000000): void
+    {
+        DB::table('riwayat_gajis')->insert([
+            'karyawan_id' => $karyawanId,
+            'nominal_gaji_pokok' => $nominal,
+            'effective_date_start' => '2020-01-01',
+            'effective_date_end' => null,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     protected function buatPayroll(int $karyawanId, string $status = 'Draft', int $bulan = 1, int $tahun = 2026): int
     {
         return DB::table('payrolls')->insertGetId([

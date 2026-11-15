@@ -11,6 +11,7 @@ class PinjamanTest extends KeuanganTestCase
     {
         [$admin] = $this->buatUser(1);
         [, $kid] = $this->buatUser(6);
+        $this->buatGaji($kid);
         $id = $this->buatPinjaman($kid, ['status' => 'Disetujui Atasan']);
 
         $this->actingAs($admin)->post(route('admin.pinjaman.update', $id), ['status' => 'Berjalan'])

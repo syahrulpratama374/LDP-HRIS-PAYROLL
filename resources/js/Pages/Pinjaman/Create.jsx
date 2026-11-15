@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 
-export default function Create({ auth, karyawan, departemen }) {
+export default function Create({ auth, karyawan, departemen, plafon }) {
     const { data, setData, post, processing, errors } = useForm({
         jenis_kasbon: "Finance", // Default ke Finance
         total_pinjaman: "",
@@ -19,6 +19,35 @@ export default function Create({ auth, karyawan, departemen }) {
         if (total <= 0 || tenor <= 0) return 0;
         return Math.round(total / tenor);
     }, [data.total_pinjaman, data.tenor_bulan]);
+
+    // =========================================================
+    // SIMULASI KELAYAKAN (rumus sama dengan KasbonLimitService)
+    // =========================================================
+    const rp = (n) => "Rp " + Math.round(n || 0).toLocaleString("id-ID");
+    const simulasi = useMemo(() => {
+        if (!plafon) return null;
+        const total = parseFloat(data.total_pinjaman) || 0;
+        const tenor = data.jenis_kasbon === "Divisi" ? 1 : parseInt(data.tenor_bulan, 10) || 1;
+        const cicilanBaru = total > 0 ? Math.round(total / tenor) : 0;
+        const totalCicilan = plafon.cicilan_aktif + cicilanBaru;
+        const alasan = [];
+        if (plafon.kasbon_aktif) {
+            alasan.push(`Masih ada kasbon #${plafon.kasbon_aktif.id} berstatus ${plafon.kasbon_aktif.status}. Maksimal 1 kasbon aktif/pending.`);
+        }
+        if (plafon.gaji_pokok <= 0) {
+            alasan.push("Gaji pokok aktif tidak ditemukan.");
+        } else if (total > 0 && totalCicilan > plafon.batas_cicilan) {
+            alasan.push(`Cicilan per bulan melebihi batas ${plafon.rasio_maks}% gaji pokok.`);
+        }
+        return {
+            tenor,
+            cicilanBaru,
+            totalCicilan,
+            maksPinjaman: plafon.sisa_plafon_cicilan * tenor,
+            layak: alasan.length === 0,
+            alasan,
+        };
+    }, [plafon, data.total_pinjaman, data.tenor_bulan, data.jenis_kasbon]);
 
     // Handle perubahan jenis kasbon
     const handleJenisKasbonChange = (jenis) => {
@@ -67,6 +96,28 @@ export default function Create({ auth, karyawan, departemen }) {
 
                         <form onSubmit={submit}>
                             <div className="space-y-5 p-5">
+                                {/* PLAFON & KELAYAKAN */}
+                                {plafon && simulasi && (
+                                    <div className={`rounded-lg border p-4 ${simulasi.layak ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+                                        <h3 className="text-sm font-bold text-[#2A164E]">Plafon Kasbon Anda</h3>
+                                        <dl className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                                            <div><dt className="text-gray-500">Gaji pokok</dt><dd className="font-bold">{rp(plafon.gaji_pokok)}</dd></div>
+                                            <div><dt className="text-gray-500">Batas cicilan/bln ({plafon.rasio_maks}%)</dt><dd className="font-bold">{rp(plafon.batas_cicilan)}</dd></div>
+                                            <div><dt className="text-gray-500">Sisa plafon cicilan/bln</dt><dd className="font-bold">{rp(plafon.sisa_plafon_cicilan)}</dd></div>
+                                            <div><dt className="text-gray-500">Maks. pinjaman ({simulasi.tenor} bln)</dt><dd className="font-bold">{rp(simulasi.maksPinjaman)}</dd></div>
+                                        </dl>
+                                        {simulasi.layak ? (
+                                            <p className="mt-3 text-xs font-semibold text-emerald-700">
+                                                {data.total_pinjaman > 0 ? `Layak diajukan: cicilan ${rp(simulasi.cicilanBaru)}/bln, total ${rp(simulasi.totalCicilan)} dari batas ${rp(plafon.batas_cicilan)}.` : "Isi nominal untuk melihat simulasi kelayakan."}
+                                            </p>
+                                        ) : (
+                                            <ul className="mt-3 list-disc pl-4 text-xs font-semibold text-red-600">
+                                                {simulasi.alasan.map((a, i) => <li key={i}>{a}</li>)}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* OPSI SUMBER DANA KASBON */}
                                 <div>
                                     <label className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
@@ -344,7 +395,7 @@ export default function Create({ auth, karyawan, departemen }) {
 
                                 <button
                                     type="submit"
-                                    disabled={processing}
+                                    disabled={processing || (simulasi && !simulasi.layak && data.total_pinjaman > 0)}
                                     className="inline-flex h-10 min-w-[140px] items-center justify-center rounded-lg bg-[#2A164E] px-6 text-sm font-semibold text-white transition hover:bg-[#431D6D] disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {processing
