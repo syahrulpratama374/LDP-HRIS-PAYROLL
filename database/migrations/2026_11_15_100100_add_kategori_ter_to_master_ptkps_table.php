@@ -13,11 +13,11 @@ return new class extends Migration
             $table->char('kategori_ter', 1)->nullable()->after('nominal_neto_tahunan');
         });
 
-        // Pemetaan kategori TER menurut PMK 168/2023
+        // Pemetaan kategori TER menurut PP 58/2023 (sama dengan MasterPtkpSeeder)
         $peta = [
-            'A' => ['TK/0', 'TK/1'],
-            'B' => ['TK/2', 'TK/3', 'K/0', 'K/1'],
-            'C' => ['K/2', 'K/3'],
+            'A' => ['TK/0', 'TK/1', 'K/0'],
+            'B' => ['TK/2', 'TK/3', 'K/1', 'K/2'],
+            'C' => ['K/3'],
         ];
         foreach ($peta as $kategori => $kodes) {
             DB::table('master_ptkps')->whereIn('kode_ptkp', $kodes)->update(['kategori_ter' => $kategori]);
