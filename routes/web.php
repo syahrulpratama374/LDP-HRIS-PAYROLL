@@ -138,6 +138,7 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         // Kalkulator Payroll & Komponen Gaji
         Route::get('/payroll', [PayrollController::class, 'index'])->name('admin.payroll.index');
         Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('admin.payroll.generate');
+        Route::post('/payroll/finalize-massal', [PayrollController::class, 'finalizeAll'])->name('admin.payroll.finalizeAll');
         Route::post('/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
 
         Route::resource('komponen-gaji', MasterKomponenPayrollController::class)

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\PinjamanKaryawan;
 use App\Models\CicilanPinjaman;
+use App\Models\AuditTrail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -108,81 +110,96 @@ class PinjamanController extends Controller
         ]);
 
         $user = $request->user();
-        $pinjaman = PinjamanKaryawan::findOrFail($id);
         $targetStatus = $request->status;
 
-        DB::beginTransaction();
         try {
-            if ($user->role_id == 5) { 
-                if ($pinjaman->jenis_kasbon === 'Divisi') {
-                    $pinjaman->status = 'Berjalan';
+            DB::transaction(function () use ($user, $id, $targetStatus) {
+                $pinjaman = PinjamanKaryawan::with('karyawan')->lockForUpdate()->findOrFail($id);
+                $statusLama = $pinjaman->status;
+                $role = (int) $user->role_id;
+
+                // Whitelist transisi: hanya Pending / Disetujui Atasan yang boleh diproses
+                if (!in_array($statusLama, ['Pending', 'Disetujui Atasan'])) {
+                    throw new \DomainException("Pengajuan berstatus {$statusLama} tidak dapat diproses lagi.");
+                }
+
+                if ($role === 5) {
+                    // SPV: hanya status Pending, hanya departemennya, bukan milik sendiri
+                    if ($statusLama !== 'Pending') {
+                        throw new \DomainException('Pengajuan ini sudah diproses oleh atasan.');
+                    }
+                    $karyawanSpv = $user->karyawan;
+                    if (!$karyawanSpv || $karyawanSpv->departemen_id !== $pinjaman->departemen_id) {
+                        throw new \DomainException('Anda hanya dapat memproses pengajuan dari departemen Anda.');
+                    }
+                    if ($pinjaman->karyawan_id === $karyawanSpv->id) {
+                        throw new \DomainException('Anda tidak dapat memproses pengajuan kasbon milik sendiri.');
+                    }
+                    if ($targetStatus === 'Ditolak') {
+                        $pinjaman->status = 'Ditolak';
+                    } else {
+                        // Kasbon Divisi langsung berjalan, kasbon Finance menunggu persetujuan Finance
+                        $pinjaman->status = $pinjaman->jenis_kasbon === 'Divisi' ? 'Berjalan' : 'Disetujui Atasan';
+                    }
+                    $pinjaman->approved_atasan_at = Carbon::now();
+                } elseif (in_array($role, [1, 4])) {
+                    if ($targetStatus === 'Ditolak') {
+                        $pinjaman->status = 'Ditolak';
+                    } elseif ($targetStatus === 'Disetujui Atasan') {
+                        throw new \DomainException('Persetujuan atasan hanya dapat dilakukan oleh atasan divisi.');
+                    } else {
+                        // Berjalan: kasbon Finance wajib lebih dulu disetujui atasan
+                        if ($pinjaman->jenis_kasbon === 'Finance' && $statusLama !== 'Disetujui Atasan') {
+                            throw new \DomainException('Kasbon Finance harus disetujui atasan terlebih dahulu.');
+                        }
+                        $pinjaman->status = 'Berjalan';
+                    }
                 } else {
-                    $pinjaman->status = 'Disetujui Atasan';
+                    throw new \DomainException('Anda tidak berwenang memproses pengajuan ini.');
                 }
-                $pinjaman->approved_atasan_at = Carbon::now();
-            } elseif (in_array($user->role_id, [1, 4])) { 
-                $pinjaman->status = $targetStatus;
-            }
 
-            if ($targetStatus === 'Ditolak') {
-                $pinjaman->status = 'Ditolak';
-            }
+                $pinjaman->save();
 
-            $pinjaman->save();
+                // Generate jadwal angsuran saat status menjadi 'Berjalan'
+                if ($pinjaman->status === 'Berjalan' && $pinjaman->cicilans()->count() === 0) {
+                    $tenor = (int) $pinjaman->tenor_bulan;
+                    $total = (float) $pinjaman->total_pinjaman;
+                    $nominalCicilan = round($total / $tenor, 0);
+                    $awal = Carbon::now()->startOfMonth();
+                    $terbayar = 0;
 
-            // Generate jadwal angsuran saat status menjadi 'Berjalan'
-            if ($pinjaman->status === 'Berjalan' && $pinjaman->cicilans()->count() === 0) {
-                $nominalCicilan = $pinjaman->total_pinjaman / $pinjaman->tenor_bulan;
-                $startDate = Carbon::now();
+                    for ($i = 0; $i < $tenor; $i++) {
+                        // Cicilan terakhir menampung selisih pembulatan
+                        $nominal = ($i === $tenor - 1) ? $total - $terbayar : $nominalCicilan;
+                        $terbayar += $nominal;
 
-                for ($i = 0; $i < $pinjaman->tenor_bulan; $i++) {
-                    CicilanPinjaman::create([
-                        'pinjaman_id' => $pinjaman->id,
-                        'nominal_cicilan' => $nominalCicilan,
-                        'jatuh_tempo' => $startDate->copy()->addMonths($i + 1)->setDate($startDate->year, $startDate->month, 25),
-                        'status_bayar' => 'Belum Lunas',
-                        'metode_pelunasan' => 'Potong Gaji'
-                    ]);
+                        CicilanPinjaman::create([
+                            'pinjaman_id' => $pinjaman->id,
+                            'nominal_cicilan' => $nominal,
+                            'jatuh_tempo' => $awal->copy()->addMonths($i + 1)->day(25),
+                            'status_bayar' => 'Belum Lunas',
+                            'metode_pelunasan' => 'Potong Gaji'
+                        ]);
+                    }
                 }
-            }
 
-            DB::commit();
-            return redirect()->back()->with('success', 'Status pengajuan kasbon berhasil diperbarui.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Gagal memproses pinjaman: ' . $e->getMessage()]);
-        }
-    }
-
-    public function bayarManual(Request $request, $cicilanId)
-    {
-        $request->validate([
-            'bukti_transfer' => 'required|image|mimes:jpeg,png,jpg|max:2048'
-        ]);
-
-        $cicilan = CicilanPinjaman::findOrFail($cicilanId);
-        $pinjaman = $cicilan->pinjaman;
-
-        if ($request->hasFile('bukti_transfer')) {
-            $path = $request->file('bukti_transfer')->store('bukti_kasbon', 'public');
-
-            $cicilan->update([
-                'status_bayar' => 'Lunas',
-                'metode_pelunasan' => 'Tunai / Transfer',
-                'bukti_transfer' => $path,
-                'tgl_bayar' => Carbon::now()
-            ]);
-
-            // PERBAIKAN: Perhitungan matematika sisa pinjaman
-            $sisaBaru = max(0, $pinjaman->sisa_pinjaman - $cicilan->nominal_cicilan);
-            $pinjaman->update([
-                'sisa_pinjaman' => $sisaBaru, 
-                'status' => $sisaBaru <= 0 ? 'Lunas' : 'Berjalan'
-            ]);
+                AuditTrail::create([
+                    'user_id' => $user->id,
+                    'modul' => 'Kasbon',
+                    'aksi' => "Ubah status kasbon #{$pinjaman->id}: {$statusLama} -> {$pinjaman->status}",
+                    'data_lama' => json_encode(['status' => $statusLama]),
+                    'data_baru' => json_encode(['status' => $pinjaman->status]),
+                    'waktu' => now(),
+                ]);
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Gagal memproses kasbon: ' . $e->getMessage(), ['pinjaman_id' => $id]);
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat memproses pengajuan kasbon.']);
         }
 
-        return redirect()->back()->with('success', 'Pembayaran angsuran berhasil diunggah.');
+        return redirect()->back()->with('success', 'Status pengajuan kasbon berhasil diperbarui.');
     }
 
     public function uploadBuktiBayar(Request $request, $cicilanId)
@@ -191,20 +208,51 @@ class PinjamanController extends Controller
             'bukti_transfer' => 'required|image|mimes:jpeg,png,jpg|max:2048'
         ]);
 
-        $cicilan = CicilanPinjaman::findOrFail($cicilanId);
+        $user = $request->user();
+        $cicilan = CicilanPinjaman::with('pinjaman')->findOrFail($cicilanId);
+        $isStaff = in_array((int) $user->role_id, [1, 4]);
 
-        if ($request->hasFile('bukti_transfer')) {
-            $path = $request->file('bukti_transfer')->store('bukti_kasbon', 'public');
-
-            $cicilan->update([
-                'status_bayar' => 'Menunggu Validasi',
-                'metode_pelunasan' => 'Tunai / Transfer',
-                'bukti_transfer' => $path,
-                'tgl_bayar' => Carbon::now()
-            ]);
+        // Non-admin/finance hanya boleh mengunggah untuk cicilan miliknya
+        if (!$isStaff && (!$user->karyawan || $cicilan->pinjaman->karyawan_id !== $user->karyawan->id)) {
+            abort(403, 'Cicilan ini bukan milik Anda.');
         }
 
-        return redirect()->back()->with('success', 'Bukti pembayaran berhasil diunggah dan menunggu verifikasi.');
+        if ($cicilan->status_bayar !== 'Belum Lunas') {
+            return back()->withErrors(['error' => 'Cicilan ini tidak dalam status Belum Lunas.']);
+        }
+
+        $path = $request->file('bukti_transfer')->store('bukti_kasbon', 'public');
+
+        try {
+            DB::transaction(function () use ($cicilan, $path, $isStaff, $user) {
+                $cicilan->update([
+                    'status_bayar' => $isStaff ? 'Lunas' : 'Menunggu Validasi',
+                    'metode_pelunasan' => 'Tunai / Transfer',
+                    'bukti_transfer' => $path,
+                    'tgl_bayar' => Carbon::now()
+                ]);
+
+                // Finance/Admin yang mengunggah = pembayaran langsung tervalidasi
+                if ($isStaff) {
+                    $this->kurangiSisaPinjaman($cicilan);
+                    AuditTrail::create([
+                        'user_id' => $user->id,
+                        'modul' => 'Kasbon',
+                        'aksi' => "Pelunasan manual cicilan #{$cicilan->id}",
+                        'data_lama' => null,
+                        'data_baru' => json_encode(['status_bayar' => 'Lunas']),
+                        'waktu' => now(),
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('Gagal upload bukti bayar kasbon: ' . $e->getMessage(), ['cicilan_id' => $cicilanId]);
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan bukti pembayaran.']);
+        }
+
+        return redirect()->back()->with('success', $isStaff
+            ? 'Pembayaran angsuran berhasil dicatat.'
+            : 'Bukti pembayaran berhasil diunggah dan menunggu verifikasi.');
     }
 
     public function verifikasiPelunasan(Request $request, $cicilanId)
@@ -213,33 +261,51 @@ class PinjamanController extends Controller
             'status_verifikasi' => 'required|in:Lunas,Ditolak'
         ]);
 
-        $cicilan = CicilanPinjaman::findOrFail($cicilanId);
-        $pinjaman = $cicilan->pinjaman;
-
-        DB::beginTransaction();
         try {
-            if ($request->status_verifikasi === 'Lunas') {
-                $cicilan->update(['status_bayar' => 'Lunas']);
+            DB::transaction(function () use ($request, $cicilanId) {
+                $cicilan = CicilanPinjaman::with('pinjaman')->lockForUpdate()->findOrFail($cicilanId);
 
-                // PERBAIKAN: Perhitungan matematika sisa pinjaman
-                $sisaBaru = max(0, $pinjaman->sisa_pinjaman - $cicilan->nominal_cicilan);
-                $pinjaman->update([
-                    'sisa_pinjaman' => $sisaBaru,
-                    'status' => $sisaBaru <= 0 ? 'Lunas' : 'Berjalan'
-                ]);
-            } else {
-                $cicilan->update([
-                    'status_bayar' => 'Belum Lunas',
-                    'metode_pelunasan' => 'Potong Gaji',
-                    'bukti_transfer' => null
-                ]);
-            }
+                if ($cicilan->status_bayar !== 'Menunggu Validasi') {
+                    throw new \DomainException('Cicilan ini tidak sedang menunggu validasi.');
+                }
 
-            DB::commit();
-            return redirect()->back()->with('success', 'Verifikasi pembayaran berhasil diproses.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Gagal verifikasi pembayaran: ' . $e->getMessage()]);
+                if ($request->status_verifikasi === 'Lunas') {
+                    $cicilan->update(['status_bayar' => 'Lunas']);
+                    $this->kurangiSisaPinjaman($cicilan);
+                } else {
+                    $cicilan->update([
+                        'status_bayar' => 'Belum Lunas',
+                        'metode_pelunasan' => 'Potong Gaji',
+                        'bukti_transfer' => null
+                    ]);
+                }
+
+                AuditTrail::create([
+                    'user_id' => $request->user()->id,
+                    'modul' => 'Kasbon',
+                    'aksi' => "Verifikasi cicilan #{$cicilan->id}: {$request->status_verifikasi}",
+                    'data_lama' => json_encode(['status_bayar' => 'Menunggu Validasi']),
+                    'data_baru' => json_encode(['status_bayar' => $cicilan->status_bayar]),
+                    'waktu' => now(),
+                ]);
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Gagal verifikasi pelunasan kasbon: ' . $e->getMessage(), ['cicilan_id' => $cicilanId]);
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat verifikasi pembayaran.']);
         }
+
+        return redirect()->back()->with('success', 'Verifikasi pembayaran berhasil diproses.');
+    }
+
+    private function kurangiSisaPinjaman(CicilanPinjaman $cicilan): void
+    {
+        $pinjaman = $cicilan->pinjaman;
+        $sisaBaru = max(0, $pinjaman->sisa_pinjaman - $cicilan->nominal_cicilan);
+        $pinjaman->update([
+            'sisa_pinjaman' => $sisaBaru,
+            'status' => $sisaBaru <= 0 ? 'Lunas' : 'Berjalan'
+        ]);
     }
 }

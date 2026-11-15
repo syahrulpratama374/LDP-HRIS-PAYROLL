@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router, useForm, Link } from "@inertiajs/react";
+import { Head, router, useForm, Link, usePage } from "@inertiajs/react";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Index({ payrolls, filters }) {
+    const { flash, errors } = usePage().props;
     const [bulanTampil, setBulanTampil] = useState(
         filters.bulan || new Date().getMonth() + 1,
     );
@@ -18,14 +20,6 @@ export default function Index({ payrolls, filters }) {
         periode_bulan: new Date().getMonth() + 1,
         periode_tahun: new Date().getFullYear(),
     });
-
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka);
-    };
 
     const handleFilter = (e) => {
         e.preventDefault();
@@ -66,6 +60,19 @@ export default function Index({ payrolls, filters }) {
         }
     };
 
+    const handleFinalizeAll = () => {
+        if (
+            confirm(
+                `Terbitkan SEMUA slip gaji berstatus Draft pada periode ${bulanTampil}/${tahunTampil}?`,
+            )
+        ) {
+            router.post(route("admin.payroll.finalizeAll"), {
+                periode_bulan: bulanTampil,
+                periode_tahun: tahunTampil,
+            });
+        }
+    };
+
     const openDetailModal = (payroll) => {
         setSelectedPayroll(payroll);
         setShowDetailModal(true);
@@ -83,6 +90,17 @@ export default function Index({ payrolls, filters }) {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                    {flash?.success && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                            {flash.success}
+                        </div>
+                    )}
+                    {(flash?.error || errors?.error) && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                            {flash?.error || errors.error}
+                        </div>
+                    )}
+
                     {/* PANEL KENDALI */}
                     <div className="bg-white shadow-sm sm:rounded-lg p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 border-indigo-600">
                         <form
@@ -116,6 +134,13 @@ export default function Index({ payrolls, filters }) {
                                 Filter
                             </button>
                         </form>
+                        <button
+                            type="button"
+                            onClick={handleFinalizeAll}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 px-4 rounded-md"
+                        >
+                            Finalisasi Semua Draft
+                        </button>
 
                         <form
                             onSubmit={handleGenerate}

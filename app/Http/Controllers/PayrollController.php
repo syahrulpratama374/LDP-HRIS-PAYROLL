@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Models\AuditTrail;
 use Carbon\Carbon;
 
 class PayrollController extends Controller
@@ -202,16 +204,68 @@ class PayrollController extends Controller
             return redirect()->back()->with('success', 'Kalkulasi perhitungan payroll periode ini berhasil digenerate, mencakup Lembur, Kasbon, BPJS, dan Absensi.');
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->withErrors(['error' => 'Gagal menghitung payroll: ' . $e->getMessage()]);
+            Log::error('Gagal menghitung payroll: ' . $e->getMessage(), ['bulan' => $bulan, 'tahun' => $tahun]);
+            return redirect()->back()->withErrors(['error' => 'Gagal menghitung payroll. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
-    // [ADMIN / FINANCE] Finalisasi Status Payroll
-    public function finalize($id)
+    // [ADMIN / FINANCE] Finalisasi Status Payroll (hanya dari Draft)
+    public function finalize(Request $request, $id)
     {
         $payroll = Payroll::findOrFail($id);
-        $payroll->update(['status' => 'Disetujui']);
+
+        if ($payroll->status !== 'Draft') {
+            return redirect()->back()->withErrors(['error' => 'Hanya payroll berstatus Draft yang dapat difinalisasi.']);
+        }
+
+        DB::transaction(function () use ($payroll, $request) {
+            $payroll->update(['status' => 'Disetujui']);
+            $this->catatAudit($request, $payroll, 'Finalisasi slip gaji');
+        });
+
         return redirect()->back()->with('success', 'Slip gaji berhasil difinalisasi dan diterbitkan.');
+    }
+
+    // [ADMIN / FINANCE] Finalisasi massal seluruh Draft pada satu periode
+    public function finalizeAll(Request $request)
+    {
+        $request->validate([
+            'periode_bulan' => 'required|integer|min:1|max:12',
+            'periode_tahun' => 'required|integer|min:2020|max:2040',
+        ]);
+
+        $jumlah = DB::transaction(function () use ($request) {
+            $drafts = Payroll::where('periode_bulan', $request->periode_bulan)
+                ->where('periode_tahun', $request->periode_tahun)
+                ->where('status', 'Draft')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($drafts as $payroll) {
+                $payroll->update(['status' => 'Disetujui']);
+                $this->catatAudit($request, $payroll, 'Finalisasi massal slip gaji');
+            }
+
+            return $drafts->count();
+        });
+
+        if ($jumlah === 0) {
+            return redirect()->back()->withErrors(['error' => 'Tidak ada payroll Draft pada periode ini.']);
+        }
+
+        return redirect()->back()->with('success', "{$jumlah} slip gaji berhasil difinalisasi.");
+    }
+
+    private function catatAudit(Request $request, Payroll $payroll, string $aksi): void
+    {
+        AuditTrail::create([
+            'user_id' => $request->user()->id,
+            'modul' => 'Payroll',
+            'aksi' => "{$aksi} #{$payroll->id} ({$payroll->periode_bulan}/{$payroll->periode_tahun})",
+            'data_lama' => json_encode(['status' => 'Draft']),
+            'data_baru' => json_encode(['status' => 'Disetujui']),
+            'waktu' => now(),
+        ]);
     }
 
     // [KARYAWAN] Menampilkan riwayat slip gaji bulanan
@@ -234,10 +288,11 @@ class PayrollController extends Controller
     }
 
     // [KARYAWAN & ADMIN] Menampilkan detail Slip Gaji (Untuk dicetak)
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $payroll = Payroll::with(['karyawan.departemen', 'karyawan.jabatan', 'detailPayrolls'])
             ->findOrFail($id);
+        $this->authorizeSlip($request, $payroll);
 
         return Inertia::render('Payroll/Show', [
             'payroll' => $payroll
@@ -245,15 +300,30 @@ class PayrollController extends Controller
     }
 
     // [KARYAWAN & ADMIN] Mengunduh Slip Gaji (PDF)
-    public function downloadPdf($id)
+    public function downloadPdf(Request $request, $id)
     {
         $payroll = Payroll::with(['karyawan.departemen', 'karyawan.jabatan', 'detailPayrolls'])
             ->findOrFail($id);
+        $this->authorizeSlip($request, $payroll);
 
         $pdf = Pdf::loadView('pdf.slip_gaji', ['payroll' => $payroll]);
         
         $namaFile = 'Slip_Gaji_' . str_replace(' ', '_', $payroll->karyawan->nama_lengkap) . '_' . $payroll->periode_bulan . '_' . $payroll->periode_tahun . '.pdf';
 
         return $pdf->download($namaFile);
+    }
+
+    // Admin/Finance boleh melihat semua slip; selain itu hanya slip milik sendiri yang sudah Disetujui
+    private function authorizeSlip(Request $request, Payroll $payroll): void
+    {
+        $user = $request->user();
+        if (in_array((int) $user->role_id, [1, 4])) {
+            return;
+        }
+
+        $karyawan = $user->karyawan;
+        if (!$karyawan || $payroll->karyawan_id !== $karyawan->id || $payroll->status !== 'Disetujui') {
+            abort(403, 'Anda tidak berhak mengakses slip gaji ini.');
+        }
     }
 }

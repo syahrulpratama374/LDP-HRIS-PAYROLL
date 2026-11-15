@@ -17,7 +17,7 @@ export default function Index({ auth, pinjaman = [] }) {
         e.preventDefault();
         if (!selectedCicilan) return;
 
-        formBayar.post(route("pinjaman.uploadBuktiBayar", selectedCicilan.id), {
+        formBayar.post(route("pinjaman.bayarManual", selectedCicilan.id), {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
@@ -26,14 +26,6 @@ export default function Index({ auth, pinjaman = [] }) {
                 formBayar.reset();
             },
         });
-    };
-
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
     };
 
     const formatTanggalLengkap = (tanggal) => {

@@ -46,7 +46,13 @@ export default function Show({ payroll }) {
             <div className="py-12 print:py-0">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     {/* Tombol Print (Sembunyi saat dicetak) */}
-                    <div className="mb-4 flex justify-end print:hidden">
+                    <div className="mb-4 flex justify-end gap-2 print:hidden">
+                        <a
+                            href={route("slip.download", payroll.id)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded shadow flex items-center gap-2"
+                        >
+                            Unduh PDF
+                        </a>
                         <button
                             onClick={handlePrint}
                             className="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded shadow flex items-center gap-2"
