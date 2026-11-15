@@ -168,6 +168,21 @@ class PengajuanSpjController extends Controller
         ]);
 
         $spj = PengajuanSpj::findOrFail($id);
+
+        // Transisi yang sah (sesuai tombol di Spj/AdminIndex.jsx):
+        // Pending -> Menunggu Pelaporan / Ditolak (tahap ACC keberangkatan)
+        // Menunggu Validasi Finance -> Selesai / Ditolak (tahap validasi nota)
+        // 'Menunggu Pelaporan' -> 'Menunggu Validasi Finance' hanya lewat storeLaporan oleh karyawan.
+        $transisiSah = [
+            'Pending' => ['Menunggu Pelaporan', 'Ditolak'],
+            'Menunggu Validasi Finance' => ['Selesai', 'Ditolak'],
+        ];
+        if (!in_array($request->status_approval, $transisiSah[$spj->status_approval] ?? [], true)) {
+            return redirect()->back()->withErrors([
+                'error' => "Status SPJ tidak dapat diubah dari '{$spj->status_approval}' ke '{$request->status_approval}'.",
+            ]);
+        }
+
         $spj->update(['status_approval' => $request->status_approval]);
 
         $pesan = 'Status SPJ berhasil diperbarui.';

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\PengajuanCuti;
+use App\Models\PengajuanSpj;
 use App\Models\Absensi;
 use App\Models\Aset;
 use App\Models\Karyawan;
@@ -17,7 +18,7 @@ class RunDailyAutomation extends Command
 {
     // Nama perintah yang akan dipanggil di terminal
     protected $signature = 'ldp:daily-automation {--tanggal= : Tanggal (Y-m-d) yang dievaluasi untuk Alpha; default kemarin}';
-    protected $description = 'Menjalankan tugas otomatis harian (Auto-Cuti, Auto-Alpha & Peringatan Pajak Aset)';
+    protected $description = 'Menjalankan tugas otomatis harian (Auto-Cuti, Auto-Alpha/Dinas Luar SPJ & Peringatan Pajak Aset)';
 
     public function handle()
     {
@@ -57,7 +58,7 @@ class RunDailyAutomation extends Command
         $tanggalAlpha = $this->option('tanggal')
             ? Carbon::parse($this->option('tanggal'))->toDateString()
             : Carbon::yesterday()->toDateString();
-        $jumlahAlpha = $this->generateAlpha($tanggalAlpha);
+        [$jumlahAlpha, $jumlahDinasLuar] = $this->generateAlpha($tanggalAlpha);
 
         // ==========================================
         // 3. PERINGATAN PAJAK ASET (H-30)
@@ -81,23 +82,28 @@ class RunDailyAutomation extends Command
         }
 
         // Catat hasil kerja robot di terminal dan log sistem
-        $pesan = "Daily Automation Selesai: {$jumlahCuti} Cuti dieksekusi, {$jumlahAlpha} Alpha dibuat ({$tanggalAlpha}), {$jumlahAset} Peringatan Aset dibuat.";
+        $pesan = "Daily Automation Selesai: {$jumlahCuti} Cuti dieksekusi, {$jumlahAlpha} Alpha & {$jumlahDinasLuar} Dinas Luar otomatis dibuat ({$tanggalAlpha}), {$jumlahAset} Peringatan Aset dibuat.";
         $this->info($pesan);
         Log::info($pesan);
     }
 
     /**
-     * Buat absensi 'Alpha' untuk karyawan aktif yang tidak punya absensi maupun cuti
-     * Disetujui pada hari kerja. Hari kerja: bukan hari libur nasional/cuti bersama;
-     * karyawan shift (departemen wajib logbook) hanya jika terjadwal di roster (tidak ada
-     * roster = off shift); karyawan reguler hanya Senin-Jumat.
+     * Buat absensi untuk karyawan aktif yang tidak punya absensi maupun cuti Disetujui
+     * pada hari kerja. Hari kerja: bukan hari libur nasional/cuti bersama; karyawan shift
+     * (departemen wajib logbook) hanya jika terjadwal di roster (tidak ada roster = off shift);
+     * karyawan reguler hanya Senin-Jumat.
+     * - Punya SPJ aktif (PengajuanSpj::aktifPada) -> 'Dinas Luar' otomatis (bukan Alpha), dengan
+     *   catatan khusus agar HC dapat membedakannya dari Dinas Luar yang presensi dengan selfie.
+     * - Selain itu -> 'Alpha'.
+     *
+     * @return array{0:int,1:int} [jumlah Alpha, jumlah Dinas Luar otomatis]
      */
-    private function generateAlpha(string $tanggal): int
+    private function generateAlpha(string $tanggal): array
     {
         $tgl = Carbon::parse($tanggal);
 
         if (DB::table('hari_liburs')->whereDate('tanggal', $tanggal)->exists()) {
-            return 0;
+            return [0, 0];
         }
 
         $sudahAbsen = Absensi::whereDate('tanggal', $tanggal)->pluck('karyawan_id')->all();
@@ -106,12 +112,14 @@ class RunDailyAutomation extends Command
             ->whereDate('tanggal_selesai', '>=', $tanggal)
             ->pluck('karyawan_id')->all();
         $terjadwal = JadwalShiftKaryawan::whereDate('tanggal', $tanggal)->pluck('karyawan_id')->all();
+        $sedangSpj = PengajuanSpj::aktifPada($tanggal)->pluck('karyawan_id')->all();
 
         $jumlah = 0;
+        $jumlahDinasLuar = 0;
         Karyawan::with('departemen')
             ->where('status_aktif', true)
             ->whereDate('tgl_bergabung', '<=', $tanggal)
-            ->chunkById(200, function ($karyawans) use ($tanggal, $tgl, $sudahAbsen, $sedangCuti, $terjadwal, &$jumlah) {
+            ->chunkById(200, function ($karyawans) use ($tanggal, $tgl, $sudahAbsen, $sedangCuti, $terjadwal, $sedangSpj, &$jumlah, &$jumlahDinasLuar) {
                 foreach ($karyawans as $k) {
                     if (in_array($k->id, $sudahAbsen) || in_array($k->id, $sedangCuti)) {
                         continue;
@@ -120,6 +128,17 @@ class RunDailyAutomation extends Command
                     $isShift = $k->departemen && $k->departemen->is_wajib_logbook;
                     $hariKerja = $isShift ? in_array($k->id, $terjadwal) : $tgl->isWeekday();
                     if (!$hariKerja) {
+                        continue;
+                    }
+
+                    if (in_array($k->id, $sedangSpj)) {
+                        Absensi::create([
+                            'karyawan_id' => $k->id,
+                            'tanggal' => $tanggal,
+                            'status' => 'Dinas Luar',
+                            'catatan' => 'Otomatis: SPJ aktif, tanpa presensi',
+                        ]);
+                        $jumlahDinasLuar++;
                         continue;
                     }
 
@@ -133,6 +152,6 @@ class RunDailyAutomation extends Command
                 }
             });
 
-        return $jumlah;
+        return [$jumlah, $jumlahDinasLuar];
     }
 }

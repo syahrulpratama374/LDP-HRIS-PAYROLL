@@ -46,9 +46,7 @@ class AbsensiController extends Controller
         $karyawans = $query->orderBy('nama_lengkap')->get();
 
         // 2. Data SPJ Aktif
-        $spjKaryawanIds = \App\Models\PengajuanSpj::where('status_approval', 'Selesai')
-            ->where('tgl_mulai', '<=', $tanggal)
-            ->where('tgl_selesai', '>=', $tanggal)
+        $spjKaryawanIds = PengajuanSpj::aktifPada($tanggal)
             ->pluck('karyawan_id')
             ->toArray();
 
@@ -239,10 +237,10 @@ class AbsensiController extends Controller
             (float) $koorUser[0], (float) $koorUser[1]
         );
 
+        // SPJ aktif (sudah disetujui atasan & dalam rentang tanggal perjalanan) -> radius kantor diabaikan,
+        // tetapi selfie & koordinat tetap dicatat dan status menjadi 'Dinas Luar'.
         $sedangSPJ = PengajuanSpj::where('karyawan_id', $karyawan->id)
-            ->where('status_approval', 'Selesai')
-            ->where('tgl_mulai', '<=', $tanggal)
-            ->where('tgl_selesai', '>=', $tanggal)
+            ->aktifPada($tanggal)
             ->exists();
 
         if (!$sedangSPJ && $jarakMeter > $radiusMaksimal) {
