@@ -166,8 +166,14 @@ class PinjamanController extends Controller
                 $statusLama = $pinjaman->status;
                 $role = (int) $user->role_id;
 
-                // Whitelist transisi: hanya Pending / Disetujui Atasan yang boleh diproses
-                if (!in_array($statusLama, ['Pending', 'Disetujui Atasan'])) {
+                // Pembatalan kasbon yang sudah Berjalan: hanya Admin/Finance, hanya ke Ditolak
+                $pembatalan = $statusLama === 'Berjalan';
+                if ($pembatalan) {
+                    if (!in_array($role, [1, 4]) || $targetStatus !== 'Ditolak') {
+                        throw new \DomainException('Kasbon yang sudah berjalan hanya dapat dibatalkan (ditolak) oleh Finance/Admin.');
+                    }
+                } elseif (!in_array($statusLama, ['Pending', 'Disetujui Atasan'])) {
+                    // Whitelist transisi: hanya Pending / Disetujui Atasan yang boleh diproses
                     throw new \DomainException("Pengajuan berstatus {$statusLama} tidak dapat diproses lagi.");
                 }
 
@@ -214,6 +220,11 @@ class PinjamanController extends Controller
                     }
                 }
 
+                $cicilanDihapus = 0;
+                if ($pembatalan) {
+                    $cicilanDihapus = $this->batalkanCicilanBelumDibayar($pinjaman);
+                }
+
                 $pinjaman->save();
 
                 // Generate jadwal angsuran saat status menjadi 'Berjalan'
@@ -242,7 +253,7 @@ class PinjamanController extends Controller
                 AuditTrail::create([
                     'user_id' => $user->id,
                     'modul' => 'Kasbon',
-                    'aksi' => "Ubah status kasbon #{$pinjaman->id}: {$statusLama} -> {$pinjaman->status}",
+                    'aksi' => "Ubah status kasbon #{$pinjaman->id}: {$statusLama} -> {$pinjaman->status}" . ($pembatalan ? " (membatalkan {$cicilanDihapus} cicilan belum dibayar)" : ''),
                     'data_lama' => json_encode(['status' => $statusLama]),
                     'data_baru' => json_encode(['status' => $pinjaman->status]),
                     'waktu' => now(),
@@ -333,10 +344,14 @@ class PinjamanController extends Controller
                     $cicilan->update(['status_bayar' => 'Lunas']);
                     $this->kurangiSisaPinjaman($cicilan);
                 } else {
+                    // Carry-over: kembali ke antrean potong gaji tanpa tautan payroll,
+                    // sehingga ikut terpotong di payroll periode berikutnya (jatuh_tempo <= akhir periode)
                     $cicilan->update([
                         'status_bayar' => 'Belum Lunas',
                         'metode_pelunasan' => 'Potong Gaji',
-                        'bukti_transfer' => null
+                        'bukti_transfer' => null,
+                        'tgl_bayar' => null,
+                        'payroll_id' => null,
                     ]);
                 }
 
@@ -357,6 +372,26 @@ class PinjamanController extends Controller
         }
 
         return redirect()->back()->with('success', 'Verifikasi pembayaran berhasil diproses.');
+    }
+
+    /** Hapus cicilan yang belum dibayar saat kasbon Berjalan dibatalkan; kembalikan jumlah yang dihapus. */
+    private function batalkanCicilanBelumDibayar(PinjamanKaryawan $pinjaman): int
+    {
+        $cicilans = $pinjaman->cicilans()->lockForUpdate()->get();
+
+        if ($cicilans->contains('status_bayar', 'Menunggu Validasi')) {
+            throw new \DomainException('Masih ada cicilan menunggu validasi. Verifikasi terlebih dahulu sebelum membatalkan kasbon.');
+        }
+
+        $belumLunas = $cicilans->where('status_bayar', 'Belum Lunas');
+        $idPayroll = $belumLunas->pluck('payroll_id')->filter()->unique();
+        if ($idPayroll->isNotEmpty() && \App\Models\Payroll::whereIn('id', $idPayroll)->where('status', 'Draft')->exists()) {
+            throw new \DomainException('Ada cicilan yang sudah masuk payroll Draft. Generate ulang payroll periode tersebut setelah kasbon dibatalkan, atau hapus Draft terlebih dahulu.');
+        }
+
+        CicilanPinjaman::whereIn('id', $belumLunas->pluck('id'))->delete();
+
+        return $belumLunas->count();
     }
 
     private function kurangiSisaPinjaman(CicilanPinjaman $cicilan): void
