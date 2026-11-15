@@ -19,6 +19,11 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                 "Setujui dan Cairkan dana kasbon ini? Sistem akan otomatis membuat jadwal pemotongan gaji.";
         if (status === "Ditolak")
             confirmText = "Tolak pengajuan kasbon ini secara permanen?";
+        if (status === "Batalkan") {
+            confirmText =
+                "Batalkan kasbon yang sedang berjalan? Cicilan yang belum dibayar akan dihapus dan tidak dapat dikembalikan.";
+            status = "Ditolak";
+        }
 
         if (confirm(confirmText)) {
             router.post(
@@ -400,6 +405,21 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                                                                         >
                                                                             Pelunasan
                                                                             Manual
+                                                                        </button>
+                                                                    )}
+                                                                    {[1, 4].includes(
+                                                                        userRole,
+                                                                    ) && (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleAction(
+                                                                                    p.id,
+                                                                                    "Batalkan",
+                                                                                )
+                                                                            }
+                                                                            className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition"
+                                                                        >
+                                                                            Batalkan
                                                                         </button>
                                                                     )}
                                                                 </>
