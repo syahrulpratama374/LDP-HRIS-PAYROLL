@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PinjamanKaryawan;
 use App\Models\CicilanPinjaman;
+use App\Models\Pengaturan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -28,40 +29,68 @@ class PinjamanController extends Controller
         ]);
     }
 
+   private function hitungSisaLimit($karyawanId, $jenisKasbon, $includePending = true)
+    {
+        $kunci = $jenisKasbon === 'Divisi' ? 'maksimal_kasbon_divisi' : 'maksimal_kasbon_finance';
+        $default = $jenisKasbon === 'Divisi' ? 1000000 : 5000000;
+        $plafon = (float) (Pengaturan::where('kunci', $kunci)->value('nilai') ?? $default);
+
+        $statusTerpakai = $includePending
+            ? ['Pending', 'Disetujui Atasan', 'Berjalan']
+            : ['Disetujui Atasan', 'Berjalan'];
+
+        $terpakai = PinjamanKaryawan::where('karyawan_id', $karyawanId)
+            ->where('jenis_kasbon', $jenisKasbon)
+            ->whereIn('status', $statusTerpakai)
+            ->sum('sisa_pinjaman');
+
+        return max(0, $plafon - $terpakai);
+    }
+
     public function create(Request $request)
     {
         $karyawan = $request->user()->karyawan;
+        $sisaLimitFinance = $karyawan ? $this->hitungSisaLimit($karyawan->id, 'Finance', true) : 0;
+        $sisaLimitDivisi  = $karyawan ? $this->hitungSisaLimit($karyawan->id, 'Divisi', true) : 0;
+
         return Inertia::render('Pinjaman/Create', [
-            'karyawan' => $karyawan,
-            'departemen' => $karyawan ? $karyawan->departemen : null
+            'karyawan'         => $karyawan,
+            'departemen'       => $karyawan ? $karyawan->departemen : null,
+            'sisaLimitFinance' => $sisaLimitFinance,
+            'sisaLimitDivisi'  => $sisaLimitDivisi,
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'jenis_kasbon' => 'required|in:Finance,Divisi',
-            'total_pinjaman' => 'required|numeric|min:50000',
-            'tenor_bulan' => 'required|integer|min:1|max:12',
+            'jenis_kasbon'    => 'required|in:Finance,Divisi',
+            'total_pinjaman'  => 'required|numeric|min:50000',
+            'tenor_bulan'     => 'required|integer|min:1|max:12',
             'alasan_pinjaman' => 'required|string|max:500',
         ]);
 
         $karyawan = $request->user()->karyawan;
-
         if (!$karyawan) {
             return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
         }
 
-        // PERBAIKAN: departemen_id tetap disimpan agar Atasan Divisi dapat memfilter pengajuan dari anggotanya
+        $sisaLimit = $this->hitungSisaLimit($karyawan->id, $request->jenis_kasbon, true);
+        if ((float) $request->total_pinjaman > $sisaLimit) {
+            return redirect()->back()->withErrors([
+                'total_pinjaman' => 'Nominal melebihi sisa limit Kasbon ' . $request->jenis_kasbon . ' Anda (Rp ' . number_format($sisaLimit, 0, ',', '.') . ').'
+            ]);
+        }
+
         PinjamanKaryawan::create([
-            'karyawan_id' => $karyawan->id,
-            'jenis_kasbon' => $request->jenis_kasbon,
-            'departemen_id' => $karyawan->departemen_id, 
-            'total_pinjaman' => $request->total_pinjaman,
-            'tenor_bulan' => $request->jenis_kasbon === 'Divisi' ? 1 : $request->tenor_bulan,
-            'sisa_pinjaman' => $request->total_pinjaman,
+            'karyawan_id'     => $karyawan->id,
+            'jenis_kasbon'    => $request->jenis_kasbon,
+            'departemen_id'   => $karyawan->departemen_id,
+            'total_pinjaman'  => $request->total_pinjaman,
+            'tenor_bulan'     => $request->jenis_kasbon === 'Divisi' ? 1 : $request->tenor_bulan,
+            'sisa_pinjaman'   => $request->total_pinjaman,
             'alasan_pinjaman' => $request->alasan_pinjaman,
-            'status' => 'Pending',
+            'status'          => 'Pending',
         ]);
 
         return redirect()->route('pinjaman.index')->with('success', 'Pengajuan kasbon berhasil dikirim.');

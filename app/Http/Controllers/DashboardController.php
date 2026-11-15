@@ -10,6 +10,7 @@ use App\Models\PengajuanCuti;
 use App\Models\PengajuanLembur;
 use App\Models\PengajuanSpj;
 use App\Models\SaldoCuti;
+use App\Models\MasterJenisCuti;
 use App\Models\PinjamanKaryawan;
 use App\Models\Payroll;
 use Carbon\Carbon;
@@ -19,42 +20,64 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $roleId = $user->role_id ?? 6; 
-        
-        // --- 1. HITUNG DATA DINAMIS SELF-SERVICE (Untuk Karyawan & SPV) ---
+        $roleId = $user->role_id ?? 6;
+
+        // --- 1. HITUNG DATA DINAMIS SELF-SERVICE (Untuk Semua Role: Karyawan, SPV, dll.) ---
         $sisaCuti = 0;
-        $sisaKasbon = 5000000; 
+        $hakCutiTahunan = 0;
+        $cutiTerpakai = 0;
+        $sisaKasbon = 5000000;
 
         $karyawan = $user->karyawan;
         if ($karyawan) {
             $tahunIni = date('Y');
-            $saldoCuti = SaldoCuti::where('karyawan_id', $karyawan->id)
-                ->where('tahun_periode', $tahunIni)
-                ->first();
-            
-            if ($saldoCuti) {
-                $sisaCuti = $saldoCuti->hak_cuti_tahunan - $saldoCuti->cuti_terpakai;
+
+            // Ambil kuota default dari MasterJenisCuti yang memotong cuti tahunan
+            $masterCutiTahunan = MasterJenisCuti::where('potong_cuti_tahunan', true)->first();
+            $kuotaDefault = $masterCutiTahunan ? (int) $masterCutiTahunan->kuota_default : 12;
+
+            // Buat otomatis jika belum ada untuk tahun berjalan
+            $saldoCuti = SaldoCuti::firstOrCreate(
+                [
+                    'karyawan_id'   => $karyawan->id,
+                    'tahun_periode' => $tahunIni,
+                ],
+                [
+                    'hak_cuti_tahunan' => $kuotaDefault,
+                    'cuti_terpakai'    => 0,
+                ]
+            );
+
+            // Sinkronisasi otomatis jika kuota_default di MasterJenisCuti diubah HR di tengah tahun
+            if ((int) $saldoCuti->hak_cuti_tahunan !== $kuotaDefault) {
+                $saldoCuti->update([
+                    'hak_cuti_tahunan' => $kuotaDefault,
+                ]);
             }
+
+            $hakCutiTahunan = (int) $saldoCuti->hak_cuti_tahunan;
+            $cutiTerpakai   = (int) $saldoCuti->cuti_terpakai;
+            $sisaCuti       = max(0, $hakCutiTahunan - $cutiTerpakai);
 
             $pinjamanAktif = PinjamanKaryawan::where('karyawan_id', $karyawan->id)
                 ->where('status', '!=', 'Lunas')
                 ->sum('sisa_pinjaman');
-            
+
             $sisaKasbon = max(0, $sisaKasbon - $pinjamanAktif);
         }
         // --- SELESAI HITUNG DATA DINAMIS ---
 
         switch ($roleId) {
-            case 1: 
+            case 1:
                 return Inertia::render('Dashboard/Admin');
-            
+
             case 2: // --- DASHBOARD DIREKTUR / EKSEKUTIF ---
                 $bulanIni = date('m');
                 $tahunIni = date('Y');
 
                 // A. Analitik Makro
                 $totalKaryawan = Karyawan::where('status_aktif', true)->count();
-                
+
                 $bebanGaji = Payroll::where('periode_bulan', $bulanIni)
                     ->where('periode_tahun', $tahunIni)
                     ->sum('total_gaji_bersih');
@@ -68,7 +91,7 @@ class DashboardController extends Controller
                 $pendingSpjDirektur = PengajuanSpj::with('karyawan')
                     ->where('status_approval', 'Menunggu Approval Direktur')
                     ->get();
-                
+
                 $pendingKasbonDirektur = PinjamanKaryawan::with('karyawan')
                     ->where('status', 'Menunggu Approval Direktur')
                     ->get();
@@ -76,24 +99,24 @@ class DashboardController extends Controller
                 return Inertia::render('Dashboard/Direktur', [
                     'statistik' => [
                         'totalKaryawan' => $totalKaryawan,
-                        'bebanGaji' => (double) $bebanGaji,
-                        'realisasiSpj' => (double) $realisasiSpj,
+                        'bebanGaji'     => (double) $bebanGaji,
+                        'realisasiSpj'  => (double) $realisasiSpj,
                     ],
-                    'pendingSpj' => $pendingSpjDirektur,
+                    'pendingSpj'    => $pendingSpjDirektur,
                     'pendingKasbon' => $pendingKasbonDirektur,
                 ]);
 
-            case 3: 
+            case 3:
                 return Inertia::render('Dashboard/HC');
-            
-            case 4: 
+
+            case 4:
                 return Inertia::render('Dashboard/Finance');
-            
+
             case 5: // Supervisor / Manager
                 $pendingCuti = [];
                 $pendingLembur = [];
                 $pendingSpj = [];
-                
+
                 // Variabel Absensi Pribadi & Pengumuman
                 $deptId = $karyawan ? $karyawan->departemen_id : null;
                 $pengumumanAktif = \App\Http\Controllers\PengumumanController::getPengumumanAktif($deptId);
@@ -124,7 +147,7 @@ class DashboardController extends Controller
                     $pendingCuti = PengajuanCuti::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingLembur = PengajuanLembur::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingSpj = PengajuanSpj::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
-                    
+
                     // --- 2. ABSENSI PRIBADI SPV ---
                     $absensiHariIni = Absensi::where('karyawan_id', $karyawan->id)
                         ->whereDate('tanggal', $waktuHariIni->toDateString())
@@ -137,10 +160,10 @@ class DashboardController extends Controller
                         ->get(['tanggal', 'status', 'waktu_masuk', 'waktu_keluar']);
 
                     $statistikBulanIni = [
-                        'hadir' => $absensiBulanIni->whereIn('status', ['Hadir', 'Dinas Luar'])->count(),
+                        'hadir'     => $absensiBulanIni->whereIn('status', ['Hadir', 'Dinas Luar'])->count(),
                         'terlambat' => $absensiBulanIni->where('status', 'Terlambat')->count(),
-                        'izin' => $absensiBulanIni->where('status', 'Izin')->count(),
-                        'alpha' => $absensiBulanIni->where('status', 'Alpha')->count(),
+                        'izin'      => $absensiBulanIni->where('status', 'Izin')->count(),
+                        'alpha'     => $absensiBulanIni->where('status', 'Alpha')->count(),
                     ];
 
                     $awal7Hari = $waktuHariIni->copy()->subDays(6);
@@ -151,47 +174,42 @@ class DashboardController extends Controller
                 }
 
                 return Inertia::render('Dashboard/Supervisor', [
-                    'pendingCuti' => $pendingCuti,
-                    'pendingLembur' => $pendingLembur,
-                    'pendingSpj' => $pendingSpj,
-                    'sisaCuti' => $sisaCuti,
-                    'sisaKasbon' => $sisaKasbon,
-                    // Kirim data absensi & pengumuman ke frontend Supervisor
-                    'pengumuman' => $pengumumanAktif,
-                    'absensiHariIni' => $absensiHariIni,
+                    'pendingCuti'       => $pendingCuti,
+                    'pendingLembur'     => $pendingLembur,
+                    'pendingSpj'        => $pendingSpj,
+                    'sisaCuti'          => $sisaCuti,
+                    'hakCutiTahunan'    => $hakCutiTahunan,
+                    'cutiTerpakai'      => $cutiTerpakai,
+                    'sisaKasbon'        => $sisaKasbon,
+                    'pengumuman'        => $pengumumanAktif,
+                    'absensiHariIni'    => $absensiHariIni,
                     'statistikBulanIni' => $statistikBulanIni,
-                    'absensiMingguIni' => $absensiMingguIni,
+                    'absensiMingguIni'  => $absensiMingguIni,
                 ]);
 
             case 6: // Karyawan
+            default:
                 $deptId = $karyawan ? $karyawan->departemen_id : null;
-
                 $pengumumanAktif = \App\Http\Controllers\PengumumanController::getPengumumanAktif($deptId);
 
                 $absensiHariIni = null;
                 $statistikBulanIni = [
-                    'hadir' => 0,
+                    'hadir'     => 0,
                     'terlambat' => 0,
-                    'izin' => 0,
-                    'alpha' => 0,
+                    'izin'      => 0,
+                    'alpha'     => 0,
                 ];
                 $absensiMingguIni = [];
 
                 if ($karyawan) {
                     $hariIni = Carbon::now('Asia/Jakarta')->startOfDay();
 
-                    // =====================================================
                     // ABSENSI HARI INI
-                    // =====================================================
-
                     $absensiHariIni = Absensi::where('karyawan_id', $karyawan->id)
                         ->whereDate('tanggal', $hariIni->toDateString())
                         ->first();
 
-                    // =====================================================
                     // ABSENSI BULAN INI
-                    // =====================================================
-
                     $awalBulan = $hariIni->copy()->startOfMonth();
                     $akhirBulan = $hariIni->copy()->endOfMonth();
 
@@ -207,33 +225,15 @@ class DashboardController extends Controller
                             'waktu_keluar'
                         ]);
 
-                    // =====================================================
                     // STATISTIK BULAN INI
-                    // =====================================================
-
                     $statistikBulanIni = [
-                        // Dinas Luar tetap dihitung sebagai hari hadir
-                        'hadir' => $absensiBulanIni
-                            ->whereIn('status', ['Hadir', 'Dinas Luar'])
-                            ->count(),
-
-                        'terlambat' => $absensiBulanIni
-                            ->where('status', 'Terlambat')
-                            ->count(),
-
-                        'izin' => $absensiBulanIni
-                            ->where('status', 'Izin')
-                            ->count(),
-
-                        'alpha' => $absensiBulanIni
-                            ->where('status', 'Alpha')
-                            ->count(),
+                        'hadir'     => $absensiBulanIni->whereIn('status', ['Hadir', 'Dinas Luar'])->count(),
+                        'terlambat' => $absensiBulanIni->where('status', 'Terlambat')->count(),
+                        'izin'      => $absensiBulanIni->where('status', 'Izin')->count(),
+                        'alpha'     => $absensiBulanIni->where('status', 'Alpha')->count(),
                     ];
 
-                    // =====================================================
                     // ABSENSI 7 HARI TERAKHIR
-                    // =====================================================
-
                     $awal7Hari = $hariIni->copy()->subDays(6);
 
                     $absensiMingguIni = Absensi::where('karyawan_id', $karyawan->id)
@@ -251,16 +251,15 @@ class DashboardController extends Controller
                 }
 
                 return Inertia::render('Dashboard/Karyawan', [
-                    'sisaCuti' => $sisaCuti,
-                    'sisaKasbon' => $sisaKasbon,
-                    'pengumuman' => $pengumumanAktif,
-                    'absensiHariIni' => $absensiHariIni,
+                    'sisaCuti'          => $sisaCuti,
+                    'hakCutiTahunan'    => $hakCutiTahunan,
+                    'cutiTerpakai'      => $cutiTerpakai,
+                    'sisaKasbon'        => $sisaKasbon,
+                    'pengumuman'        => $pengumumanAktif,
+                    'absensiHariIni'    => $absensiHariIni,
                     'statistikBulanIni' => $statistikBulanIni,
-                    'absensiMingguIni' => $absensiMingguIni,
+                    'absensiMingguIni'  => $absensiMingguIni,
                 ]);
-                
-            default:
-                return Inertia::render('Dashboard/Karyawan');
         }
     }
 }

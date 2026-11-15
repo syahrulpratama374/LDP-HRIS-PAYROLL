@@ -4,6 +4,7 @@ import { Head, useForm, usePage } from "@inertiajs/react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import InputLabel from "@/Components/InputLabel";
 import InputError from "@/Components/InputError";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function Index({ logbooks, shifts }) {
     const { flash } = usePage().props;
@@ -20,14 +21,14 @@ export default function Index({ logbooks, shifts }) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Shift Handover Logbook (Tim NOC)
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Logbook Shift" />
+
+            {/* HEADER BANNER */}
+            <BannerHeader
+                subtitle="LDP HRIS"
+                title="Shift Handover Logbook (Tim NOC)"
+            />
 
             <div className="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* KOLOM KIRI: FORM INPUT LOGBOOK */}

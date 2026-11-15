@@ -3,8 +3,13 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage, useForm } from "@inertiajs/react";
 import imageCompression from "browser-image-compression";
 
-export default function Index({ auth, pinjaman = [] }) {
-    const { flash, errors } = usePage().props;
+export default function Index({
+    auth,
+    pinjaman = [],
+    sisaLimitFinance = 0,
+    sisaLimitDivisi = 0,
+}) {
+    const { flash } = usePage().props;
     const [search, setSearch] = useState("");
     const [selectedPinjaman, setSelectedPinjaman] = useState(null);
     const [selectedCicilan, setSelectedCicilan] = useState(null);
@@ -49,7 +54,7 @@ export default function Index({ auth, pinjaman = [] }) {
     };
 
     const getStatusStyle = (status) => {
-        if (status === "Lunas" || status === "Disetujui")
+        if (status === "Lunas" || status === "Disetujui Atasan")
             return "border-green-200 bg-green-50 text-green-700";
         if (status === "Berjalan")
             return "border-blue-200 bg-blue-50 text-blue-700";
@@ -64,8 +69,13 @@ export default function Index({ auth, pinjaman = [] }) {
 
         return pinjaman.filter((p) => {
             const status = p.status?.toLowerCase() || "";
+            const jenis = p.jenis_kasbon?.toLowerCase() || "";
             const total = p.total_pinjaman?.toString() || "";
-            return status.includes(keyword) || total.includes(keyword);
+            return (
+                status.includes(keyword) ||
+                jenis.includes(keyword) ||
+                total.includes(keyword)
+            );
         });
     }, [search, pinjaman]);
 
@@ -82,76 +92,167 @@ export default function Index({ auth, pinjaman = [] }) {
                     </div>
                 </div>
 
-                <div className="mx-auto max-w-7xl px-4 py-5">
+                <div className="mx-auto max-w-7xl px-4 py-5 space-y-4">
                     {flash?.success && (
-                        <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-3 text-xs font-semibold text-green-700">
+                        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs font-semibold text-green-700">
                             ✓ {flash.success}
                         </div>
                     )}
 
+                    {/* RINGKASAN SISA LIMIT DINAMIS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                                    Sisa Limit Kasbon Finance
+                                </p>
+                                <p className="mt-1 text-xl font-extrabold text-[#2A164E]">
+                                    {formatRupiah(sisaLimitFinance)}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-gray-500">
+                                    Tenor fleksibel 1–12 bulan
+                                </p>
+                            </div>
+                            <span className="rounded-lg bg-[#431D6D]/10 px-3 py-1.5 text-xs font-bold text-[#431D6D]">
+                                Finance
+                            </span>
+                        </div>
+
+                        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                                    Sisa Limit Kasbon Divisi
+                                </p>
+                                <p className="mt-1 text-xl font-extrabold text-[#2A164E]">
+                                    {formatRupiah(sisaLimitDivisi)}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-gray-500">
+                                    Petty cash divisi (tenor 1 bulan)
+                                </p>
+                            </div>
+                            <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
+                                Divisi
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                        <div className="border-b p-4 flex justify-between items-center">
+                        <div className="border-b p-4 flex flex-wrap justify-between items-center gap-3">
                             <h2 className="font-bold text-[#2A164E]">
                                 Daftar Pengajuan Kasbon Anda
                             </h2>
-                            <Link
-                                href={route("pinjaman.create")}
-                                className="rounded-lg bg-[#2A164E] px-4 py-2 text-xs font-semibold text-white"
-                            >
-                                + Ajukan Pinjaman
-                            </Link>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Cari status / sumber..."
+                                    className="h-9 rounded-lg border border-gray-200 px-3 text-xs text-gray-700 outline-none focus:border-[#431D6D]"
+                                />
+                                <Link
+                                    href={route("pinjaman.create")}
+                                    className="rounded-lg bg-[#2A164E] px-4 py-2 text-xs font-semibold text-white hover:bg-[#431D6D] transition"
+                                >
+                                    + Ajukan Pinjaman
+                                </Link>
+                            </div>
                         </div>
 
-                        <table className="w-full text-xs text-left">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="p-3">Sumber & Tanggal</th>
-                                    <th className="p-3">Total Pinjaman</th>
-                                    <th className="p-3">Tenor</th>
-                                    <th className="p-3">Sisa Hutang</th>
-                                    <th className="p-3 text-center">Status</th>
-                                    <th className="p-3 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredPinjaman.map((p) => (
-                                    <tr
-                                        key={p.id}
-                                        className="border-b hover:bg-gray-50"
-                                    >
-                                        <td className="p-3 font-bold text-[#2A164E]">
-                                            Kas {p.jenis_kasbon || "Finance"}
-                                        </td>
-                                        <td className="p-3 font-bold text-gray-800">
-                                            {formatRupiah(p.total_pinjaman)}
-                                        </td>
-                                        <td className="p-3">
-                                            {p.tenor_bulan} Bulan
-                                        </td>
-                                        <td className="p-3 text-red-600 font-semibold">
-                                            {formatRupiah(p.sisa_pinjaman)}
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <span
-                                                className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${getStatusStyle(p.status)}`}
-                                            >
-                                                {p.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <button
-                                                onClick={() =>
-                                                    setSelectedPinjaman(p)
-                                                }
-                                                className="rounded-lg border bg-[#F3EDF8] px-3 py-1.5 text-xs font-semibold text-[#431D6D]"
-                                            >
-                                                Lihat Detail
-                                            </button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="p-3">
+                                            Sumber & Tanggal
+                                        </th>
+                                        <th className="p-3">Total Pinjaman</th>
+                                        <th className="p-3">Tenor</th>
+                                        <th className="p-3">Sisa Hutang</th>
+                                        <th className="p-3 text-center">
+                                            Status
+                                        </th>
+                                        <th className="p-3 text-center">
+                                            Aksi
+                                        </th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filteredPinjaman.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan="6"
+                                                className="p-6 text-center text-gray-400"
+                                            >
+                                                Belum ada data pengajuan kasbon.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredPinjaman.map((p) => (
+                                            <tr
+                                                key={p.id}
+                                                className="border-b hover:bg-gray-50"
+                                            >
+                                                <td className="p-3">
+                                                    <p className="font-bold text-[#2A164E]">
+                                                        Kas{" "}
+                                                        {p.jenis_kasbon ||
+                                                            "Finance"}
+                                                    </p>
+                                                    <p className="text-[11px] text-gray-400">
+                                                        {formatTanggalLengkap(
+                                                            p.created_at,
+                                                        )}
+                                                    </p>
+                                                </td>
+                                                <td className="p-3 font-bold text-gray-800">
+                                                    {formatRupiah(
+                                                        p.total_pinjaman,
+                                                    )}
+                                                </td>
+                                                <td className="p-3">
+                                                    {p.tenor_bulan} Bulan
+                                                </td>
+                                                <td className="p-3 font-semibold">
+                                                    {p.status === "Pending" ||
+                                                    p.status === "Ditolak" ? (
+                                                        <span className="text-gray-400">
+                                                            -
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-red-600">
+                                                            {formatRupiah(
+                                                                p.sisa_pinjaman,
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    <span
+                                                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${getStatusStyle(
+                                                            p.status,
+                                                        )}`}
+                                                    >
+                                                        {p.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    <button
+                                                        onClick={() =>
+                                                            setSelectedPinjaman(
+                                                                p,
+                                                            )
+                                                        }
+                                                        className="rounded-lg border bg-[#F3EDF8] px-3 py-1.5 text-xs font-semibold text-[#431D6D] hover:bg-[#e7dcf2]"
+                                                    >
+                                                        Lihat Detail
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
