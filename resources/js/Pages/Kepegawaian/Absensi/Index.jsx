@@ -43,7 +43,10 @@ export default function Index({
             );
         }
         if (activeTab === "belum_absen") {
-            return item.status_absensi === "Belum Absen";
+            return (
+                item.status_absensi === "Belum Absen" ||
+                item.status_absensi === "Alpha"
+            );
         }
         if (activeTab === "terlambat_lembur") {
             return (
@@ -116,10 +119,10 @@ export default function Index({
 
                         <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm">
                             <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">
-                                Belum Absen
+                                Belum Absen / Alpha
                             </p>
                             <h3 className="text-xl font-black text-rose-700 mt-1">
-                                {stats.belum_absen || 0}
+                                {(stats.belum_absen || 0) + (stats.alpha || 0)}
                             </h3>
                         </div>
                     </div>
@@ -236,7 +239,8 @@ export default function Index({
                                         : "text-slate-500 hover:text-slate-800"
                                 }`}
                             >
-                                Belum Absen ({stats.belum_absen || 0})
+                                Belum Absen / Alpha (
+                                {(stats.belum_absen || 0) + (stats.alpha || 0)})
                             </button>
 
                             <button
@@ -348,6 +352,12 @@ export default function Index({
                                                         "Belum Absen" && (
                                                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
                                                             ❌ Belum Absen
+                                                        </span>
+                                                    )}
+                                                    {item.status_absensi ===
+                                                        "Alpha" && (
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                                            ❌ Alpha
                                                         </span>
                                                     )}
                                                 </td>

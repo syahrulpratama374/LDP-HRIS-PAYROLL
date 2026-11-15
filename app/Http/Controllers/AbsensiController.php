@@ -99,6 +99,8 @@ class AbsensiController extends Controller
                         $menitTerlambat = (int) round((float) $matches[1]);
                         $catatan = str_replace($matches[0], "Terlambat {$menitTerlambat} menit", $catatan);
                     }
+                } elseif ($absensi->status === 'Alpha') {
+                    $statusAbsensi = 'Alpha';
                 } else {
                     $statusAbsensi = 'Tepat Waktu';
                 }
@@ -138,6 +140,7 @@ class AbsensiController extends Controller
             'dinas_luar' => $processed->where('status_absensi', 'Dinas Luar')->count(),
             'cuti_izin' => $processed->where('status_absensi', 'Cuti / Izin')->count(),
             'belum_absen' => $processed->where('status_absensi', 'Belum Absen')->count(),
+            'alpha' => $processed->where('status_absensi', 'Alpha')->count(),
             'total_lembur' => $processed->whereNotNull('info_lembur')->count(),
         ];
 
