@@ -4,6 +4,7 @@ namespace Tests\Feature\Keuangan;
 
 use Carbon\Carbon;
 use Database\Seeders\MasterTarifTerSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -195,5 +196,36 @@ class AbsensiSpjTest extends KeuanganTestCase
         $this->actingAs($admin)->post(route('admin.spj.update', $spj), ['status_approval' => 'Ditolak'])
             ->assertSessionHasErrors('error');
         $this->assertSame('Selesai', DB::table('pengajuan_spjs')->where('id', $spj)->value('status_approval'));
+    }
+
+    public function test_laporan_spj_hanya_oleh_pemilik_dan_saat_menunggu_pelaporan(): void
+    {
+        $this->beriMenu(6, 'spj.index');
+        [$pemilik, $kid] = $this->buatUser(6);
+        [$lain] = $this->buatUser(6);
+        $spj = $this->buatSpj($kid, 'Menunggu Pelaporan');
+        $kirim = fn ($user, $id) => $this->actingAs($user)->post(route('spj.laporan', $id), [
+            'laporan_hasil' => 'Instalasi selesai',
+            'file_bukti' => UploadedFile::fake()->create('nota.pdf', 100, 'application/pdf'),
+        ]);
+        $status = fn ($id) => DB::table('pengajuan_spjs')->where('id', $id)->value('status_approval');
+
+        // Karyawan lain tidak boleh melaporkan SPJ milik orang lain
+        $kirim($lain, $spj)->assertForbidden();
+        $this->assertSame('Menunggu Pelaporan', $status($spj));
+
+        // Pemilik berhasil -> Menunggu Validasi Finance, bukti tersimpan
+        $kirim($pemilik, $spj)->assertSessionHasNoErrors()->assertRedirect(route('spj.index'));
+        $this->assertSame('Menunggu Validasi Finance', $status($spj));
+        $path = DB::table('pengajuan_spjs')->where('id', $spj)->value('file_bukti_path');
+        Storage::disk('public')->assertExists($path);
+
+        // Tidak bisa melapor ulang / melapor pada status lain
+        foreach (['Menunggu Validasi Finance', 'Pending', 'Selesai', 'Ditolak'] as $st) {
+            DB::table('pengajuan_spjs')->where('id', $spj)->update(['status_approval' => $st, 'file_bukti_path' => 'lama.pdf']);
+            $kirim($pemilik, $spj)->assertSessionHasErrors('error');
+            $this->assertSame($st, $status($spj));
+            $this->assertSame('lama.pdf', DB::table('pengajuan_spjs')->where('id', $spj)->value('file_bukti_path'));
+        }
     }
 }

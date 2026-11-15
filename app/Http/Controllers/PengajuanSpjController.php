@@ -47,6 +47,18 @@ class PengajuanSpjController extends Controller
 
         $spj = PengajuanSpj::findOrFail($id);
 
+        // Hanya pemilik SPJ yang boleh melapor, dan hanya saat perjalanan sudah disetujui
+        // (Menunggu Pelaporan); laporan tidak bisa dikirim ulang setelah divalidasi/ditolak.
+        $karyawan = $request->user()->karyawan;
+        if (!$karyawan || $spj->karyawan_id !== $karyawan->id) {
+            abort(403, 'Anda tidak berhak melaporkan SPJ milik karyawan lain.');
+        }
+        if ($spj->status_approval !== 'Menunggu Pelaporan') {
+            return redirect()->back()->withErrors([
+                'error' => "Laporan hanya dapat diunggah untuk SPJ berstatus 'Menunggu Pelaporan' (status saat ini: {$spj->status_approval}).",
+            ]);
+        }
+
         $filePath = null;
         if ($request->hasFile('file_bukti')) {
             $filePath = $request->file('file_bukti')->store('spj_bukti', 'public');
