@@ -58,7 +58,10 @@ class MesinPayrollTest extends KeuanganTestCase
     {
         $ter = new Pph21TerCalculator();
         $this->assertSame('A', $ter->kategori(null, 'TK/1'));
-        $this->assertSame('B', $ter->kategori(null, 'K/0'));
+        $this->assertSame('A', $ter->kategori(null, 'K/0'));
+        $this->assertSame('B', $ter->kategori(null, 'TK/2'));
+        $this->assertSame('B', $ter->kategori(null, 'K/1'));
+        $this->assertSame('B', $ter->kategori(null, 'K/2'));
         $this->assertSame('C', $ter->kategori(null, 'K/3'));
         $this->assertSame('B', $ter->kategori('B', 'TK/0'));
     }

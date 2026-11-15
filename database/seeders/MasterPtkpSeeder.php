@@ -23,8 +23,8 @@ class MasterPtkpSeeder extends Seeder
             ['kode_ptkp' => 'TK/3', 'nominal_neto_tahunan' => 67500000, 'deskripsi' => 'Tidak Kawin, 3 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
         ];
 
-        // Kategori TER menurut PMK 168/2023
-        $kategori = ['TK/0' => 'A', 'TK/1' => 'A', 'TK/2' => 'B', 'TK/3' => 'B', 'K/0' => 'B', 'K/1' => 'B', 'K/2' => 'C', 'K/3' => 'C'];
+        // Kategori TER menurut PP 58/2023: A = TK/0, TK/1, K/0; B = TK/2, TK/3, K/1, K/2; C = K/3
+        $kategori = ['TK/0' => 'A', 'TK/1' => 'A', 'K/0' => 'A', 'TK/2' => 'B', 'TK/3' => 'B', 'K/1' => 'B', 'K/2' => 'B', 'K/3' => 'C'];
 
         foreach ($ptkps as $ptkp) {
             $ptkp['kategori_ter'] = $kategori[$ptkp['kode_ptkp']];

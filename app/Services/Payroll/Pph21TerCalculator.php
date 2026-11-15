@@ -13,11 +13,11 @@ class Pph21TerCalculator
     /** @var array<string, \Illuminate\Support\Collection>|null */
     private ?array $tabel = null;
 
-    // Pemetaan cadangan bila kolom kategori_ter belum terisi (PMK 168/2023)
+    // Pemetaan cadangan bila kolom kategori_ter belum terisi (PP 58/2023)
     private const KATEGORI_KODE = [
-        'TK/0' => 'A', 'TK/1' => 'A',
-        'TK/2' => 'B', 'TK/3' => 'B', 'K/0' => 'B', 'K/1' => 'B',
-        'K/2' => 'C', 'K/3' => 'C',
+        'TK/0' => 'A', 'TK/1' => 'A', 'K/0' => 'A',
+        'TK/2' => 'B', 'TK/3' => 'B', 'K/1' => 'B', 'K/2' => 'B',
+        'K/3' => 'C',
     ];
 
     // Lapisan tarif Pasal 17 UU PPh: [batas atas PKP, tarif]
