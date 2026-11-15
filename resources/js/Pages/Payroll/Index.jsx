@@ -95,6 +95,11 @@ export default function Index({ payrolls, filters }) {
                             {flash.success}
                         </div>
                     )}
+                    {flash?.warning && (
+                        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-md text-sm">
+                            <strong>Perlu diperiksa:</strong> {flash.warning}
+                        </div>
+                    )}
                     {(flash?.error || errors?.error) && (
                         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
                             {flash?.error || errors.error}

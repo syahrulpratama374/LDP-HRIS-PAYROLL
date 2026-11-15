@@ -141,6 +141,11 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::post('/payroll/finalize-massal', [PayrollController::class, 'finalizeAll'])->name('admin.payroll.finalizeAll');
         Route::post('/payroll/{id}/finalize', [PayrollController::class, 'finalize'])->name('admin.payroll.finalize');
 
+        // Penugasan komponen tetap per karyawan (harus di atas resource agar tidak bentrok dengan {komponen_gaji})
+        Route::get('/komponen-gaji/karyawan', [MasterKomponenPayrollController::class, 'karyawanIndex'])->name('admin.komponen.karyawan.index');
+        Route::post('/komponen-gaji/karyawan', [MasterKomponenPayrollController::class, 'karyawanStore'])->name('admin.komponen.karyawan.store');
+        Route::delete('/komponen-gaji/karyawan/{id}', [MasterKomponenPayrollController::class, 'karyawanDestroy'])->name('admin.komponen.karyawan.destroy');
+
         Route::resource('komponen-gaji', MasterKomponenPayrollController::class)
             ->names('admin.komponen')
             ->except(['create', 'show', 'edit']);

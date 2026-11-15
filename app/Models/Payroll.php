@@ -17,7 +17,17 @@ class Payroll extends Model
         'total_pemasukan', 
         'total_potongan', 
         'total_gaji_bersih', 
-        'status'
+        'status',
+        'bruto_pajak',
+        'iuran_pensiun',
+        'pph21',
+        'bpjs_perusahaan',
+        'peringatan',
+        'rincian_pajak',
+    ];
+
+    protected $casts = [
+        'rincian_pajak' => 'array',
     ];
 
     public function karyawan()

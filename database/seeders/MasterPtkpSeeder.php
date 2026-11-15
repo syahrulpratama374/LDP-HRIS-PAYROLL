@@ -19,8 +19,22 @@ class MasterPtkpSeeder extends Seeder
             ['kode_ptkp' => 'K/1',  'nominal_neto_tahunan' => 63000000, 'deskripsi' => 'Kawin, 1 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
             ['kode_ptkp' => 'K/2',  'nominal_neto_tahunan' => 67500000, 'deskripsi' => 'Kawin, 2 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
             ['kode_ptkp' => 'K/3',  'nominal_neto_tahunan' => 72000000, 'deskripsi' => 'Kawin, 3 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
+            ['kode_ptkp' => 'TK/2', 'nominal_neto_tahunan' => 63000000, 'deskripsi' => 'Tidak Kawin, 2 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
+            ['kode_ptkp' => 'TK/3', 'nominal_neto_tahunan' => 67500000, 'deskripsi' => 'Tidak Kawin, 3 Tanggungan', 'created_at' => $now, 'updated_at' => $now],
         ];
-        
-        DB::table('master_ptkps')->insert($ptkps);
+
+        // Kategori TER menurut PMK 168/2023
+        $kategori = ['TK/0' => 'A', 'TK/1' => 'A', 'TK/2' => 'B', 'TK/3' => 'B', 'K/0' => 'B', 'K/1' => 'B', 'K/2' => 'C', 'K/3' => 'C'];
+
+        foreach ($ptkps as $ptkp) {
+            $ptkp['kategori_ter'] = $kategori[$ptkp['kode_ptkp']];
+            $ada = DB::table('master_ptkps')->where('kode_ptkp', $ptkp['kode_ptkp'])->exists();
+            if ($ada) {
+                DB::table('master_ptkps')->where('kode_ptkp', $ptkp['kode_ptkp'])
+                    ->update(['kategori_ter' => $ptkp['kategori_ter']]);
+            } else {
+                DB::table('master_ptkps')->insert($ptkp);
+            }
+        }
     }
 }

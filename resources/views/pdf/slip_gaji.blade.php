@@ -23,7 +23,7 @@
 <body>
     <div class="header">
         <h1 class="title">PT LDP HRIS</h1>
-        <p class="subtitle">Slip Gaji Periode: {{ $payroll->periode_bulan }} {{ $payroll->periode_tahun }}</p>
+        <p class="subtitle">Slip Gaji Periode: {{ ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][$payroll->periode_bulan - 1] }} {{ $payroll->periode_tahun }}</p>
     </div>
 
     <table class="info-table">
@@ -31,15 +31,23 @@
             <td width="15%"><strong>Nama</strong></td>
             <td width="35%">: {{ $payroll->karyawan->nama_lengkap }}</td>
             <td width="15%"><strong>Jabatan</strong></td>
-            <td width="35%">: {{ $payroll->karyawan->jabatan->nama_jabatan }}</td>
+            <td width="35%">: {{ $payroll->karyawan->jabatan->nama_jabatan ?? '-' }}</td>
         </tr>
         <tr>
             <td><strong>NIK</strong></td>
             <td>: {{ $payroll->karyawan->nik_internal }}</td>
             <td><strong>Departemen</strong></td>
-            <td>: {{ $payroll->karyawan->departemen->nama_departemen }}</td>
+            <td>: {{ $payroll->karyawan->departemen->nama_departemen ?? '-' }}</td>
         </tr>
     </table>
+
+    @php
+        $namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        $pemasukan = $payroll->detailPayrolls->where('jenis', 'Pemasukan');
+        $potongan = $payroll->detailPayrolls->where('jenis', 'Potongan');
+        $rp = fn ($n) => number_format($n, 0, ',', '.');
+        $rincian = $payroll->rincian_pajak;
+    @endphp
 
     <table class="data-table">
         <thead>
@@ -49,23 +57,56 @@
             </tr>
         </thead>
         <tbody>
+            <tr><td colspan="2"><strong>PEMASUKAN</strong></td></tr>
+            @foreach($pemasukan as $detail)
             <tr>
-                <td><strong>Gaji Pokok</strong></td>
-                <td class="text-right">{{ number_format($payroll->gaji_pokok, 0, ',', '.') }}</td>
-            </tr>
-            <!-- Looping Detail Tunjangan/Potongan -->
-            @foreach($payroll->detailPayrolls as $detail)
-            <tr>
-                <td>{{ $detail->nama_komponen }} ({{ $detail->jenis_komponen }})</td>
-                <td class="text-right">{{ number_format($detail->nominal, 0, ',', '.') }}</td>
+                <td>{{ $detail->nama_komponen_snapshot }}</td>
+                <td class="text-right">{{ $rp($detail->nominal) }}</td>
             </tr>
             @endforeach
             <tr class="total-row">
+                <td>Total Pemasukan</td>
+                <td class="text-right">{{ $rp($payroll->total_pemasukan) }}</td>
+            </tr>
+            <tr><td colspan="2"><strong>POTONGAN</strong></td></tr>
+            @forelse($potongan as $detail)
+            <tr>
+                <td>{{ $detail->nama_komponen_snapshot }}</td>
+                <td class="text-right">{{ $rp($detail->nominal) }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="2">- Tidak ada potongan -</td></tr>
+            @endforelse
+            <tr class="total-row">
+                <td>Total Potongan</td>
+                <td class="text-right">{{ $rp($payroll->total_potongan) }}</td>
+            </tr>
+            <tr class="total-row">
                 <td><strong>TOTAL GAJI BERSIH (TAKE HOME PAY)</strong></td>
-                <td class="text-right"><strong>{{ number_format($payroll->total_thp, 0, ',', '.') }}</strong></td>
+                <td class="text-right"><strong>{{ $rp($payroll->total_gaji_bersih) }}</strong></td>
             </tr>
         </tbody>
     </table>
+
+    @if($rincian)
+    <p><strong>Rincian PPh 21 — {{ $rincian['metode'] }} (Kategori {{ $rincian['kategori'] ?? '-' }})</strong></p>
+    <table class="data-table">
+        @if(isset($rincian['bruto_bulanan']))
+        <tr><td width="70%">Penghasilan bruto bulan ini</td><td class="text-right">{{ $rp($rincian['bruto_bulanan']) }}</td></tr>
+        <tr><td>Tarif efektif (TER)</td><td class="text-right">{{ $rincian['tarif'] }}%</td></tr>
+        @else
+        <tr><td width="70%">Bruto setahun</td><td class="text-right">{{ $rp($rincian['bruto_setahun']) }}</td></tr>
+        <tr><td>Biaya jabatan</td><td class="text-right">{{ $rp($rincian['biaya_jabatan']) }}</td></tr>
+        <tr><td>Iuran JHT + JP setahun</td><td class="text-right">{{ $rp($rincian['iuran_pensiun']) }}</td></tr>
+        <tr><td>PTKP</td><td class="text-right">{{ $rp($rincian['ptkp']) }}</td></tr>
+        <tr><td>PKP</td><td class="text-right">{{ $rp($rincian['pkp']) }}</td></tr>
+        <tr><td>PPh 21 setahun (Pasal 17)</td><td class="text-right">{{ $rp($rincian['pph_setahun']) }}</td></tr>
+        <tr><td>Dikurangi PPh Januari–November</td><td class="text-right">{{ $rp($rincian['pph_jan_nov']) }}</td></tr>
+        @endif
+        <tr class="total-row"><td>PPh 21 dipotong</td><td class="text-right">{{ $rp($payroll->pph21) }}</td></tr>
+        <tr><td>Iuran BPJS porsi perusahaan (informasi)</td><td class="text-right">{{ $rp($payroll->bpjs_perusahaan) }}</td></tr>
+    </table>
+    @endif
 
     <div class="footer">
         <div class="signature-box">

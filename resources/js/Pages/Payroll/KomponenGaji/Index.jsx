@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, useForm, usePage } from "@inertiajs/react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import DangerButton from "@/Components/DangerButton";
 import SecondaryButton from "@/Components/SecondaryButton";
@@ -49,7 +49,7 @@ export default function Index({ komponens }) {
             kode_komponen: komp.kode_komponen,
             nama_komponen: komp.nama_komponen,
             jenis: komp.jenis,
-            is_taxable: komp.is_taxable === 1,
+            is_taxable: !!komp.is_taxable,
         });
     };
 
@@ -85,6 +85,12 @@ export default function Index({ komponens }) {
                                 ? "✏️ Edit Komponen"
                                 : "➕ Tambah Komponen Baru"}
                         </h3>
+                        <Link
+                            href={route("admin.komponen.karyawan.index")}
+                            className="block mb-4 text-sm text-indigo-600 hover:underline"
+                        >
+                            Atur komponen tetap per karyawan →
+                        </Link>
                         {flash?.success && (
                             <div className="mb-4 text-green-600 font-bold text-sm bg-green-50 p-2 rounded">
                                 {flash.success}
@@ -133,8 +139,8 @@ export default function Index({ komponens }) {
                                     }
                                 >
                                     <option value="">-- Pilih Jenis --</option>
-                                    <option value="Tunjangan">
-                                        Tunjangan (Menambah Gaji)
+                                    <option value="Pemasukan">
+                                        Pemasukan (Menambah Gaji)
                                     </option>
                                     <option value="Potongan">
                                         Potongan (Mengurangi Gaji)
@@ -240,7 +246,7 @@ export default function Index({ komponens }) {
                                             </td>
                                             <td className="px-4 py-3 border-r text-center">
                                                 <span
-                                                    className={`px-2 py-1 text-xs font-bold rounded ${komp.jenis === "Tunjangan" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                                                    className={`px-2 py-1 text-xs font-bold rounded ${komp.jenis === "Pemasukan" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                                                 >
                                                     {komp.jenis}
                                                 </span>

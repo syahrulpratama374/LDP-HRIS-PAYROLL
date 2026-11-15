@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             // 2. Eksekusi SEMUA Master Data Terlebih Dahulu
             MasterDataSeeder::class,
             MasterPtkpSeeder::class,
+            MasterTarifTerSeeder::class,
             MasterKomponenPayrollSeeder::class,
             MasterTemplateSuratSeeder::class,
             PengaturanSeeder::class,

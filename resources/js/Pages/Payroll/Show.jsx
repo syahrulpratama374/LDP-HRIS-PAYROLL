@@ -1,6 +1,7 @@
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head } from "@inertiajs/react";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Show({ payroll }) {
     const getNamaBulan = (angka) => {
@@ -197,6 +198,55 @@ export default function Show({ payroll }) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* RINCIAN PPh 21 & BPJS PERUSAHAAN */}
+                        {payroll.rincian_pajak && (
+                            <div className="mb-6 border border-gray-200 rounded p-4 text-xs text-gray-600">
+                                <h3 className="font-bold text-gray-800 uppercase tracking-wider mb-2">
+                                    Rincian PPh 21 — {payroll.rincian_pajak.metode}
+                                    {payroll.rincian_pajak.kategori &&
+                                        ` (Kategori ${payroll.rincian_pajak.kategori})`}
+                                </h3>
+                                <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
+                                    {payroll.rincian_pajak.bruto_bulanan !==
+                                        undefined && (
+                                        <>
+                                            <dt>Penghasilan bruto bulan ini</dt>
+                                            <dd className="text-right">
+                                                {formatRupiah(payroll.rincian_pajak.bruto_bulanan)}
+                                            </dd>
+                                            <dt>Tarif efektif (TER)</dt>
+                                            <dd className="text-right">
+                                                {payroll.rincian_pajak.tarif}%
+                                            </dd>
+                                        </>
+                                    )}
+                                    {payroll.rincian_pajak.bruto_setahun !==
+                                        undefined && (
+                                        <>
+                                            <dt>Bruto setahun</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.bruto_setahun)}</dd>
+                                            <dt>Biaya jabatan</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.biaya_jabatan)}</dd>
+                                            <dt>Iuran JHT + JP setahun</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.iuran_pensiun)}</dd>
+                                            <dt>PTKP</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.ptkp)}</dd>
+                                            <dt>PKP</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.pkp)}</dd>
+                                            <dt>PPh 21 setahun (Pasal 17)</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.pph_setahun)}</dd>
+                                            <dt>Dikurangi PPh Jan–Nov</dt>
+                                            <dd className="text-right">{formatRupiah(payroll.rincian_pajak.pph_jan_nov)}</dd>
+                                        </>
+                                    )}
+                                    <dt className="font-bold">PPh 21 dipotong</dt>
+                                    <dd className="text-right font-bold">{formatRupiah(payroll.pph21)}</dd>
+                                    <dt>Iuran BPJS porsi perusahaan (info)</dt>
+                                    <dd className="text-right">{formatRupiah(payroll.bpjs_perusahaan)}</dd>
+                                </dl>
+                            </div>
+                        )}
 
                         {/* TOTAL TAKE HOME PAY */}
                         <div className="bg-gray-800 text-white rounded p-6 flex justify-between items-center print:border print:border-gray-800 print:bg-white print:text-black">

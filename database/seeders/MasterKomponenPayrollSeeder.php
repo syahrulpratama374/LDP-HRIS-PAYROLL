@@ -46,6 +46,36 @@ class MasterKomponenPayrollSeeder extends Seeder
                 'jenis' => 'Potongan',
                 'is_taxable' => false
             ],
+            [
+                'kode_komponen' => 'BONUS-KPI',
+                'nama_komponen' => 'Bonus Kinerja',
+                'jenis' => 'Pemasukan',
+                'is_taxable' => true,
+            ],
+            [
+                'kode_komponen' => 'POT-ABSEN',
+                'nama_komponen' => 'Potongan Absensi',
+                'jenis' => 'Potongan',
+                'is_taxable' => false,
+            ],
+            [
+                'kode_komponen' => 'BPJS-JHT',
+                'nama_komponen' => 'Iuran BPJS JHT',
+                'jenis' => 'Potongan',
+                'is_taxable' => false,
+            ],
+            [
+                'kode_komponen' => 'BPJS-JP',
+                'nama_komponen' => 'Iuran BPJS JP',
+                'jenis' => 'Potongan',
+                'is_taxable' => false,
+            ],
+            [
+                'kode_komponen' => 'PPH21',
+                'nama_komponen' => 'Pajak PPh 21',
+                'jenis' => 'Potongan',
+                'is_taxable' => false,
+            ],
         ];
 
         foreach ($komponen as $item) {

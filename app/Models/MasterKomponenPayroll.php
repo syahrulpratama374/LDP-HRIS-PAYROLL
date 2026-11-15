@@ -11,4 +11,6 @@ class MasterKomponenPayroll extends Model
 
     protected $table = 'master_komponen_payrolls';
     protected $fillable = ['kode_komponen', 'nama_komponen', 'jenis', 'is_taxable'];
+
+    protected $casts = ['is_taxable' => 'boolean'];
 }
