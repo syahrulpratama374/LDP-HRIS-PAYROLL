@@ -31,21 +31,30 @@ class DynamicRolePermission
             return $next($request);
         }
 
+        // Halaman universal untuk semua user login (tidak perlu menu)
+        if ($currentRoute === 'dashboard' || str_starts_with($currentRoute, 'profile.')) {
+            return $next($request);
+        }
+
         // 4. Cek apakah route ini terdaftar di tabel menus dan diizinkan untuk role user saat ini
-        $hasAccess = Menu::where('route_name', $currentRoute)
+        $menuRoutes = Menu::whereNotNull('route_name')
             ->whereHas('roles', function ($query) use ($user) {
                 $query->where('roles.id', $user->role_id);
             })
-            ->exists();
+            ->pluck('route_name');
 
-        // Cek jika route merupakan bagian dari aksi grup/resource (misal: 'karyawan.index' -> 'karyawan.*')
+        $hasAccess = $menuRoutes->contains($currentRoute);
+
+        // Fallback: prefix resource penuh = nama route menu tanpa segmen aksi terakhir
+        // (mis. menu 'admin.payroll.index' -> 'admin.payroll.' mencakup admin.payroll.generate,
+        // tetapi TIDAK mencakup admin.komponen.* atau admin.pinjaman.*).
         if (!$hasAccess) {
-            $baseRoute = explode('.', $currentRoute)[0] . '.*';
-            $hasAccess = Menu::where('route_name', 'LIKE', explode('.', $currentRoute)[0] . '%')
-                ->whereHas('roles', function ($query) use ($user) {
-                    $query->where('roles.id', $user->role_id);
-                })
-                ->exists();
+            $hasAccess = $menuRoutes->contains(function ($menuRoute) use ($currentRoute) {
+                $pos = strrpos($menuRoute, '.');
+                $prefix = $pos === false ? $menuRoute . '.' : substr($menuRoute, 0, $pos + 1);
+
+                return str_starts_with($currentRoute, $prefix);
+            });
         }
 
         // 5. Jika tidak punya akses, kembalikan response 403 Forbidden
