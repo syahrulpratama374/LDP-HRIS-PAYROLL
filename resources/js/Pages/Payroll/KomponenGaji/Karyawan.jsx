@@ -89,6 +89,11 @@ export default function Karyawan({ penugasans, karyawans, komponens }) {
                                         </option>
                                     ))}
                                 </select>
+                                {komponens.length === 0 && (
+                                    <p className="mt-1 text-xs text-amber-600">
+                                        Belum ada komponen manual. Tunjangan Jabatan, Bonus Kinerja, lembur, SPJ, kasbon, BPJS dan PPh 21 dihitung otomatis saat generate payroll. Tambahkan komponen baru (mis. Tunjangan Makan) di menu Komponen Gaji.
+                                    </p>
+                                )}
                                 <InputError message={errors.komponen_id} className="mt-1" />
                             </div>
                             <div>

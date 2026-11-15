@@ -76,6 +76,25 @@ class MasterKomponenPayrollSeeder extends Seeder
                 'jenis' => 'Potongan',
                 'is_taxable' => false,
             ],
+            // Komponen manual: ditugaskan per karyawan lewat /admin/komponen-gaji/karyawan
+            [
+                'kode_komponen' => 'TJ-MAKAN',
+                'nama_komponen' => 'Tunjangan Makan',
+                'jenis' => 'Pemasukan',
+                'is_taxable' => true,
+            ],
+            [
+                'kode_komponen' => 'TJ-TRANSPORT',
+                'nama_komponen' => 'Tunjangan Transport',
+                'jenis' => 'Pemasukan',
+                'is_taxable' => true,
+            ],
+            [
+                'kode_komponen' => 'POT-KOPERASI',
+                'nama_komponen' => 'Potongan Koperasi',
+                'jenis' => 'Potongan',
+                'is_taxable' => false,
+            ],
         ];
 
         foreach ($komponen as $item) {
