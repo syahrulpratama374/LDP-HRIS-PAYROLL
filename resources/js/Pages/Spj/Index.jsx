@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function Index({ auth, spj = [], adaUtangLaporan }) {
     const { flash } = usePage().props || {};
@@ -119,25 +120,15 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
         <AuthenticatedLayout user={auth?.user}>
             <Head title="SPJ Karyawan" />
 
-            <div className="min-h-screen bg-[#F7F7FA]">
-                {/* =====================================================
-                    HEADER BANNER
-                ====================================================== */}
-                <div className="bg-gradient-to-r from-[#2A164E] to-[#431D6D]">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="relative flex min-h-[76px] items-center justify-center py-4">
-                            <div className="text-center">
-                                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3B817] sm:block">
-                                    LDP HRIS
-                                </p>
-                                <h1 className="text-base font-bold leading-tight text-white sm:text-xl">
-                                    Riwayat Perjalanan Dinas (SPJ)
-                                </h1>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* =====================================================
+                HEADER BANNER (MENGGUNAKAN KOMPONEN BANNERHEADER)
+            ====================================================== */}
+            <BannerHeader
+                subtitle="LDP HRIS"
+                title="Riwayat Perjalanan Dinas (SPJ)"
+            />
 
+            <div className="min-h-screen bg-[#F7F7FA]">
                 {/* =====================================================
                     CONTENT
                 ====================================================== */}
@@ -186,7 +177,7 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
                             </div>
                         </div>
                     )}
-
+                    
                     {/* =================================================
                         MAIN CARD
                     ================================================== */}

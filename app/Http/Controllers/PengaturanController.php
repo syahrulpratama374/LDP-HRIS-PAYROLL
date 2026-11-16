@@ -10,7 +10,6 @@ class PengaturanController extends Controller
 {
     public function index()
     {
-        // Ubah format data menjadi key-value (kunci => nilai) agar mudah dibaca di React
         $pengaturan = Pengaturan::all()->keyBy('kunci')->map(function ($item) {
             return $item->nilai;
         });
@@ -24,9 +23,11 @@ class PengaturanController extends Controller
     {
         $data = $request->except(['_token']);
 
-        // Looping dan update setiap kunci yang dikirim dari frontend
         foreach ($data as $kunci => $nilai) {
-            Pengaturan::where('kunci', $kunci)->update(['nilai' => $nilai]);
+            Pengaturan::updateOrCreate(
+                ['kunci' => $kunci],
+                ['nilai' => $nilai ?? '']
+            );
         }
 
         return redirect()->back()->with('success', 'Parameter sistem berhasil diperbarui.');

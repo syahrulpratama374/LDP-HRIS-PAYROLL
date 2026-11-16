@@ -10,6 +10,7 @@ use App\Models\RiwayatGaji;
  * Aturan limit kasbon:
  *  1. Maksimal 1 kasbon aktif/pending per karyawan (Pending, Disetujui Atasan, Berjalan).
  *  2. Total cicilan per bulan (aktif + pengajuan baru) <= rasio × gaji pokok berlaku.
+ *  3. Nominal tidak melebihi sisa plafon per jenis kasbon (Pengaturan maksimal_kasbon_finance / maksimal_kasbon_divisi).
  */
 class KasbonLimitService
 {
@@ -54,6 +55,27 @@ class KasbonLimitService
             ->sum(fn ($p) => $this->cicilanPerBulan((float) $p->total_pinjaman, (int) $p->tenor_bulan));
     }
 
+    /** Plafon nominal per jenis kasbon dari Pengaturan (default Finance 5 jt, Divisi 1 jt). */
+    public function plafonJenis(string $jenis): float
+    {
+        $kunci = $jenis === 'Divisi' ? 'maksimal_kasbon_divisi' : 'maksimal_kasbon_finance';
+        $nilai = Pengaturan::where('kunci', $kunci)->value('nilai');
+
+        return is_numeric($nilai) ? (float) $nilai : ($jenis === 'Divisi' ? 1000000 : 5000000);
+    }
+
+    /** Sisa plafon nominal per jenis: plafon - sisa_pinjaman kasbon aktif/pending jenis tsb (tidak termasuk $kecualiId). */
+    public function sisaLimitJenis(int $karyawanId, string $jenis, ?int $kecualiId = null): float
+    {
+        $terpakai = (float) PinjamanKaryawan::where('karyawan_id', $karyawanId)
+            ->where('jenis_kasbon', $jenis)
+            ->whereIn('status', self::STATUS_AKTIF)
+            ->when($kecualiId, fn ($q) => $q->where('id', '!=', $kecualiId))
+            ->sum('sisa_pinjaman');
+
+        return max(0, $this->plafonJenis($jenis) - $terpakai);
+    }
+
     public function cicilanPerBulan(float $total, int $tenor): float
     {
         return $tenor > 0 ? round($total / $tenor, 0) : $total;
@@ -74,6 +96,8 @@ class KasbonLimitService
             'batas_cicilan' => $batas,
             'cicilan_aktif' => $aktif,
             'sisa_plafon_cicilan' => max(0, $batas - $aktif),
+            'sisa_limit_finance' => $this->sisaLimitJenis($karyawanId, 'Finance', $kecualiId),
+            'sisa_limit_divisi' => $this->sisaLimitJenis($karyawanId, 'Divisi', $kecualiId),
             'kasbon_aktif' => $kasbon ? [
                 'id' => $kasbon->id,
                 'status' => $kasbon->status,
@@ -83,7 +107,7 @@ class KasbonLimitService
     }
 
     /** Evaluasi kelayakan satu pengajuan. $kecualiId = kasbon yang sedang dievaluasi ulang (saat approve). */
-    public function evaluasi(int $karyawanId, float $total, int $tenor, ?int $kecualiId = null): array
+    public function evaluasi(int $karyawanId, float $total, int $tenor, ?int $kecualiId = null, ?string $jenis = null): array
     {
         $plafon = $this->plafon($karyawanId, $kecualiId);
         $cicilanBaru = $this->cicilanPerBulan($total, $tenor);
@@ -98,6 +122,13 @@ class KasbonLimitService
         } elseif ($plafon['cicilan_aktif'] + $cicilanBaru > $plafon['batas_cicilan']) {
             $alasan[] = 'Total cicilan per bulan (Rp ' . number_format($plafon['cicilan_aktif'] + $cicilanBaru, 0, ',', '.')
                 . ") melebihi batas {$plafon['rasio_maks']}% gaji pokok (Rp " . number_format($plafon['batas_cicilan'], 0, ',', '.') . ').';
+        }
+
+        if ($jenis) {
+            $sisaJenis = $jenis === 'Divisi' ? $plafon['sisa_limit_divisi'] : $plafon['sisa_limit_finance'];
+            if ($total > $sisaJenis) {
+                $alasan[] = "Nominal melebihi sisa limit Kasbon {$jenis} Anda (Rp " . number_format($sisaJenis, 0, ',', '.') . ').';
+            }
         }
 
         return $plafon + [

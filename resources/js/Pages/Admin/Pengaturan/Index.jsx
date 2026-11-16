@@ -14,6 +14,9 @@ export default function Index({ auth, pengaturan }) {
         jam_masuk_operasional: pengaturan.jam_masuk_operasional || "",
         toleransi_keterlambatan: pengaturan.toleransi_keterlambatan || "",
         batas_approval_finance: pengaturan.batas_approval_finance || "",
+        maksimal_kasbon_finance:
+            pengaturan.maksimal_kasbon_finance || "5000000",
+        maksimal_kasbon_divisi: pengaturan.maksimal_kasbon_divisi || "1000000",
         default_cuti_tahunan: pengaturan.default_cuti_tahunan || "",
     });
 
@@ -35,7 +38,7 @@ export default function Index({ auth, pengaturan }) {
 
             <div className="py-8">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                    {flash.success && (
+                    {flash?.success && (
                         <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
                             {flash.success}
                         </div>
@@ -118,7 +121,35 @@ export default function Index({ auth, pengaturan }) {
                                     Konfigurasi Finance & HR
                                 </h3>
                                 <div>
-                                    <InputLabel value="Batas Maksimal Kasbon / SPJ (Rp)" />
+                                    <InputLabel value="Limit Maksimal Kasbon Finance (Rp)" />
+                                    <TextInput
+                                        type="number"
+                                        className="mt-1 block w-full text-sm"
+                                        value={data.maksimal_kasbon_finance}
+                                        onChange={(e) =>
+                                            setData(
+                                                "maksimal_kasbon_finance",
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Limit Maksimal Kasbon Divisi (Rp)" />
+                                    <TextInput
+                                        type="number"
+                                        className="mt-1 block w-full text-sm"
+                                        value={data.maksimal_kasbon_divisi}
+                                        onChange={(e) =>
+                                            setData(
+                                                "maksimal_kasbon_divisi",
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Batas Approval Direktur SPJ / Finance (Rp)" />
                                     <TextInput
                                         type="number"
                                         className="mt-1 block w-full text-sm"

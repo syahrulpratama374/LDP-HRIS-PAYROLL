@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage } from "@inertiajs/react";
+import BannerHeader from "@/Components/BannerHeader";
 
 export default function Index({ auth, riwayatLembur = [] }) {
     const { flash } = usePage().props || {};
@@ -111,18 +112,12 @@ export default function Index({ auth, riwayatLembur = [] }) {
             <Head title="Riwayat Pengajuan Lembur" />
 
             {/* =====================================================
-                BANNER HEADER (Tinggi persis 64px / h-16)
+                HEADER BANNER (MENGGUNAKAN KOMPONEN BANNERHEADER)
             ====================================================== */}
-            <section className="bg-gradient-to-r from-[#2A164E] to-[#431D6D] -mt-6 -mx-6 mb-6 flex h-16 flex-col justify-center md:-mt-8 md:-mx-8 md:mb-8">
-                <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-4 text-center">
-                    <p className="mb-1 hidden text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-[#F3B817] sm:block">
-                        LDP HRIS
-                    </p>
-                    <h1 className="text-lg font-bold leading-none text-white sm:text-xl">
-                        Riwayat Pengajuan Lembur
-                    </h1>
-                </div>
-            </section>
+            <BannerHeader
+                subtitle="LDP HRIS"
+                title="Riwayat Pengajuan Lembur"
+            />
 
             {/* =====================================================
                 CONTENT WRAPPER

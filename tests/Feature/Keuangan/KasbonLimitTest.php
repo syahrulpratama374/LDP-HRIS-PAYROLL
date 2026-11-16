@@ -57,6 +57,19 @@ class KasbonLimitTest extends KeuanganTestCase
         $this->ajukan($user, ['total_pinjaman' => 4500000])->assertSessionHasNoErrors();
     }
 
+    public function test_nominal_melebihi_plafon_per_jenis_ditolak(): void
+    {
+        // Plafon nominal per jenis dari Pengaturan (fitur origin/master), dicek bersama rasio gaji
+        DB::table('pengaturans')->insert(['kunci' => 'maksimal_kasbon_divisi', 'nilai' => '500000', 'created_at' => now(), 'updated_at' => now()]);
+        [$user, $kid] = $this->karyawanDenganGaji(10000000);
+
+        $this->ajukan($user, ['jenis_kasbon' => 'Divisi', 'total_pinjaman' => 600000])->assertSessionHasErrors('total_pinjaman');
+        $this->assertSame(0, PinjamanKaryawan::where('karyawan_id', $kid)->count());
+
+        $this->ajukan($user, ['jenis_kasbon' => 'Divisi', 'total_pinjaman' => 500000])->assertSessionHasNoErrors();
+        $this->assertSame(0.0, app(KasbonLimitService::class)->sisaLimitJenis($kid, 'Divisi'));
+    }
+
     public function test_rasio_mengikuti_pengaturan(): void
     {
         DB::table('pengaturans')->insert(['kunci' => 'rasio_maks_cicilan_kasbon', 'nilai' => '10', 'created_at' => now(), 'updated_at' => now()]);

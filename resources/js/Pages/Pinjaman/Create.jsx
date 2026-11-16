@@ -2,17 +2,41 @@ import React, { useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 
-export default function Create({ auth, karyawan, departemen, plafon }) {
+export default function Create({
+    auth,
+    karyawan,
+    departemen,
+    plafon,
+    sisaLimitFinance = 0,
+    sisaLimitDivisi = 0,
+}) {
     const { data, setData, post, processing, errors } = useForm({
-        jenis_kasbon: "Finance", // Default ke Finance
+        jenis_kasbon: "Finance",
         total_pinjaman: "",
         tenor_bulan: "1",
         alasan_pinjaman: "",
     });
 
-    // =========================================================
-    // ESTIMASI CICILAN
-    // =========================================================
+    const formatRupiah = (angka) =>
+        new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(angka || 0);
+
+    // Sisa limit aktif sesuai pilihan sumber dana
+    const limitAktif = useMemo(() => {
+        return data.jenis_kasbon === "Divisi"
+            ? Number(sisaLimitDivisi)
+            : Number(sisaLimitFinance);
+    }, [data.jenis_kasbon, sisaLimitFinance, sisaLimitDivisi]);
+
+    const melebihiLimit = useMemo(() => {
+        const nominal = parseFloat(data.total_pinjaman) || 0;
+        return nominal > limitAktif;
+    }, [data.total_pinjaman, limitAktif]);
+
+    // Estimasi cicilan per bulan
     const estimasiCicilan = useMemo(() => {
         const total = parseFloat(data.total_pinjaman) || 0;
         const tenor = parseInt(data.tenor_bulan, 10) || 1;
@@ -54,13 +78,13 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
         setData((prev) => ({
             ...prev,
             jenis_kasbon: jenis,
-            // Jika memilih Kasbon Divisi, tenor otomatis dikunci 1 bulan
             tenor_bulan: jenis === "Divisi" ? "1" : prev.tenor_bulan,
         }));
     };
 
     const submit = (e) => {
         e.preventDefault();
+        if (melebihiLimit || limitAktif <= 0) return;
         post(route("pinjaman.store"));
     };
 
@@ -88,10 +112,14 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                 {/* CONTENT */}
                 <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6 lg:px-8">
                     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-                        <div className="border-b border-gray-100 px-5 py-3.5">
+                        <div className="border-b border-gray-100 px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
                             <h2 className="text-base font-bold text-[#2A164E]">
                                 Lengkapi Data Kasbon
                             </h2>
+                            <span className="rounded-full bg-[#431D6D]/10 px-3 py-1 text-xs font-bold text-[#431D6D]">
+                                Sisa Limit {data.jenis_kasbon}:{" "}
+                                {formatRupiah(limitAktif)}
+                            </span>
                         </div>
 
                         <form onSubmit={submit}>
@@ -163,6 +191,16 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                                 sedang/besar. Pilihan tenor 1–12
                                                 bulan.
                                             </p>
+                                            <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between">
+                                                <span className="text-[10px] font-semibold uppercase text-gray-400">
+                                                    Sisa Limit
+                                                </span>
+                                                <span className="text-xs font-bold text-emerald-700">
+                                                    {formatRupiah(
+                                                        sisaLimitFinance,
+                                                    )}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         {/* KASBON DIVISI */}
@@ -203,6 +241,16 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                                     "Divisi Anda"}
                                                 ). Pelunasan singkat (1 bulan).
                                             </p>
+                                            <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between">
+                                                <span className="text-[10px] font-semibold uppercase text-gray-400">
+                                                    Sisa Limit
+                                                </span>
+                                                <span className="text-xs font-bold text-emerald-700">
+                                                    {formatRupiah(
+                                                        sisaLimitDivisi,
+                                                    )}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -216,15 +264,25 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                     <div className="space-y-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
                                         {/* NOMINAL */}
                                         <div>
-                                            <label
-                                                htmlFor="total_pinjaman"
-                                                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500"
-                                            >
-                                                Nominal Pinjaman{" "}
-                                                <span className="text-red-500">
-                                                    *
+                                            <div className="mb-1.5 flex items-center justify-between">
+                                                <label
+                                                    htmlFor="total_pinjaman"
+                                                    className="block text-[11px] font-bold uppercase tracking-wide text-gray-500"
+                                                >
+                                                    Nominal Pinjaman{" "}
+                                                    <span className="text-red-500">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <span className="text-[11px] text-gray-500">
+                                                    Maksimal:{" "}
+                                                    <strong className="text-[#2A164E]">
+                                                        {formatRupiah(
+                                                            limitAktif,
+                                                        )}
+                                                    </strong>
                                                 </span>
-                                            </label>
+                                            </div>
 
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
@@ -243,10 +301,34 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                                     }
                                                     placeholder="Contoh: 1000000"
                                                     min="50000"
-                                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#431D6D] focus:ring-1 focus:ring-[#431D6D]/20"
+                                                    max={limitAktif}
+                                                    disabled={limitAktif <= 0}
+                                                    className={`h-10 w-full rounded-lg border bg-white pl-10 pr-3 text-sm text-gray-700 outline-none transition placeholder:text-gray-400 focus:ring-1 disabled:bg-gray-100 ${
+                                                        melebihiLimit
+                                                            ? "border-red-400 focus:border-red-500 focus:ring-red-200"
+                                                            : "border-gray-200 focus:border-[#431D6D] focus:ring-[#431D6D]/20"
+                                                    }`}
                                                     required
                                                 />
                                             </div>
+
+                                            {melebihiLimit && (
+                                                <p className="mt-1 text-xs font-semibold text-red-500">
+                                                    Nominal melebihi sisa limit
+                                                    Kasbon {data.jenis_kasbon} (
+                                                    {formatRupiah(limitAktif)}).
+                                                </p>
+                                            )}
+
+                                            {limitAktif <= 0 && (
+                                                <p className="mt-1 text-xs font-semibold text-amber-600">
+                                                    Limit Kasbon{" "}
+                                                    {data.jenis_kasbon} Anda
+                                                    saat ini sudah penuh atau
+                                                    masih ada pengajuan yang
+                                                    diproses.
+                                                </p>
+                                            )}
 
                                             {errors.total_pinjaman && (
                                                 <p className="mt-1 text-xs font-semibold text-red-500">
@@ -352,7 +434,7 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                 </div>
 
                                 {/* ESTIMASI CICILAN */}
-                                {data.total_pinjaman > 0 && (
+                                {data.total_pinjaman > 0 && !melebihiLimit && (
                                     <div>
                                         <h3 className="mb-3 text-sm font-bold text-[#431D6D]">
                                             Estimasi Cicilan
@@ -364,9 +446,8 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
                                                     Potongan / Bulan
                                                 </p>
                                                 <p className="mt-0.5 text-lg font-extrabold text-[#2A164E]">
-                                                    Rp{" "}
-                                                    {estimasiCicilan.toLocaleString(
-                                                        "id-ID",
+                                                    {formatRupiah(
+                                                        estimasiCicilan,
                                                     )}
                                                 </p>
                                             </div>
@@ -395,8 +476,15 @@ export default function Create({ auth, karyawan, departemen, plafon }) {
 
                                 <button
                                     type="submit"
-                                    disabled={processing || (simulasi && !simulasi.layak && data.total_pinjaman > 0)}
-                                    className="inline-flex h-10 min-w-[140px] items-center justify-center rounded-lg bg-[#2A164E] px-6 text-sm font-semibold text-white transition hover:bg-[#431D6D] disabled:cursor-not-allowed disabled:opacity-70"
+                                    disabled={
+                                        processing ||
+                                        melebihiLimit ||
+                                        limitAktif <= 0 ||
+                                        (simulasi &&
+                                            !simulasi.layak &&
+                                            data.total_pinjaman > 0)
+                                    }
+                                    className="inline-flex h-10 min-w-[140px] items-center justify-center rounded-lg bg-[#2A164E] px-6 text-sm font-semibold text-white transition hover:bg-[#431D6D] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {processing
                                         ? "Memproses..."

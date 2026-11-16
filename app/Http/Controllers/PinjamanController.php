@@ -43,32 +43,39 @@ class PinjamanController extends Controller
                 ->get();
         }
 
+        $plafon = $karyawan ? $this->limit->plafon($karyawan->id) : null;
+
         return Inertia::render('Pinjaman/Index', [
-            'pinjaman' => $pinjaman
+            'pinjaman'         => $pinjaman,
+            'sisaLimitFinance' => $plafon['sisa_limit_finance'] ?? 0,
+            'sisaLimitDivisi'  => $plafon['sisa_limit_divisi'] ?? 0,
         ]);
     }
 
     public function create(Request $request)
     {
         $karyawan = $request->user()->karyawan;
+        $plafon = $karyawan ? $this->limit->plafon($karyawan->id) : null;
+
         return Inertia::render('Pinjaman/Create', [
-            'karyawan' => $karyawan,
-            'departemen' => $karyawan ? $karyawan->departemen : null,
-            'plafon' => $karyawan ? $this->limit->plafon($karyawan->id) : null,
+            'karyawan'         => $karyawan,
+            'departemen'       => $karyawan ? $karyawan->departemen : null,
+            'plafon'           => $plafon,
+            'sisaLimitFinance' => $plafon['sisa_limit_finance'] ?? 0,
+            'sisaLimitDivisi'  => $plafon['sisa_limit_divisi'] ?? 0,
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'jenis_kasbon' => 'required|in:Finance,Divisi',
-            'total_pinjaman' => 'required|numeric|min:50000',
-            'tenor_bulan' => 'required|integer|min:1|max:12',
+            'jenis_kasbon'    => 'required|in:Finance,Divisi',
+            'total_pinjaman'  => 'required|numeric|min:50000',
+            'tenor_bulan'     => 'required|integer|min:1|max:12',
             'alasan_pinjaman' => 'required|string|max:500',
         ]);
 
         $karyawan = $request->user()->karyawan;
-
         if (!$karyawan) {
             return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
         }
@@ -80,7 +87,7 @@ class PinjamanController extends Controller
                 // Kunci baris karyawan agar pengajuan ganda bersamaan tidak lolos cek limit
                 \App\Models\Karyawan::whereKey($karyawan->id)->lockForUpdate()->first();
 
-                $hasil = $this->limit->evaluasi($karyawan->id, (float) $request->total_pinjaman, $tenor);
+                $hasil = $this->limit->evaluasi($karyawan->id, (float) $request->total_pinjaman, $tenor, null, $request->jenis_kasbon);
                 if (!$hasil['layak']) {
                     throw new \DomainException(implode(' ', $hasil['alasan']));
                 }
@@ -214,7 +221,7 @@ class PinjamanController extends Controller
 
                 // Cek ulang limit saat kasbon akan berjalan (gaji/kasbon lain bisa berubah sejak pengajuan)
                 if ($pinjaman->status === 'Berjalan') {
-                    $hasil = $this->limit->evaluasi($pinjaman->karyawan_id, (float) $pinjaman->total_pinjaman, (int) $pinjaman->tenor_bulan, $pinjaman->id);
+                    $hasil = $this->limit->evaluasi($pinjaman->karyawan_id, (float) $pinjaman->total_pinjaman, (int) $pinjaman->tenor_bulan, $pinjaman->id, $pinjaman->jenis_kasbon);
                     if (!$hasil['layak']) {
                         throw new \DomainException('Tidak dapat disetujui: ' . implode(' ', $hasil['alasan']));
                     }
