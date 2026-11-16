@@ -5,15 +5,17 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Role;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MenuSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // Lintas driver (MySQL & SQLite test) agar seeder bisa dipakai di feature test
+        Schema::disableForeignKeyConstraints();
         DB::table('role_has_menus')->truncate();
         DB::table('menus')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
         // 1. MENU UTAMA / PARENT
         $dashboard = DB::table('menus')->insertGetId([
@@ -88,6 +90,7 @@ class MenuSeeder extends Seeder
             ['parent_id' => $masterDataGroup, 'title' => 'Jam Shift', 'route_name' => 'shift.index', 'order' => 4],
             // TARUH DI SINI (Di dalam $subMaster setelah $masterDataGroup didefinisikan):
             ['parent_id' => $masterDataGroup, 'title' => 'Master Jenis Cuti', 'route_name' => 'master-cuti.index', 'order' => 5],
+            // Mencakup hc.cuti.default & hc.cuti.libur.* lewat prefix 'hc.cuti.' di DynamicRolePermission
             ['parent_id' => $masterDataGroup, 'title' => 'Cuti Default & Hari Libur', 'route_name' => 'hc.cuti.index', 'order' => 8],
             ['parent_id' => $masterDataGroup, 'title' => 'Master PTKP', 'route_name' => 'ptkp.index', 'order' => 6],
             ['parent_id' => $masterDataGroup, 'title' => 'Master Tarif TER', 'route_name' => 'tarif-ter.index', 'order' => 7],

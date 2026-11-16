@@ -192,8 +192,8 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
 
         Route::get('/hc/master-cuti', [MasterCutiLiburController::class, 'index'])->name('hc.cuti.index');
         Route::post('/hc/master-cuti/default', [MasterCutiLiburController::class, 'updateDefaultCuti'])->name('hc.cuti.default');
-        Route::post('/hc/master-cuti/libur', [MasterCutiLiburController::class, 'storeLibur'])->name('hc.libur.store');
-        Route::delete('/hc/master-cuti/libur/{id}', [MasterCutiLiburController::class, 'destroyLibur'])->name('hc.libur.destroy');
+        Route::post('/hc/master-cuti/libur', [MasterCutiLiburController::class, 'storeLibur'])->name('hc.cuti.libur.store');
+        Route::delete('/hc/master-cuti/libur/{id}', [MasterCutiLiburController::class, 'destroyLibur'])->name('hc.cuti.libur.destroy');
     });
 
     Route::prefix('kepegawaian')->group(function () {

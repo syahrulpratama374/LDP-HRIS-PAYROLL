@@ -38,7 +38,7 @@ export default function MasterCutiIndex({ auth, hariLiburs, defaultCuti }) {
                 return;
             }
         }
-        formLibur.post(route("hc.libur.store"), {
+        formLibur.post(route("hc.cuti.libur.store"), {
             preserveScroll: true,
             onSuccess: () => formLibur.reset(),
         });
@@ -50,7 +50,7 @@ export default function MasterCutiIndex({ auth, hariLiburs, defaultCuti }) {
                 "Yakin ingin menghapus hari libur ini dari kalender perusahaan?",
             )
         ) {
-            router.delete(route("hc.libur.destroy", id), {
+            router.delete(route("hc.cuti.libur.destroy", id), {
                 preserveScroll: true,
             });
         }
