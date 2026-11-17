@@ -15,7 +15,7 @@ composer setup                 # install, .env, key, migrate, npm build
 composer dev                   # runs `php artisan dev` (server + vite etc.)
 npm run dev / npm run build    # Vite only
 php artisan migrate:fresh --seed
-php artisan db:seed --class=MenuSeeder   # NOT called by DatabaseSeeder — run it separately or the sidebar/permissions are empty
+php artisan db:seed                      # DatabaseSeeder runs ALL seeders (incl. MenuSeeder, UserSeeder admin), idempotent
 
 composer test                  # config:clear + php artisan test
 php artisan test --filter=ProfileTest     # single test class / method

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\MasterJenisCuti;
+use Illuminate\Database\Seeder;
 
 class MasterJenisCutiSeeder extends Seeder
 {
@@ -13,7 +13,7 @@ class MasterJenisCutiSeeder extends Seeder
             [
                 'nama_cuti' => 'Cuti Tahunan',
                 'kuota_default' => 12,
-                'potong_cuti_tahunan' => true, 
+                'potong_cuti_tahunan' => true,
             ],
             [
                 'nama_cuti' => 'Cuti Sakit',
@@ -32,8 +32,9 @@ class MasterJenisCutiSeeder extends Seeder
             ],
         ];
 
+        // Idempoten: kunci pada nama_cuti
         foreach ($data as $item) {
-            MasterJenisCuti::create($item);
+            MasterJenisCuti::updateOrCreate(['nama_cuti' => $item['nama_cuti']], $item);
         }
     }
 }

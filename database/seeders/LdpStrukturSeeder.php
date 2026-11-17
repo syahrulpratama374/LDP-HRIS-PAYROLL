@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Hash;
  * Struktur Organisasi PT Lintas Data Prima (LDP) 2026 + akun staf uji.
  * Idempoten: dijalankan ulang akan menyelaraskan role, departemen, jabatan, golongan, atasan,
  * no_telp dan gaji pokok aktif (password akun yang sudah ada tidak diubah).
- * Password default akun baru: password123. Super Admin memakai akun terpisah `syahrul.admin` (UserSeeder).
+ * Password default akun baru: password123. Super Admin memakai akun terpisah `syahrul.admin` (UserSeeder, dijalankan sesudahnya oleh DatabaseSeeder).
  */
 class LdpStrukturSeeder extends Seeder
 {
