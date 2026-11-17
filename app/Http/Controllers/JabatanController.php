@@ -21,7 +21,9 @@ class JabatanController extends Controller
         $validated = $request->validate([
             'kode_jabatan' => 'required|string|max:20|unique:jabatans',
             'nama_jabatan' => 'required|string|max:100',
+            'tunjangan' => 'nullable|numeric|min:0|max:9999999999999',
         ]);
+        $validated['tunjangan'] = $validated['tunjangan'] ?? 0;
 
         Jabatan::create($validated);
         return redirect()->back()->with('success', 'Data Jabatan berhasil ditambahkan.');
@@ -34,7 +36,9 @@ class JabatanController extends Controller
         $validated = $request->validate([
             'kode_jabatan' => 'required|string|max:20|unique:jabatans,kode_jabatan,' . $jabatan->id,
             'nama_jabatan' => 'required|string|max:100',
+            'tunjangan' => 'nullable|numeric|min:0|max:9999999999999',
         ]);
+        $validated['tunjangan'] = $validated['tunjangan'] ?? 0;
 
         $jabatan->update($validated);
         return redirect()->back()->with('success', 'Data Jabatan berhasil diperbarui.');

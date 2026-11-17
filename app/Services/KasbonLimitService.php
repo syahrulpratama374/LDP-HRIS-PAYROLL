@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Karyawan;
 use App\Models\Pengaturan;
 use App\Models\PinjamanKaryawan;
 use App\Models\RiwayatGaji;
@@ -24,16 +25,25 @@ class KasbonLimitService
         return is_numeric($nilai) && $nilai > 0 ? (float) $nilai : self::RASIO_DEFAULT;
     }
 
-    /** Gaji pokok dari RiwayatGaji yang berlaku hari ini (periode aktif terbaru). */
+    /**
+     * Gaji pokok dari RiwayatGaji yang berlaku hari ini (periode aktif terbaru);
+     * fallback ke gaji pokok golongan bila riwayat belum ada (selaras PayrollCalculator).
+     */
     public function gajiPokok(int $karyawanId): float
     {
         $hari = now()->toDateString();
 
-        return (float) RiwayatGaji::where('karyawan_id', $karyawanId)
+        $nominal = RiwayatGaji::where('karyawan_id', $karyawanId)
             ->whereDate('effective_date_start', '<=', $hari)
             ->where(fn ($q) => $q->whereNull('effective_date_end')->orWhereDate('effective_date_end', '>=', $hari))
             ->orderByDesc('effective_date_start')
             ->value('nominal_gaji_pokok');
+
+        if ($nominal !== null) {
+            return (float) $nominal;
+        }
+
+        return (float) (Karyawan::with('golongan')->find($karyawanId)?->golongan?->gaji_pokok ?? 0);
     }
 
     public function kasbonAktif(int $karyawanId, ?int $kecualiId = null): ?PinjamanKaryawan

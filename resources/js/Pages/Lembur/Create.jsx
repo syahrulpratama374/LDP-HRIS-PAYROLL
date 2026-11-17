@@ -11,6 +11,23 @@ export default function Create() {
         deskripsi_pekerjaan: "",
     });
 
+    // Durasi lembur (menit); jam selesai < jam mulai berarti lintas tengah malam (+1 hari)
+    const keMenit = (jam) => {
+        const [h, m] = (jam || "").split(":").map(Number);
+        return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+    };
+    const mulai = keMenit(data.jam_mulai);
+    const selesai = keMenit(data.jam_selesai);
+    const lintasHari = mulai !== null && selesai !== null && selesai < mulai;
+    const durasiMenit =
+        mulai !== null && selesai !== null
+            ? (selesai - mulai + 24 * 60) % (24 * 60)
+            : null;
+    const durasiTeks =
+        durasiMenit !== null
+            ? `${Math.floor(durasiMenit / 60)} jam${durasiMenit % 60 ? ` ${durasiMenit % 60} menit` : ""}`
+            : "";
+
     const submit = (e) => {
         e.preventDefault();
         post(route("lembur.store"));
@@ -167,6 +184,28 @@ export default function Create() {
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* INFO DURASI & LINTAS HARI */}
+                                        {durasiMenit !== null && (
+                                            <p
+                                                className={`text-xs font-semibold ${
+                                                    durasiMenit === 0 ||
+                                                    durasiMenit > 12 * 60
+                                                        ? "text-red-500"
+                                                        : "text-gray-500"
+                                                }`}
+                                            >
+                                                Durasi: {durasiTeks}
+                                                {lintasHari && (
+                                                    <span className="ml-1 text-[#431D6D]">
+                                                        (+1 hari / lintas tengah
+                                                        malam)
+                                                    </span>
+                                                )}
+                                                {durasiMenit > 12 * 60 &&
+                                                    " · maksimal 12 jam"}
+                                            </p>
+                                        )}
 
                                         {/* QUICK PRESET */}
                                         <div>

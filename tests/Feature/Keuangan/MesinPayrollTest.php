@@ -246,4 +246,26 @@ class MesinPayrollTest extends KeuanganTestCase
         $this->expectException(\Illuminate\Database\QueryException::class);
         $this->buatPayroll($kid, 'Draft', 1, 2026);
     }
+
+    public function test_tunjangan_jabatan_dari_master_jabatan_masuk_payroll(): void
+    {
+        DB::table('jabatans')->insert([
+            'id' => 1, 'kode_jabatan' => 'MGR', 'nama_jabatan' => 'Manager', 'tunjangan' => 2_000_000,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        [$admin] = $this->buatUser(1);
+        [, $kid] = $this->buatUser(6);
+        $this->gaji($kid, 8_000_000);
+
+        $this->generate($admin)->assertSessionHasNoErrors();
+
+        $p = Payroll::with('detailPayrolls')->where('karyawan_id', $kid)->first();
+        $d = $p->detailPayrolls->pluck('nominal', 'nama_komponen_snapshot');
+        $this->assertEquals(8_000_000, $d['Gaji Pokok']);
+        $this->assertEquals(2_000_000, $d['Tunjangan Jabatan']);
+        // BPJS dihitung dari upah tetap (gaji pokok + tunjangan jabatan) = 10 jt
+        $this->assertEquals(200_000, $d['Iuran BPJS JHT (2%)']);
+        $this->assertGreaterThan(10_000_000, (float) $p->bruto_pajak);
+    }
 }
+

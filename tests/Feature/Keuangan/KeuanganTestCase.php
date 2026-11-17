@@ -52,6 +52,7 @@ abstract class KeuanganTestCase extends TestCase
             'tgl_bergabung' => '2024-01-01',
             'no_ktp_encrypted' => 'x',
             'status_aktif' => true,
+            'atasan_id' => $atasanId,
             'created_at' => now(), 'updated_at' => now(),
         ]);
 

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\OtorisasiApprovalAtasan;
+use App\Models\JadwalShiftKaryawan;
 use App\Models\PengajuanCuti;
+use App\Models\Pengaturan;
 use App\Models\SaldoCuti;
 use App\Models\MasterJenisCuti;
 use App\Models\Karyawan;
@@ -15,34 +18,56 @@ use Carbon\Carbon;
 
 class PengajuanCutiController extends Controller
 {
+    use OtorisasiApprovalAtasan;
+
     // ==========================================
-    // HELPER: HITUNG HARI KERJA (REGULER VS NOC)
+    // HELPER: HARI KERJA EFEKTIF (REGULER VS SHIFT)
     // ==========================================
-    private function hitungHariKerjaEfektif($tanggalMulai, $tanggalSelesai, $karyawan)
+    /**
+     * Daftar tanggal (Y-m-d) yang dihitung sebagai hari kerja dalam rentang cuti.
+     *  - Departemen shift (is_wajib_logbook): bila ada roster (jadwal_shift_karyawans) pada rentang,
+     *    hanya tanggal yang terjadwal; tanpa roster, setiap hari (termasuk Sabtu/Minggu) dihitung.
+     *  - Reguler: Senin–Jumat saja.
+     */
+    private function tanggalHariKerjaEfektif($tanggalMulai, $tanggalSelesai, $karyawan): array
     {
-        $tglMulai = Carbon::parse($tanggalMulai);
-        $tglSelesai = Carbon::parse($tanggalSelesai);
-        $totalHari = 0;
+        $tglMulai = Carbon::parse($tanggalMulai)->startOfDay();
+        $tglSelesai = Carbon::parse($tanggalSelesai)->startOfDay();
+        $isShift = (bool) ($karyawan->departemen->is_wajib_logbook ?? false);
 
-        // Cek apakah karyawan berasal dari Departemen NOC
-        $namaDepartemen = strtolower($karyawan->departemen->nama_departemen ?? '');
-        $isNoc = str_contains($namaDepartemen, 'noc');
-
-        $currentDate = $tglMulai->copy();
-        while ($currentDate->lte($tglSelesai)) {
-            if ($isNoc) {
-                // Karyawan NOC: Sabtu & Minggu tetap dihitung hari kerja/shift
-                $totalHari++;
-            } else {
-                // Karyawan Reguler: Sabtu & Minggu TIDAK memotong saldo cuti
-                if (!$currentDate->isWeekend()) {
-                    $totalHari++;
-                }
-            }
-            $currentDate->addDay();
+        $roster = [];
+        if ($isShift) {
+            $roster = JadwalShiftKaryawan::where('karyawan_id', $karyawan->id)
+                ->whereBetween('tanggal', [$tglMulai->toDateString(), $tglSelesai->toDateString()])
+                ->pluck('tanggal')
+                ->mapWithKeys(fn ($t) => [Carbon::parse($t)->toDateString() => true])
+                ->all();
         }
 
-        return $totalHari;
+        $hasil = [];
+        for ($tgl = $tglMulai->copy(); $tgl->lte($tglSelesai); $tgl->addDay()) {
+            $tanggal = $tgl->toDateString();
+            $dihitung = $isShift
+                ? (empty($roster) || isset($roster[$tanggal]))
+                : ! $tgl->isWeekend();
+
+            if ($dihitung) {
+                $hasil[] = $tanggal;
+            }
+        }
+
+        return $hasil;
+    }
+
+    private function hitungHariKerjaEfektif($tanggalMulai, $tanggalSelesai, $karyawan): int
+    {
+        return count($this->tanggalHariKerjaEfektif($tanggalMulai, $tanggalSelesai, $karyawan));
+    }
+
+    /** Jatah cuti tahunan default dari Pengaturan (kunci hak_cuti_default), fallback 12. */
+    private function hakCutiDefault(): int
+    {
+        return (int) Pengaturan::angka('hak_cuti_default', 12);
     }
 
     // ==========================================
@@ -81,7 +106,7 @@ class PengajuanCutiController extends Controller
 
         if (!$saldoCuti) {
             $saldoCuti = [
-                'hak_cuti_tahunan' => 12,
+                'hak_cuti_tahunan' => $this->hakCutiDefault(),
                 'cuti_terpakai' => 0
             ];
         }
@@ -126,7 +151,7 @@ class PengajuanCutiController extends Controller
                 ->where('tahun_periode', $tahunSekarang)
                 ->first();
 
-            $hakCuti = $saldo ? $saldo->hak_cuti_tahunan : 12;
+            $hakCuti = $saldo ? $saldo->hak_cuti_tahunan : $this->hakCutiDefault();
             $terpakai = $saldo ? $saldo->cuti_terpakai : 0;
             $sisaCuti = $hakCuti - $terpakai;
 
@@ -205,12 +230,18 @@ class PengajuanCutiController extends Controller
             'status_approval' => 'required|in:Disetujui,Ditolak',
         ]);
 
-        $cuti = PengajuanCuti::with('karyawan.departemen')->findOrFail($id);
-        
-        if ($request->status_approval === 'Disetujui' && $cuti->status_approval !== 'Disetujui') {
-            
-            // --- OPSI A: HITUNG HARI KERJA EFEKTIF ---
-            $totalHariKerja = $this->hitungHariKerjaEfektif($cuti->tanggal_mulai, $cuti->tanggal_selesai, $cuti->karyawan);
+        $cuti = PengajuanCuti::with(['karyawan.departemen', 'masterJenisCuti'])->findOrFail($id);
+
+        $this->pastikanBolehMemproses($request->user(), $cuti->karyawan);
+
+        if ($cuti->status_approval !== 'Pending') {
+            return redirect()->back()->withErrors(['error' => "Pengajuan cuti berstatus {$cuti->status_approval} dan tidak dapat diproses ulang."]);
+        }
+
+        if ($request->status_approval === 'Disetujui') {
+
+            // --- HITUNG HARI KERJA EFEKTIF (Reguler: Senin–Jumat; Shift: sesuai roster / setiap hari) ---
+            $tanggalEfektif = $this->tanggalHariKerjaEfektif($cuti->tanggal_mulai, $cuti->tanggal_selesai, $cuti->karyawan);
             $tahunSekarang = Carbon::parse($cuti->tanggal_mulai)->year;
 
             $masterCuti = $cuti->masterJenisCuti;
@@ -223,41 +254,29 @@ class PengajuanCutiController extends Controller
                         'tahun_periode' => $tahunSekarang
                     ],
                     [
-                        'hak_cuti_tahunan' => 12,
+                        'hak_cuti_tahunan' => $this->hakCutiDefault(),
                         'cuti_terpakai' => 0
                     ]
                 );
-                
-                $saldo->increment('cuti_terpakai', $totalHariKerja);
+
+                $saldo->increment('cuti_terpakai', count($tanggalEfektif));
             }
 
-            // Injeksi otomatis ke Tabel Absensi (Hanya di hari kerja efektif)
-            $namaCuti = $masterCuti ? $masterCuti->nama_cuti : 'Cuti'; 
-            $tglMulai = Carbon::parse($cuti->tanggal_mulai);
-            $tglSelesai = Carbon::parse($cuti->tanggal_selesai);
-            
-            $namaDepartemen = strtolower($cuti->karyawan->departemen->nama_departemen ?? '');
-            $isNoc = str_contains($namaDepartemen, 'noc');
-
-            $currentDate = $tglMulai->copy();
-            while ($currentDate->lte($tglSelesai)) {
-                
-                // Injeksi absensi: NOC setiap hari, Reguler hanya Senin-Jumat
-                if ($isNoc || !$currentDate->isWeekend()) {
-                    Absensi::updateOrCreate(
-                        [
-                            'karyawan_id' => $cuti->karyawan_id,
-                            'tanggal' => $currentDate->toDateString()
-                        ],
-                        [
-                            'status' => 'Cuti',
-                            'catatan' => 'Cuti: ' . $namaCuti,
-                            'waktu_masuk' => null, 
-                            'waktu_keluar' => null,
-                        ]
-                    );
-                }
-                $currentDate->addDay();
+            // Injeksi otomatis ke Tabel Absensi (hanya di hari kerja efektif)
+            $namaCuti = $masterCuti ? $masterCuti->nama_cuti : 'Cuti';
+            foreach ($tanggalEfektif as $tanggal) {
+                Absensi::updateOrCreate(
+                    [
+                        'karyawan_id' => $cuti->karyawan_id,
+                        'tanggal' => $tanggal
+                    ],
+                    [
+                        'status' => 'Cuti',
+                        'catatan' => 'Cuti: ' . $namaCuti,
+                        'waktu_masuk' => null,
+                        'waktu_keluar' => null,
+                    ]
+                );
             }
         }
 

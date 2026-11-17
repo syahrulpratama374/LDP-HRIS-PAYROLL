@@ -2,12 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\OtorisasiApprovalAtasan;
 use App\Models\PengajuanLembur;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class PengajuanLemburController extends Controller
 {
+    use OtorisasiApprovalAtasan;
+
+    public const MAKS_DURASI_JAM = 12;
+
+    /** Durasi menit antara dua jam H:i; bila selesai < mulai dihitung lintas hari. Null bila format tidak valid. */
+    public static function durasiMenit(string $mulai, string $selesai): ?int
+    {
+        if (! preg_match('/^\d{2}:\d{2}$/', $mulai) || ! preg_match('/^\d{2}:\d{2}$/', $selesai)) {
+            return null;
+        }
+        [$hm, $mm] = array_map('intval', explode(':', $mulai));
+        [$hs, $ms] = array_map('intval', explode(':', $selesai));
+        $durasi = ($hs * 60 + $ms) - ($hm * 60 + $mm);
+
+        return $durasi < 0 ? $durasi + 24 * 60 : $durasi;
+    }
+
     // Menampilkan riwayat lembur milik karyawan yang sedang login
     public function index(Request $request)
     {
@@ -36,14 +54,26 @@ class PengajuanLemburController extends Controller
     // Menyimpan data lembur yang dikirim karyawan
     public function store(Request $request)
     {
-        // Validasi ketat: jam_selesai wajib setelah jam_mulai
+        // Lembur boleh lintas tengah malam (mis. 22:00 → 02:00): jam_selesai < jam_mulai berarti +1 hari
         $request->validate([
             'tanggal' => 'required|date',
             'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
+            'jam_selesai' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) use ($request) {
+                    $durasi = self::durasiMenit((string) $request->jam_mulai, (string) $value);
+                    if ($durasi === null) {
+                        return;
+                    }
+                    if ($durasi === 0) {
+                        $fail('Jam selesai tidak boleh sama dengan jam mulai.');
+                    } elseif ($durasi > self::MAKS_DURASI_JAM * 60) {
+                        $fail('Durasi lembur maksimal ' . self::MAKS_DURASI_JAM . ' jam.');
+                    }
+                },
+            ],
             'deskripsi_pekerjaan' => 'required|string|max:500',
-        ], [
-            'jam_selesai.after' => 'Jam selesai harus lebih besar dari jam mulai.',
         ]);
 
         $user = $request->user();
@@ -127,8 +157,14 @@ class PengajuanLemburController extends Controller
             'status_approval' => 'required|in:Disetujui,Ditolak'
         ]);
 
-        $lembur = PengajuanLembur::findOrFail($id);
-        
+        $lembur = PengajuanLembur::with('karyawan')->findOrFail($id);
+
+        $this->pastikanBolehMemproses($request->user(), $lembur->karyawan);
+
+        if ($lembur->status_approval !== 'Pending') {
+            return redirect()->back()->withErrors(['error' => "Pengajuan lembur berstatus {$lembur->status_approval} dan tidak dapat diproses ulang."]);
+        }
+
         $lembur->update([
             'status_approval' => $request->status_approval
         ]);

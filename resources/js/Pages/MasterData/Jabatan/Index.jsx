@@ -8,6 +8,7 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
+import formatRupiah from '@/Utils/formatRupiah';
 
 export default function Index({ jabatans }) {
     const { auth } = usePage().props;
@@ -18,6 +19,7 @@ export default function Index({ jabatans }) {
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
         kode_jabatan: '',
         nama_jabatan: '',
+        tunjangan: 0,
     });
 
     const openModal = (jabatan = null) => {
@@ -28,6 +30,7 @@ export default function Index({ jabatans }) {
             setData({
                 kode_jabatan: jabatan.kode_jabatan,
                 nama_jabatan: jabatan.nama_jabatan,
+                tunjangan: Number(jabatan.tunjangan || 0),
             });
         } else {
             setIsEditMode(false);
@@ -78,6 +81,7 @@ export default function Index({ jabatans }) {
                                         <th className="px-6 py-3 border-r">No</th>
                                         <th className="px-6 py-3 border-r">Kode Jabatan</th>
                                         <th className="px-6 py-3 border-r">Nama Jabatan</th>
+                                        <th className="px-6 py-3 border-r text-right">Tunjangan Jabatan</th>
                                         <th className="px-6 py-3 text-center">Aksi</th>
                                     </tr>
                                 </thead>
@@ -88,6 +92,7 @@ export default function Index({ jabatans }) {
                                                 <td className="px-6 py-4 border-r">{index + 1}</td>
                                                 <td className="px-6 py-4 border-r font-medium text-gray-900">{jabatan.kode_jabatan}</td>
                                                 <td className="px-6 py-4 border-r">{jabatan.nama_jabatan}</td>
+                                                <td className="px-6 py-4 border-r text-right">{formatRupiah(jabatan.tunjangan)}</td>
                                                 <td className="px-6 py-4 text-center space-x-2">
                                                     <SecondaryButton onClick={() => openModal(jabatan)} className="!py-1 !px-2">Edit</SecondaryButton>
                                                     <DangerButton onClick={() => handleDelete(jabatan.id)} className="!py-1 !px-2">Hapus</DangerButton>
@@ -96,7 +101,7 @@ export default function Index({ jabatans }) {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-4 text-center text-gray-500">Belum ada data jabatan.</td>
+                                            <td colSpan="5" className="px-6 py-4 text-center text-gray-500">Belum ada data jabatan.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -120,6 +125,12 @@ export default function Index({ jabatans }) {
                         <InputLabel htmlFor="nama_jabatan" value="Nama Jabatan" />
                         <TextInput id="nama_jabatan" value={data.nama_jabatan} className="mt-1 block w-full" onChange={(e) => setData('nama_jabatan', e.target.value)} placeholder="Cth: Manager HRD" />
                         <InputError message={errors.nama_jabatan} className="mt-2" />
+                    </div>
+                    <div className="mb-6">
+                        <InputLabel htmlFor="tunjangan" value="Tunjangan Jabatan (Rp / bulan)" />
+                        <TextInput id="tunjangan" type="number" min="0" step="1000" value={data.tunjangan} className="mt-1 block w-full" onChange={(e) => setData('tunjangan', e.target.value)} placeholder="Cth: 2500000" />
+                        <p className="mt-1 text-xs text-gray-500">Otomatis masuk sebagai baris "Tunjangan Jabatan" saat generate payroll.</p>
+                        <InputError message={errors.tunjangan} className="mt-2" />
                     </div>
                     <div className="flex justify-end space-x-2">
                         <SecondaryButton onClick={closeModal}>Batal</SecondaryButton>

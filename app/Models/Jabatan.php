@@ -12,5 +12,10 @@ class Jabatan extends Model
     protected $fillable = [
         'kode_jabatan',
         'nama_jabatan',
+        'tunjangan',
+    ];
+
+    protected $casts = [
+        'tunjangan' => 'decimal:2',
     ];
 }

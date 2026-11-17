@@ -182,4 +182,15 @@ class KasbonLimitTest extends KeuanganTestCase
                 ->where('plafon.sisa_plafon_cicilan', 1500000)
                 ->where('plafon.kasbon_aktif', null));
     }
+
+    public function test_gaji_pokok_fallback_ke_golongan_bila_riwayat_belum_ada(): void
+    {
+        DB::table('golongans')->insert([
+            'id' => 1, 'kode_golongan' => 'GOL-1A', 'nama_golongan' => 'Junior Staff', 'gaji_pokok' => 4500000,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        [, $kid] = $this->buatUser(6);
+
+        $this->assertEquals(4500000, app(KasbonLimitService::class)->gajiPokok($kid));
+    }
 }
