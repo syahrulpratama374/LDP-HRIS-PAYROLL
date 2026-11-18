@@ -8,6 +8,7 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
+import formatRupiah from '@/Utils/formatRupiah';
 
 export default function Index({ tarifs }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,9 +21,6 @@ export default function Index({ tarifs }) {
         batas_atas: '',
         tarif: '',
     });
-
-    const formatRupiah = (angka) =>
-        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
 
     const openModal = (tarif = null) => {
         clearErrors();

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Create({
     auth,
@@ -16,13 +17,6 @@ export default function Create({
         tenor_bulan: "1",
         alasan_pinjaman: "",
     });
-
-    const formatRupiah = (angka) =>
-        new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
 
     // Sisa limit aktif sesuai pilihan sumber dana
     const limitAktif = useMemo(() => {

@@ -6,6 +6,7 @@ import PrimaryButton from "@/Components/PrimaryButton";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Show({ karyawan, jabatans = [], bawahans = [] }) {
     const [activeTab, setActiveTab] = useState("biodata");
@@ -109,14 +110,6 @@ export default function Show({ karyawan, jabatans = [], bawahans = [] }) {
                 { preserveScroll: true },
             );
         }
-    };
-
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
     };
 
     return (

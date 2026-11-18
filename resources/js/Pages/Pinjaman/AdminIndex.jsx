@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage, useForm } from "@inertiajs/react";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function AdminIndex({ pinjaman = [], userRole }) {
     const { flash, errors } = usePage().props;
@@ -82,14 +83,6 @@ export default function AdminIndex({ pinjaman = [], userRole }) {
                 },
             );
         }
-    };
-
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
     };
 
     return (

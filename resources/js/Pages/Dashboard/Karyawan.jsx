@@ -2,6 +2,7 @@ import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 import LogoLDP from "@/Assets/LogoLDP.png";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Karyawan({
     auth,
@@ -15,14 +16,6 @@ export default function Karyawan({
     // =========================================================
     // FORMAT
     // =========================================================
-
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
-    };
 
     const sekarang = new Date();
 

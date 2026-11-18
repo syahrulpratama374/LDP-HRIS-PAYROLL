@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router, usePage } from "@inertiajs/react";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Index({ auth, asets, filters }) {
     const { flash } = usePage().props;
@@ -14,13 +15,6 @@ export default function Index({ auth, asets, filters }) {
             { preserveState: true },
         );
     };
-
-    const formatRupiah = (angka) =>
-        new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka);
 
     return (
         <AuthenticatedLayout

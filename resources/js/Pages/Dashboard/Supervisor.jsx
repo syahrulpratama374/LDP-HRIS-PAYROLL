@@ -2,6 +2,7 @@ import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 import LogoLDP from "@/Assets/LogoLDP.png";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Supervisor({
     auth,
@@ -20,14 +21,6 @@ export default function Supervisor({
     // =========================================================
     // FORMATTING & HELPERS
     // =========================================================
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(angka || 0);
-    };
-
     const sekarang = new Date();
     const tanggalHariIni = sekarang.toLocaleDateString("id-ID", {
         weekday: "long",

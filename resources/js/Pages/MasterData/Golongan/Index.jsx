@@ -8,6 +8,7 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
+import formatRupiah from '@/Utils/formatRupiah';
 
 export default function Index({ golongans }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,10 +22,6 @@ export default function Index({ golongans }) {
     });
 
     // Fungsi format Rupiah bawaan JavaScript
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-    };
-
     const openModal = (golongan = null) => {
         clearErrors();
         if (golongan) {
