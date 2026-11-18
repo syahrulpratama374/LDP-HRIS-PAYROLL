@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage, useForm } from "@inertiajs/react";
 import imageCompression from "browser-image-compression";
+import formatRupiah from "@/Utils/formatRupiah";
 
 export default function Index({
     auth,
