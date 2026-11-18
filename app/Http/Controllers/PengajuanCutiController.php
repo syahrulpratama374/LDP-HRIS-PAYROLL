@@ -45,7 +45,7 @@ class PengajuanCutiController extends Controller
         return $totalHari;
     }
 
-    // ==========================================
+        // ==========================================
     // ESS KARYAWAN
     // ==========================================
     public function index()
@@ -53,15 +53,35 @@ class PengajuanCutiController extends Controller
         $karyawan = Auth::user()->karyawan;
         $riwayatCuti = [];
         
+        // 1. Siapkan nilai default untuk saldo cuti
+        $saldoCuti = [
+            'hak_cuti_tahunan' => 12,
+            'cuti_terpakai' => 0
+        ];
+
         if ($karyawan) {
+            // 2. Ambil riwayat cuti dengan Pagination (10 data per halaman)
             $riwayatCuti = PengajuanCuti::with('masterJenisCuti')
                 ->where('karyawan_id', $karyawan->id)
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->paginate(10); // <--- Ubah get() menjadi paginate(10)
+
+            // 3. Ambil data Saldo Cuti asli dari database
+            $tahunSekarang = date('Y');
+            $saldoDB = SaldoCuti::where('karyawan_id', $karyawan->id)
+                ->where('tahun_periode', $tahunSekarang)
+                ->first();
+
+            // Jika datanya ada di database, timpa nilai default dengan data asli
+            if ($saldoDB) {
+                $saldoCuti = $saldoDB;
+            }
         }
 
+        // 4. Kirim riwayatCuti dan saldoCuti ke React (Index.jsx)
         return Inertia::render('Kepegawaian/Cuti/Index', [
-            'riwayatCuti' => $riwayatCuti
+            'riwayatCuti' => $riwayatCuti,
+            'saldoCuti' => $saldoCuti // <--- Tambahkan ini
         ]);
     }
 

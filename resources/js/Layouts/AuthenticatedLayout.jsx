@@ -21,7 +21,7 @@ import {
     ClipboardList,
     Home,
     Headset,
-    Menu
+    Menu,
 } from "lucide-react";
 
 const MENU_ICON_MAP = [
@@ -30,7 +30,10 @@ const MENU_ICON_MAP = [
     { keys: ["lembur", "overtime", "shift", "roster", "jadwal"], Icon: Clock },
     { keys: ["dashboard", "beranda", "home"], Icon: LayoutDashboard },
     { keys: ["karyawan", "employee", "pegawai", "staff"], Icon: Users },
-    { keys: ["departemen", "department", "divisi", "division", "unit"], Icon: Building2 },
+    {
+        keys: ["departemen", "department", "divisi", "division", "unit"],
+        Icon: Building2,
+    },
     { keys: ["jabatan", "position", "role"], Icon: Briefcase },
     { keys: ["laporan", "report", "rekap"], Icon: FileBarChart },
     { keys: ["gaji", "payroll", "penggajian", "salary"], Icon: Wallet },
@@ -44,22 +47,31 @@ const MENU_ICON_MAP = [
 ];
 
 function getMenuIcon(menu) {
-    const source = `${menu?.title || ""} ${menu?.route_name || ""}`.toLowerCase();
+    const source =
+        `${menu?.title || ""} ${menu?.route_name || ""}`.toLowerCase();
     for (const { keys, Icon } of MENU_ICON_MAP) {
         if (keys.some((k) => source.includes(k))) return Icon;
     }
     return Home;
 }
 
-export default function AuthenticatedLayout({ user: propUser, header, children }) {
+export default function AuthenticatedLayout({
+    user: propUser,
+    header,
+    children,
+}) {
     const page = usePage();
     const { auth } = page.props;
     const user = propUser || auth?.user;
     const rawMenus = auth?.menus || [];
 
     // LOGIKA FILTER MENU (TIDAK DIUBAH SAMA SEKALI)
-    const userDeptKode = (user?.karyawan?.departemen?.kode_departemen || "").toUpperCase();
-    const userDeptName = (user?.karyawan?.departemen?.nama_departemen || "").toLowerCase();
+    const userDeptKode = (
+        user?.karyawan?.departemen?.kode_departemen || ""
+    ).toUpperCase();
+    const userDeptName = (
+        user?.karyawan?.departemen?.nama_departemen || ""
+    ).toLowerCase();
     const userRoleName = user?.role?.nama_role || "";
 
     const isSupportTeam =
@@ -69,20 +81,26 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
         userDeptName.includes("general affair") ||
         userDeptName.includes("human capital") ||
         userDeptName.includes("human resource") ||
-        userDeptName === "it" || userDeptName === "ga" || userDeptName === "hc";
+        userDeptName === "it" ||
+        userDeptName === "ga" ||
+        userDeptName === "hc";
 
-    const menus = rawMenus.map((menu) => {
-        const initialChildCount = menu.children ? menu.children.length : 0;
-        if (initialChildCount === 0) return { ...menu, _hadChildren: false };
-        const filteredChildren = menu.children.filter((child) => {
-            if (child.route_name === "admin.ticket.index" && !isSupportTeam) return false;
+    const menus = rawMenus
+        .map((menu) => {
+            const initialChildCount = menu.children ? menu.children.length : 0;
+            if (initialChildCount === 0)
+                return { ...menu, _hadChildren: false };
+            const filteredChildren = menu.children.filter((child) => {
+                if (child.route_name === "admin.ticket.index" && !isSupportTeam)
+                    return false;
+                return true;
+            });
+            return { ...menu, children: filteredChildren, _hadChildren: true };
+        })
+        .filter((menu) => {
+            if (menu._hadChildren && menu.children.length === 0) return false;
             return true;
         });
-        return { ...menu, children: filteredChildren, _hadChildren: true };
-    }).filter((menu) => {
-        if (menu._hadChildren && menu.children.length === 0) return false;
-        return true;
-    });
 
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
     const [isCollapsed, setIsCollapsed] = useState(isMobile);
@@ -93,7 +111,8 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
         menus.forEach((menu) => {
             if (menu.children && menu.children.length > 0) {
                 const hasActiveChild = menu.children.some(
-                    (child) => child.route_name && route().current(child.route_name)
+                    (child) =>
+                        child.route_name && route().current(child.route_name),
                 );
                 if (hasActiveChild) activeSubmenus[menu.id] = true;
             }
@@ -143,7 +162,9 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
                     <Link
                         href={route("dashboard")}
                         className={`flex-1 overflow-hidden transition-opacity ${
-                            isCollapsed ? "pointer-events-none opacity-0" : "opacity-100"
+                            isCollapsed
+                                ? "pointer-events-none opacity-0"
+                                : "opacity-100"
                         }`}
                     >
                         <span className="whitespace-nowrap text-lg font-bold tracking-wider text-white">
@@ -158,23 +179,34 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
                             isCollapsed ? "right-4" : "right-3"
                         }`}
                     >
-                        {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+                        {isCollapsed ? (
+                            <PanelLeftOpen className="h-5 w-5" />
+                        ) : (
+                            <PanelLeftClose className="h-5 w-5" />
+                        )}
                     </button>
                 </div>
 
                 {/* MENU NAVIGASI */}
                 <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
                     {menus.map((menu) => {
-                        const hasChildren = menu.children && menu.children.length > 0;
+                        const hasChildren =
+                            menu.children && menu.children.length > 0;
                         const isOpen = !!openSubmenus[menu.id];
                         const MenuIcon = getMenuIcon(menu);
 
                         if (!hasChildren) {
-                            const isCurrent = menu.route_name && route().current(menu.route_name);
+                            const isCurrent =
+                                menu.route_name &&
+                                route().current(menu.route_name);
                             return (
                                 <Link
                                     key={menu.id}
-                                    href={menu.route_name ? route(menu.route_name) : "#"}
+                                    href={
+                                        menu.route_name
+                                            ? route(menu.route_name)
+                                            : "#"
+                                    }
                                     title={isCollapsed ? menu.title : ""}
                                     className={`group flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                                         isCurrent
@@ -182,8 +214,12 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
                                             : "text-white/70 hover:bg-white/5 hover:text-white"
                                     }`}
                                 >
-                                    <MenuIcon className={`h-5 w-5 shrink-0 ${isCurrent ? "text-[#F3B817]" : "text-white/50 group-hover:text-white"}`} />
-                                    <span className={`whitespace-nowrap ${isCollapsed ? "hidden opacity-0 md:block" : "opacity-100"}`}>
+                                    <MenuIcon
+                                        className={`h-5 w-5 shrink-0 ${isCurrent ? "text-[#F3B817]" : "text-white/50 group-hover:text-white"}`}
+                                    />
+                                    <span
+                                        className={`whitespace-nowrap ${isCollapsed ? "hidden opacity-0 md:block" : "opacity-100"}`}
+                                    >
                                         {menu.title}
                                     </span>
                                 </Link>
@@ -199,27 +235,47 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
                                         toggleSubmenu(menu.id);
                                     }}
                                     className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                                        isOpen && !isCollapsed ? "bg-white/5 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
+                                        isOpen && !isCollapsed
+                                            ? "bg-white/5 text-white"
+                                            : "text-white/70 hover:bg-white/5 hover:text-white"
                                     }`}
                                 >
-                                    <MenuIcon className={`h-5 w-5 shrink-0 ${isOpen && !isCollapsed ? "text-[#F3B817]" : "text-white/50 group-hover:text-white"}`} />
-                                    <span className={`flex-1 truncate text-left ${isCollapsed ? "hidden opacity-0 md:block" : "opacity-100"}`}>
+                                    <MenuIcon
+                                        className={`h-5 w-5 shrink-0 ${isOpen && !isCollapsed ? "text-[#F3B817]" : "text-white/50 group-hover:text-white"}`}
+                                    />
+                                    <span
+                                        className={`flex-1 truncate text-left ${isCollapsed ? "hidden opacity-0 md:block" : "opacity-100"}`}
+                                    >
                                         {menu.title}
                                     </span>
                                     {!isCollapsed && (
-                                        <ChevronDown className={`h-4 w-4 shrink-0 text-white/40 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                        <ChevronDown
+                                            className={`h-4 w-4 shrink-0 text-white/40 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                        />
                                     )}
                                 </button>
 
-                                <div className={`grid transition-all duration-300 ${!isCollapsed && isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                                <div
+                                    className={`grid transition-all duration-300 ${!isCollapsed && isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                                >
                                     <div className="overflow-hidden">
                                         <div className="mt-1 ml-5 space-y-0.5 border-l border-white/10 py-1 pl-3">
                                             {menu.children.map((child) => {
-                                                const isChildCurrent = child.route_name && route().current(child.route_name);
+                                                const isChildCurrent =
+                                                    child.route_name &&
+                                                    route().current(
+                                                        child.route_name,
+                                                    );
                                                 return (
                                                     <Link
                                                         key={child.id}
-                                                        href={child.route_name ? route(child.route_name) : "#"}
+                                                        href={
+                                                            child.route_name
+                                                                ? route(
+                                                                      child.route_name,
+                                                                  )
+                                                                : "#"
+                                                        }
                                                         className={`block truncate rounded-lg px-2 py-1.5 text-[13px] transition-colors ${
                                                             isChildCurrent
                                                                 ? "text-[#F3B817] font-semibold"
@@ -256,28 +312,33 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
 
             {/* Backdrop Mobile */}
             {isMobile && !isCollapsed && (
-                <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setIsCollapsed(true)} />
+                <div
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
+                    onClick={() => setIsCollapsed(true)}
+                />
             )}
 
             {/* ================= MAIN CONTENT ================= */}
             <div className="flex h-full min-w-0 flex-1 flex-col">
-                
                 {/* NAVBAR ATAS */}
                 <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center gap-4">
-                        <button onClick={toggleSidebar} className="md:hidden text-gray-500 hover:text-[#2A164E]">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={toggleSidebar}
+                            className="md:hidden text-gray-500 hover:text-[#2A164E]"
+                        >
                             <Menu className="h-6 w-6" />
                         </button>
-                        {/* Menampilkan judul dari prop header, jika tidak ada kosongkan saja */}
-                        <div className="text-lg font-semibold text-[#2A164E]">
-                            {header || ""} 
+                        {/* Menggunakan font-bold dan leading-none agar teks sejajar tengah */}
+                        <div className="text-lg font-bold text-[#2A164E] leading-none flex items-center">
+                            {header || ""}
                         </div>
                     </div>
 
                     {/* Profil User di Navbar */}
                     <div className="flex items-center gap-4">
-                        <Link 
-                            href={route('profile.edit')} 
+                        <Link
+                            href={route("profile.edit")}
                             className="flex items-center gap-3 rounded-full border border-gray-100 bg-gray-50 py-1.5 pl-2 pr-4 transition hover:bg-gray-100"
                         >
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2A164E] text-sm font-bold text-white">
@@ -297,9 +358,7 @@ export default function AuthenticatedLayout({ user: propUser, header, children }
 
                 {/* MAIN BODY - Diberi padding tipis agar tidak terlalu banyak gap */}
                 <main className="custom-scrollbar flex-1 overflow-y-auto bg-[#F8F9FA]">
-                    <div className="w-full h-full">
-                        {children}
-                    </div>
+                    <div className="w-full h-full">{children}</div>
                 </main>
             </div>
         </div>
