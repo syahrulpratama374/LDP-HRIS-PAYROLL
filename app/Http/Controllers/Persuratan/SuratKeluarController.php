@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Persuratan;
 use App\Http\Controllers\Controller;
 use App\Models\SuratKeluar;
 use App\Models\ApprovalSuratKeluar;
+use App\Models\UnitPenerbitSurat;
+use App\Services\PenomoranSuratService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -57,6 +61,9 @@ class SuratKeluarController extends Controller
         return Inertia::render('Persuratan/Keluar/Create', [
             'templates' => $templates,
             'karyawans' => $karyawans,
+            'unitPenerbits' => $this->daftarUnitPenerbit(),
+            // Kosong bila departemen pembuat belum punya unit (atau Admin tanpa karyawan): wajib dipilih manual
+            'defaultUnitPenerbitId' => UnitPenerbitSurat::defaultUntukUser(auth()->user())?->id,
         ]);
     }
 
@@ -64,6 +71,7 @@ class SuratKeluarController extends Controller
     {
         $request->validate([
             'template_id'     => 'required|exists:master_template_surats,id',
+            'unit_penerbit_id' => $this->aturanUnitPenerbit(),
             'karyawan_id'     => 'nullable|exists:karyawans,id',
             'isi_surat_final' => 'required|string',
             'lampirans.*'     => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx|max:5120',
@@ -73,6 +81,7 @@ class SuratKeluarController extends Controller
 
         $surat = new SuratKeluar();
         $surat->template_id     = $template->id;
+        $surat->unit_penerbit_id = $request->unit_penerbit_id;
         $surat->karyawan_id     = $request->karyawan_id;
         $surat->created_by      = auth()->id();
         $surat->isi_surat_final = $request->isi_surat_final;
@@ -124,11 +133,8 @@ class SuratKeluarController extends Controller
 
     public function edit($id)
     {
-        $surat = SuratKeluar::with(['template', 'lampirans'])->findOrFail($id);
-
-        if ($surat->status === 'Terbit') {
-            return redirect()->back()->with('error', 'Surat yang sudah terbit tidak dapat diubah.');
-        }
+        $surat = SuratKeluar::with(['template', 'lampirans', 'pembuat.karyawan'])->findOrFail($id);
+        $this->tolakBilaSudahTerbit($surat);
 
         $templates = \App\Models\MasterTemplateSurat::where('is_active', true)->get();
         $karyawans = \App\Models\Karyawan::where('status_aktif', true)->get();
@@ -137,18 +143,20 @@ class SuratKeluarController extends Controller
             'surat'     => $surat,
             'templates' => $templates,
             'karyawans' => $karyawans,
+            'unitPenerbits' => $this->daftarUnitPenerbit(),
+            // Draf lama tanpa penerbit: usulkan unit departemen pembuat (bila ada)
+            'defaultUnitPenerbitId' => $surat->unit_penerbit_id
+                ?? UnitPenerbitSurat::defaultUntukUser($surat->pembuat)?->id,
         ]);
     }
 
     public function update(Request $request, $id)
     {
         $surat = SuratKeluar::findOrFail($id);
-
-        if ($surat->status === 'Terbit') {
-            return redirect()->back()->with('error', 'Surat yang sudah terbit tidak dapat diubah.');
-        }
+        $this->tolakBilaSudahTerbit($surat);
 
         $request->validate([
+            'unit_penerbit_id' => $this->aturanUnitPenerbit(),
             'karyawan_id'     => 'nullable|exists:karyawans,id',
             'isi_surat_final' => 'required|string',
         ]);
@@ -168,6 +176,7 @@ class SuratKeluarController extends Controller
         }
 
         $surat->update([
+            'unit_penerbit_id' => $request->unit_penerbit_id,
             'karyawan_id'     => $request->karyawan_id,
             'isi_surat_final' => $request->isi_surat_final,
             'status_approval' => $statusApprovalBaru,
@@ -180,10 +189,7 @@ class SuratKeluarController extends Controller
     public function destroy($id)
     {
         $surat = SuratKeluar::findOrFail($id);
-
-        if ($surat->status === 'Terbit') {
-            return redirect()->back()->with('error', 'Surat yang sudah terbit tidak dapat dihapus.');
-        }
+        $this->tolakBilaSudahTerbit($surat, 'Surat yang sudah terbit tidak dapat dihapus.');
 
         $surat->delete();
 
@@ -299,29 +305,58 @@ class SuratKeluarController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            // Retry 3x bila MySQL mendeteksi deadlock/lock timeout saat dua persetujuan bersamaan
+            $nomorResmi = DB::transaction(function () use ($surat, $approvalAktif, $user, $request, $keteranganApproval, $jenisTtd, $ttdImagePath) {
+                // Kunci surat & antrean aktif lalu cek ulang: cegah klik ganda / dua approver bersamaan
+                $surat = SuratKeluar::with(['template', 'unitPenerbit', 'pembuat'])->lockForUpdate()->findOrFail($surat->id);
+                if ($surat->status === 'Terbit') {
+                    throw new \DomainException('Surat ini sudah terbit dengan nomor ' . $surat->nomor_surat . '.');
+                }
 
-            $approvalAktif->update([
-                'status'         => 'Disetujui',
-                'user_id_aktual' => $user->id,
-                'waktu_approval' => now(),
-                'catatan'        => $request->input('catatan') ?? $keteranganApproval,
-                'jenis_ttd'      => $jenisTtd,
-                'ttd_image_path' => $ttdImagePath,
-            ]);
+                $antrean = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
+                    ->where('status', 'Menunggu')
+                    ->orderBy('urutan_langkah', 'asc')
+                    ->lockForUpdate()
+                    ->first();
+                if (!$antrean || $antrean->id !== $approvalAktif->id) {
+                    throw new \DomainException('Tahap persetujuan ini sudah diproses. Muat ulang halaman.');
+                }
 
-            $sisaMenunggu = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
-                ->where('status', 'Menunggu')
-                ->count();
+                $antrean->update([
+                    'status'         => 'Disetujui',
+                    'user_id_aktual' => $user->id,
+                    'waktu_approval' => now(),
+                    'catatan'        => $request->input('catatan') ?? $keteranganApproval,
+                    'jenis_ttd'      => $jenisTtd,
+                    'ttd_image_path' => $ttdImagePath,
+                ]);
 
-            if ($sisaMenunggu === 0) {
-                $nomorResmi = $this->generateNomorSurat($surat);
+                $sisaMenunggu = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
+                    ->where('status', 'Menunggu')
+                    ->count();
+
+                if ($sisaMenunggu > 0) {
+                    \App\Models\RiwayatSuratApproval::create([
+                        'surat_keluar_id' => $surat->id,
+                        'user_id'         => $user->id,
+                        'aksi'            => 'Disetujui Parsial',
+                        'catatan'         => $keteranganApproval,
+                    ]);
+
+                    return null;
+                }
+
+                // Persetujuan terakhir: terbitkan nomor resmi (bulan & tahun = waktu terbit)
+                $waktuTerbit = now();
+                $kodePenerbit = $this->kodePenerbitSaatTerbit($surat);
+                $kodeJenis = ($surat->template && !empty($surat->template->kode_surat)) ? $surat->template->kode_surat : 'UMUM';
+                $nomor = app(PenomoranSuratService::class)->terbitkan($kodeJenis, $kodePenerbit, $waktuTerbit, $surat);
 
                 $surat->update([
-                    'nomor_surat'     => $nomorResmi,
+                    'nomor_surat'     => $nomor,
                     'status'          => 'Terbit',
                     'status_approval' => 'Disetujui',
-                    'tanggal_terbit'  => now(),
+                    'tanggal_terbit'  => $waktuTerbit,
                     'qr_code_token'   => (string) Str::uuid(),
                 ]);
 
@@ -332,73 +367,60 @@ class SuratKeluarController extends Controller
                     'catatan'         => 'Surat disetujui penuh dan resmi diterbitkan.',
                 ]);
 
-                DB::commit();
-                return redirect()->back()->with('success', 'Surat selesai disetujui! Nomor Resmi: ' . $nomorResmi);
-            }
-
-            \App\Models\RiwayatSuratApproval::create([
-                'surat_keluar_id' => $surat->id,
-                'user_id'         => $user->id,
-                'aksi'            => 'Disetujui Parsial',
-                'catatan'         => $keteranganApproval,
-            ]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Persetujuan disimpan. Diteruskan ke tahap berikutnya.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
+                return $nomor;
+            }, 3);
+        } catch (\DomainException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat menerbitkan surat: ' . $e->getMessage());
         }
+
+        return $nomorResmi
+            ? redirect()->back()->with('success', 'Surat selesai disetujui! Nomor Resmi: ' . $nomorResmi)
+            : redirect()->back()->with('success', 'Persetujuan disimpan. Diteruskan ke tahap berikutnya.');
     }
 
-
-
-    private function generateNomorSurat($surat)
+    /**
+     * Kode penerbit saat surat terbit. Surat baru selalu punya unit_penerbit_id; fallback di bawah
+     * hanya untuk draf lama: unit departemen pembuat, lalu LDP-CORP. Keduanya dicatat di log.
+     */
+    private function kodePenerbitSaatTerbit(SuratKeluar $surat): string
     {
-        // 1. Gunakan 'now()' Laravel agar mutlak mematuhi timezone Asia/Jakarta di .env
-        $waktuSekarang = now(); 
-        $tahun = $waktuSekarang->year;
-        $bulanAngka = $waktuSekarang->month;
-
-        // 2. Mapping Bulan Romawi
-        $mapRomawi = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
-        ];
-        $bulanRomawi = $mapRomawi[$bulanAngka] ?? 'XI';
-
-        // 3. Pencarian Urutan Nomor Maksimal
-        $suratTahunIni = \App\Models\SuratKeluar::whereYear('tanggal_terbit', $tahun)
-            ->whereNotNull('nomor_surat')
-            ->get();
-
-        $maxNomor = 0;
-        foreach ($suratTahunIni as $s) {
-            $pecahan = explode('/', $s->nomor_surat);
-            if (isset($pecahan[0]) && is_numeric($pecahan[0])) {
-                $nom = (int)$pecahan[0];
-                if ($nom > $maxNomor) {
-                    $maxNomor = $nom;
-                }
-            }
+        if ($surat->unitPenerbit) {
+            return $surat->unitPenerbit->kode;
         }
 
-        $nomorUrut = $maxNomor + 1;
-        $nomorUrutFormatted = str_pad($nomorUrut, 3, '0', STR_PAD_LEFT); 
+        $unit = UnitPenerbitSurat::defaultUntukUser($surat->pembuat);
+        if ($unit) {
+            Log::info("Penomoran surat: draf lama #{$surat->id} tanpa penerbit, memakai unit departemen pembuat {$unit->kode}.");
+        } else {
+            $unit = UnitPenerbitSurat::where('kode', PenomoranSuratService::PENERBIT_FALLBACK)->first();
+            Log::warning("Penomoran surat: draf lama #{$surat->id} tanpa penerbit dan departemen pembuat tanpa unit, memakai fallback " . PenomoranSuratService::PENERBIT_FALLBACK . '.');
+        }
 
-        // 4. Set Komponen Surat
-        $template = $surat->template;
-        $kodeSurat = ($template && !empty($template->kode_surat)) ? $template->kode_surat : 'UMUM';
-        
-        // Menggunakan "Kode Pembuat" yang sudah Anda sediakan langsung di UI Form Master Template
-        $kodePembuat = ($template && !empty($template->pembuat_kode)) ? $template->pembuat_kode : 'LDP-CORP';
+        if ($unit) {
+            $surat->unit_penerbit_id = $unit->id;
+        }
 
-        return "{$nomorUrutFormatted}/{$kodeSurat}/{$kodePembuat}/{$bulanRomawi}/{$tahun}";
+        return $unit->kode ?? PenomoranSuratService::PENERBIT_FALLBACK;
     }
-    
 
+    /** Surat yang sudah terbit tidak boleh diedit, dihapus, atau diganti nomor/penerbitnya. */
+    private function tolakBilaSudahTerbit(SuratKeluar $surat, string $pesan = 'Surat yang sudah terbit tidak dapat diubah.'): void
+    {
+        abort_if($surat->status === 'Terbit' || !empty($surat->nomor_surat), 403, $pesan);
+    }
 
+    private function daftarUnitPenerbit()
+    {
+        return UnitPenerbitSurat::aktif()->orderBy('kode')->get(['id', 'kode', 'nama', 'departemen_id']);
+    }
+
+    private function aturanUnitPenerbit(): array
+    {
+        return ['required', Rule::exists('unit_penerbit_surats', 'id')->where('is_active', true)];
+    }
 
     public function verifikasi($uuid)
     {

@@ -27,20 +27,21 @@ class MasterTemplateController extends Controller
     {
         $request->validate([
             'nama_template' => 'required|string|max:255',
-            'kode_surat'    => 'required|string|max:50',
-            'pembuat_kode'  => 'required|string|max:50',
+            // Segmen ke-2 nomor surat: tanpa '/' agar format nomor tidak rusak. Penerbit dipilih per surat.
+            'kode_surat'    => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9-]+$/'],
             'konten'        => 'required|string',
             
             'rute_approvals'              => 'nullable|array',
             'rute_approvals.*.urutan'     => 'required|integer',
             'rute_approvals.*.jabatan_id' => 'required|exists:jabatans,id',
             'rute_approvals.*.label_ttd'  => 'required|string|max:255',
+        ], [
+            'kode_surat.regex' => 'Kode surat hanya boleh berisi huruf, angka, dan tanda hubung (-).',
         ]);
 
         $template = MasterTemplateSurat::create([
             'nama_template' => $request->nama_template,
-            'kode_surat'    => $request->kode_surat,
-            'pembuat_kode'  => $request->pembuat_kode,
+            'kode_surat'    => strtoupper(trim($request->kode_surat)),
             'konten'        => $request->konten,
             'is_active'     => true,
         ]);

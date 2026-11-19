@@ -16,7 +16,6 @@ export default function Index({ auth, templates, jabatans }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         nama_template: "",
         kode_surat: "",
-        pembuat_kode: "",
         konten: "",
         rute_approvals: [],
     });
@@ -134,9 +133,6 @@ export default function Index({ auth, templates, jabatans }) {
                                         Kode Surat
                                     </th>
                                     <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
-                                        Pembuat
-                                    </th>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
                                         Alur TTD (Hierarchy)
                                     </th>
                                     <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
@@ -152,9 +148,6 @@ export default function Index({ auth, templates, jabatans }) {
                                         </td>
                                         <td className="px-6 py-4 font-mono text-indigo-600">
                                             {t.kode_surat}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {t.pembuat_kode}
                                         </td>
                                         <td className="px-6 py-4">
                                             {t.rute_approvals &&
@@ -237,7 +230,7 @@ export default function Index({ auth, templates, jabatans }) {
                                 {/* KOLOM KIRI: FORM & PENGATURAN (Span 6)                    */}
                                 {/* ========================================================= */}
                                 <div className="lg:col-span-6 space-y-4 max-h-[75vh] overflow-y-auto pr-2">
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <InputLabel value="Nama Template" />
                                             <TextInput
@@ -264,7 +257,7 @@ export default function Index({ auth, templates, jabatans }) {
                                                 onChange={(e) =>
                                                     setData(
                                                         "kode_surat",
-                                                        e.target.value,
+                                                        e.target.value.toUpperCase(),
                                                     )
                                                 }
                                                 placeholder="Misal: SPJ-PD"
@@ -272,24 +265,6 @@ export default function Index({ auth, templates, jabatans }) {
                                             />
                                             <InputError
                                                 message={errors.kode_surat}
-                                            />
-                                        </div>
-                                        <div>
-                                            <InputLabel value="Kode Pembuat" />
-                                            <TextInput
-                                                className="mt-1 block w-full text-xs font-mono"
-                                                value={data.pembuat_kode}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "pembuat_kode",
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                placeholder="Misal: LDP-HC"
-                                                required
-                                            />
-                                            <InputError
-                                                message={errors.pembuat_kode}
                                             />
                                         </div>
                                     </div>
@@ -491,10 +466,11 @@ export default function Index({ auth, templates, jabatans }) {
                                                 </h3>
                                                 <p className="font-mono text-[10px] text-gray-600">
                                                     Nomor: 001/
-                                                    {data.kode_surat || "KODE"}/
-                                                    {data.pembuat_kode ||
-                                                        "DEPT"}
-                                                    /X/2026
+                                                    {(
+                                                        data.kode_surat ||
+                                                        "KODE"
+                                                    ).toUpperCase()}
+                                                    /[PENERBIT]/X/2026
                                                 </p>
                                             </div>
 

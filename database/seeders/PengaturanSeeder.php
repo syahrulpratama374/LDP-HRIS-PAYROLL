@@ -143,5 +143,8 @@ class PengaturanSeeder extends Seeder
                 $pengaturan
             );
         }
+
+        // Kunci yang tidak boleh ditimpa (firstOrCreate), mis. penomoran_surat_mode
+        $this->call(PengaturanPenomoranSuratSeeder::class);
     }
 }

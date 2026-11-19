@@ -37,6 +37,9 @@ class DatabaseSeeder extends Seeder
             // 5. Struktur Organisasi LDP 2026: 9 departemen, 35 akun + profil karyawan, gaji aktif, shift OPM
             LdpStrukturSeeder::class,
 
+            // 5b. Unit penerbit surat ("Yang Mengeluarkan"), butuh departemen dari LdpStrukturSeeder
+            UnitPenerbitSuratSeeder::class,
+
             // 6. Super Admin (syahrul.admin) & akun uji lama — hanya menyentuh email miliknya sendiri,
             //    dijalankan setelah struktur sehingga tidak menimpa 35 akun LDP 2026
             UserSeeder::class,

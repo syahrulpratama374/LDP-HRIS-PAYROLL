@@ -13,6 +13,7 @@ class SuratKeluar extends Model
         protected $fillable = [
             'uuid',
             'template_id',
+            'unit_penerbit_id',
             'karyawan_id',
             'nomor_surat',
             'status',
@@ -41,6 +42,12 @@ class SuratKeluar extends Model
     public function template()
     {
         return $this->belongsTo(MasterTemplateSurat::class, 'template_id');
+    }
+
+    // Unit "Yang Mengeluarkan" (kode penerbit di nomor surat)
+    public function unitPenerbit()
+    {
+        return $this->belongsTo(UnitPenerbitSurat::class, 'unit_penerbit_id');
     }
 
     // Relasi ke tabel Karyawan Tujuan

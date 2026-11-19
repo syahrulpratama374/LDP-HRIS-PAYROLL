@@ -8,8 +8,16 @@ import InputError from "@/Components/InputError";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-export default function Edit({ auth, surat, templates = [], karyawans = [] }) {
+export default function Edit({
+    auth,
+    surat,
+    templates = [],
+    karyawans = [],
+    unitPenerbits = [],
+    defaultUnitPenerbitId = null,
+}) {
     const { data, setData, put, processing, errors } = useForm({
+        unit_penerbit_id: defaultUnitPenerbitId ?? "",
         karyawan_id: surat.karyawan_id || "",
         isi_surat_final: surat.isi_surat_final || "",
     });
@@ -50,6 +58,40 @@ export default function Edit({ auth, surat, templates = [], karyawans = [] }) {
                         {/* BAGIAN KIRI: FORM EDIT */}
                         <div className="lg:col-span-5 flex flex-col gap-4">
                             <div className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-amber-500">
+                                {/* YANG MENGELUARKAN (UNIT PENERBIT) */}
+                                <div className="mb-4">
+                                    <InputLabel value="Yang Mengeluarkan (Unit Penerbit)" />
+                                    <select
+                                        className="mt-1 block w-full border-gray-300 focus:border-amber-500 rounded-md shadow-sm text-sm"
+                                        value={data.unit_penerbit_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                "unit_penerbit_id",
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                    >
+                                        <option value="">
+                                            -- Pilih Unit Penerbit --
+                                        </option>
+                                        {unitPenerbits.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.kode} - {u.nama}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <span className="text-xs text-gray-400">
+                                        Kode unit menjadi bagian nomor surat,
+                                        mis. 001/KODE/
+                                        <strong>LDP-HC</strong>/XI/2026.
+                                    </span>
+                                    <InputError
+                                        message={errors.unit_penerbit_id}
+                                        className="mt-1"
+                                    />
+                                </div>
+
                                 <div className="mb-4">
                                     <InputLabel value="1. Ditujukan Kepada (Karyawan Internal)" />
                                     <select
