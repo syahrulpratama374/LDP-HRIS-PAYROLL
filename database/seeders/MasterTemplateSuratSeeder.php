@@ -35,6 +35,12 @@ class MasterTemplateSuratSeeder extends Seeder
         'SPJ-PD' => 'SPJ Biaya Perjalanan Dinas',
     ];
 
+    /** Jenis bergaya judul tengah (gaya A); sisanya blok_nomor. Hanya dipakai saat membuat baris baru. */
+    public const JUDUL_TENGAH = [
+        'SPJ-PD', 'SK', 'SKEP', 'SKET', 'STU', 'SP', 'SE',
+        'PKS', 'PKS-IPR', 'PKS-CUST', 'BA', 'BAKES', 'SPK', 'SPH',
+    ];
+
     public function run(): void
     {
         foreach (self::GANTI_KODE as $lama => $baru) {
@@ -59,6 +65,9 @@ class MasterTemplateSuratSeeder extends Seeder
                 'kode_surat' => $kode,
                 'nama_template' => $nama,
                 'konten' => '<p>[Isi '.e($nama).']</p>',
+                'gaya_kepala' => in_array($kode, self::JUDUL_TENGAH, true)
+                    ? MasterTemplateSurat::GAYA_JUDUL_TENGAH
+                    : MasterTemplateSurat::GAYA_BLOK_NOMOR,
                 'is_active' => true,
             ]);
         }

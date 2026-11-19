@@ -34,3 +34,6 @@ docs_la/
 CLAUDE.md
 # Dump/backup database lokal (jangan ikut ter-commit)
 *.sql
+
+# Metadata unduhan Windows (WSL)
+*:Zone.Identifier

@@ -27,10 +27,18 @@ class PengaturanLayoutController extends Controller
             'telepon'         => 'nullable|string|max:50',
             'email'           => 'nullable|email|max:100',
             'website'         => 'nullable|string|max:100',
+            'kota_surat'      => 'required|string|max:100',
             'logo_header'     => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
             'watermark'       => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
             'banner_footer'   => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+            'latar_kop'       => 'nullable|image|mimes:png,jpg,jpeg|max:5120',
+            'logo_iso'        => 'nullable|array|max:4',
+            'logo_iso.*'      => 'image|mimes:png,jpg,jpeg|max:2048',
         ]);
+
+        // Setiap simpan membuat baris layout baru. Gambar yang tidak diunggah ulang diwarisi dari
+        // layout aktif sebelumnya, agar mengunggah satu aset tidak menghapus aset lainnya.
+        $sebelumnya = PengaturanSuratLayout::where('is_active', true)->latest('id')->first();
 
         // Jika layout baru diaktifkan, matikan status aktif layout periode sebelumnya
         if ($request->is_active) {
@@ -45,7 +53,13 @@ class PengaturanLayoutController extends Controller
             'telepon'         => $request->telepon,
             'email'           => $request->email,
             'website'         => $request->website,
+            'kota_surat'      => $request->kota_surat,
             'is_active'       => $request->is_active ?? true,
+            'logo_header_path'   => $sebelumnya?->logo_header_path,
+            'watermark_path'     => $sebelumnya?->watermark_path,
+            'banner_footer_path' => $sebelumnya?->banner_footer_path,
+            'logo_iso_paths'     => $sebelumnya?->logo_iso_paths,
+            'latar_kop_path'     => $sebelumnya?->latar_kop_path,
         ];
 
         if ($request->hasFile('logo_header')) {
@@ -56,6 +70,16 @@ class PengaturanLayoutController extends Controller
         }
         if ($request->hasFile('banner_footer')) {
             $data['banner_footer_path'] = $request->file('banner_footer')->store('persuratan/layout', 'public');
+        }
+        if ($request->hasFile('latar_kop')) {
+            $data['latar_kop_path'] = $request->file('latar_kop')->store('persuratan/layout', 'public');
+        }
+        // Unggahan logo ISO menggantikan seluruh daftar logo ISO sebelumnya
+        if ($request->hasFile('logo_iso')) {
+            $data['logo_iso_paths'] = collect($request->file('logo_iso'))
+                ->map(fn ($file) => $file->store('persuratan/layout', 'public'))
+                ->values()
+                ->all();
         }
 
         PengaturanSuratLayout::create($data);

@@ -16,6 +16,7 @@ export default function Index({ auth, templates, jabatans }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         nama_template: "",
         kode_surat: "",
+        gaya_kepala: "blok_nomor",
         konten: "",
         rute_approvals: [],
     });
@@ -133,6 +134,9 @@ export default function Index({ auth, templates, jabatans }) {
                                         Kode Surat
                                     </th>
                                     <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
+                                        Gaya Kepala
+                                    </th>
+                                    <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
                                         Alur TTD (Hierarchy)
                                     </th>
                                     <th className="px-6 py-3 text-left font-bold text-gray-500 uppercase">
@@ -148,6 +152,11 @@ export default function Index({ auth, templates, jabatans }) {
                                         </td>
                                         <td className="px-6 py-4 font-mono text-indigo-600">
                                             {t.kode_surat}
+                                        </td>
+                                        <td className="px-6 py-4 text-xs">
+                                            {t.gaya_kepala === "judul_tengah"
+                                                ? "A · Judul Tengah"
+                                                : "B · Blok Nomor"}
                                         </td>
                                         <td className="px-6 py-4">
                                             {t.rute_approvals &&
@@ -230,7 +239,7 @@ export default function Index({ auth, templates, jabatans }) {
                                 {/* KOLOM KIRI: FORM & PENGATURAN (Span 6)                    */}
                                 {/* ========================================================= */}
                                 <div className="lg:col-span-6 space-y-4 max-h-[75vh] overflow-y-auto pr-2">
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <div>
                                             <InputLabel value="Nama Template" />
                                             <TextInput
@@ -265,6 +274,29 @@ export default function Index({ auth, templates, jabatans }) {
                                             />
                                             <InputError
                                                 message={errors.kode_surat}
+                                            />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Gaya Kepala Surat" />
+                                            <select
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-xs"
+                                                value={data.gaya_kepala}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "gaya_kepala",
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                <option value="blok_nomor">
+                                                    B · Blok Nomor/Lampiran/Hal
+                                                </option>
+                                                <option value="judul_tengah">
+                                                    A · Judul Tengah + Nomor
+                                                </option>
+                                            </select>
+                                            <InputError
+                                                message={errors.gaya_kepala}
                                             />
                                         </div>
                                     </div>

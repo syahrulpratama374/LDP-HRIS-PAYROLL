@@ -40,6 +40,8 @@ class SeederPersuratanTest extends TestCase
         $this->assertSame(1, DB::table('rute_approval_templates')->where('template_id', $skk)->count());
         $this->assertSame('STU', MasterTemplateSurat::find($st)->kode_surat);
         $this->assertSame(count(MasterTemplateSuratSeeder::JENIS), MasterTemplateSurat::count());
+        $this->assertSame('judul_tengah', MasterTemplateSurat::where('kode_surat', 'SPJ-PD')->value('gaya_kepala'));
+        $this->assertSame('blok_nomor', MasterTemplateSurat::where('kode_surat', 'SM')->value('gaya_kepala'));
 
         // Perubahan manual tidak tertimpa, jalankan ulang tidak menambah baris
         MasterTemplateSurat::where('kode_surat', 'SPJ-PD')->update(['nama_template' => 'SPJ Diubah HC', 'is_active' => false]);

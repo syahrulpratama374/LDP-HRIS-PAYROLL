@@ -30,6 +30,7 @@ class MasterTemplateController extends Controller
             // Segmen ke-2 nomor surat: tanpa '/' agar format nomor tidak rusak. Penerbit dipilih per surat.
             'kode_surat'    => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9-]+$/'],
             'konten'        => 'required|string',
+            'gaya_kepala'   => ['nullable', \Illuminate\Validation\Rule::in(MasterTemplateSurat::GAYA_KEPALA)],
             
             'rute_approvals'              => 'nullable|array',
             'rute_approvals.*.urutan'     => 'required|integer',
@@ -43,6 +44,7 @@ class MasterTemplateController extends Controller
             'nama_template' => $request->nama_template,
             'kode_surat'    => strtoupper(trim($request->kode_surat)),
             'konten'        => $request->konten,
+            'gaya_kepala'   => $request->gaya_kepala ?: MasterTemplateSurat::GAYA_BLOK_NOMOR,
             'is_active'     => true,
         ]);
 

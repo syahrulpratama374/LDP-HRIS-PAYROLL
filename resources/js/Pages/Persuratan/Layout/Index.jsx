@@ -6,6 +6,16 @@ import TextInput from "@/Components/TextInput";
 import PrimaryButton from "@/Components/PrimaryButton";
 import InputError from "@/Components/InputError";
 
+/** Penanda field yang tidak dipakai di PDF selama mode latar penuh aktif (tetap bisa diisi sebagai cadangan). */
+function TandaCadangan({ aktif }) {
+    if (!aktif) return null;
+    return (
+        <span className="ml-2 inline-block text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 align-middle">
+            Tidak dipakai · cadangan
+        </span>
+    );
+}
+
 export default function Index({ auth, layouts }) {
     const { flash } = usePage().props;
     const activeLayout = layouts.find((l) => l.is_active) || {};
@@ -21,11 +31,24 @@ export default function Index({ auth, layouts }) {
         telepon: activeLayout.telepon || "(0274) 415632",
         email: activeLayout.email || "sales@ldp.net.id",
         website: activeLayout.website || "www.ldp.net.id",
+        kota_surat: activeLayout.kota_surat || "Bantul",
         is_active: true,
         logo_header: null,
         watermark: null,
         banner_footer: null,
+        logo_iso: [],
+        latar_kop: null,
     });
+
+    const [isoPreviews, setIsoPreviews] = useState(
+        (activeLayout.logo_iso_paths || []).map((p) => `/storage/${p}`),
+    );
+
+    const handleIsoChange = (e) => {
+        const files = Array.from(e.target.files).slice(0, 4);
+        setData("logo_iso", files);
+        setIsoPreviews(files.map((f) => URL.createObjectURL(f)));
+    };
 
     const [previewImages, setPreviewImages] = useState({
         logo_header: activeLayout.logo_header_path
@@ -36,6 +59,9 @@ export default function Index({ auth, layouts }) {
             : null,
         banner_footer: activeLayout.banner_footer_path
             ? `/storage/${activeLayout.banner_footer_path}`
+            : null,
+        latar_kop: activeLayout.latar_kop_path
+            ? `/storage/${activeLayout.latar_kop_path}`
             : null,
     });
 
@@ -54,6 +80,9 @@ export default function Index({ auth, layouts }) {
             reader.readAsDataURL(file);
         }
     };
+
+    // Mode latar penuh: layout aktif sudah punya gambar latar, atau gambar latar baru sedang dipilih
+    const modeLatar = !!(activeLayout.latar_kop_path || data.latar_kop);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -89,6 +118,19 @@ export default function Index({ auth, layouts }) {
                         onSubmit={handleSubmit}
                         className="bg-white p-6 shadow sm:rounded-lg border-t-4 border-indigo-600"
                     >
+                        {modeLatar && (
+                            <div className="mb-5 p-3 rounded border border-indigo-200 bg-indigo-50 text-indigo-800 text-sm">
+                                <strong>Mode latar kop A4 penuh aktif.</strong>{" "}
+                                PDF memakai Gambar Latar Kop (bagian 5).
+                                Field bertanda{" "}
+                                <span className="font-semibold text-amber-700">
+                                    Tidak dipakai · cadangan
+                                </span>{" "}
+                                tidak tampil di PDF, tetapi tetap disimpan
+                                sebagai cadangan bila gambar latar dikosongkan.
+                            </div>
+                        )}
+
                         <h4 className="font-bold text-gray-800 mb-4">
                             Informasi Perusahaan
                         </h4>
@@ -129,7 +171,8 @@ export default function Index({ auth, layouts }) {
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <InputLabel value="Alamat" />
+                                <InputLabel value="Alamat" className="inline" />
+                                <TandaCadangan aktif={modeLatar} />
                                 <TextInput
                                     type="text"
                                     className="mt-1 block w-full text-sm"
@@ -144,7 +187,8 @@ export default function Index({ auth, layouts }) {
                                 />
                             </div>
                             <div>
-                                <InputLabel value="Telepon" />
+                                <InputLabel value="Telepon" className="inline" />
+                                <TandaCadangan aktif={modeLatar} />
                                 <TextInput
                                     type="text"
                                     className="mt-1 block w-full text-sm"
@@ -159,7 +203,8 @@ export default function Index({ auth, layouts }) {
                                 />
                             </div>
                             <div>
-                                <InputLabel value="Email" />
+                                <InputLabel value="Email" className="inline" />
+                                <TandaCadangan aktif={modeLatar} />
                                 <TextInput
                                     type="email"
                                     className="mt-1 block w-full text-sm"
@@ -174,7 +219,8 @@ export default function Index({ auth, layouts }) {
                                 />
                             </div>
                             <div>
-                                <InputLabel value="Website" />
+                                <InputLabel value="Website" className="inline" />
+                                <TandaCadangan aktif={modeLatar} />
                                 <TextInput
                                     type="text"
                                     className="mt-1 block w-full text-sm"
@@ -185,6 +231,26 @@ export default function Index({ auth, layouts }) {
                                 />
                                 <InputError
                                     message={errors.website}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Kota pada Tanggal Surat" />
+                                <TextInput
+                                    type="text"
+                                    className="mt-1 block w-full text-sm"
+                                    value={data.kota_surat}
+                                    onChange={(e) =>
+                                        setData("kota_surat", e.target.value)
+                                    }
+                                    placeholder="Bantul"
+                                />
+                                <span className="text-xs text-gray-400">
+                                    Contoh hasil: {data.kota_surat || "Bantul"},
+                                    26 Agustus 2026
+                                </span>
+                                <InputError
+                                    message={errors.kota_surat}
                                     className="mt-2"
                                 />
                             </div>
@@ -215,10 +281,13 @@ export default function Index({ auth, layouts }) {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 {/* Logo Utama */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
-                                    <InputLabel
-                                        value="1. Logo Utama (Header)"
-                                        className="mb-2 w-full text-left"
-                                    />
+                                    <div className="mb-2 w-full text-left">
+                                        <InputLabel
+                                            value="1. Logo Utama (Header)"
+                                            className="inline"
+                                        />
+                                        <TandaCadangan aktif={modeLatar} />
+                                    </div>
                                     {previewImages.logo_header ? (
                                         <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
                                             <img
@@ -245,10 +314,13 @@ export default function Index({ auth, layouts }) {
 
                                 {/* Watermark */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
-                                    <InputLabel
-                                        value="2. Watermark Transparan"
-                                        className="mb-2 w-full text-left"
-                                    />
+                                    <div className="mb-2 w-full text-left">
+                                        <InputLabel
+                                            value="2. Watermark Transparan"
+                                            className="inline"
+                                        />
+                                        <TandaCadangan aktif={modeLatar} />
+                                    </div>
                                     {previewImages.watermark ? (
                                         <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
                                             <img
@@ -275,10 +347,13 @@ export default function Index({ auth, layouts }) {
 
                                 {/* Banner Footer */}
                                 <div className="p-3 border rounded bg-gray-50 flex flex-col items-center">
-                                    <InputLabel
-                                        value="3. Banner Slogan Footer"
-                                        className="mb-2 w-full text-left"
-                                    />
+                                    <div className="mb-2 w-full text-left">
+                                        <InputLabel
+                                            value="3. Banner Slogan Footer"
+                                            className="inline"
+                                        />
+                                        <TandaCadangan aktif={modeLatar} />
+                                    </div>
                                     {previewImages.banner_footer ? (
                                         <div className="h-24 w-full flex justify-center items-center bg-white border rounded overflow-hidden mb-2">
                                             <img
@@ -305,6 +380,98 @@ export default function Index({ auth, layouts }) {
                                     <InputError
                                         message={errors.banner_footer}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Logo Sertifikasi ISO (footer kiri) */}
+                            <div className="p-3 border rounded bg-gray-50 mb-6">
+                                <div className="mb-2">
+                                    <InputLabel
+                                        value="4. Logo Sertifikasi ISO (footer kiri, maks. 4 file)"
+                                        className="inline"
+                                    />
+                                    <TandaCadangan aktif={modeLatar} />
+                                </div>
+                                <div className="flex gap-3 flex-wrap mb-2">
+                                    {isoPreviews.length > 0 ? (
+                                        isoPreviews.map((src, i) => (
+                                            <div
+                                                key={i}
+                                                className="h-20 w-20 flex justify-center items-center bg-white border rounded overflow-hidden"
+                                            >
+                                                <img
+                                                    src={src}
+                                                    alt={`ISO ${i + 1}`}
+                                                    className="object-contain h-full w-full p-1"
+                                                />
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="h-20 px-4 flex items-center bg-gray-200 border rounded text-xs text-gray-400">
+                                            Belum ada logo ISO
+                                        </div>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="text-xs w-full"
+                                    onChange={handleIsoChange}
+                                />
+                                <span className="text-xs text-gray-400">
+                                    Unggahan baru menggantikan seluruh logo ISO
+                                    sebelumnya. Gambar yang tidak diunggah ulang
+                                    tetap memakai gambar layout aktif.
+                                </span>
+                                <InputError message={errors.logo_iso} />
+                            </div>
+
+                            {/* Gambar Latar Kop A4 penuh */}
+                            <div className="p-3 border rounded bg-gray-50 mb-6 flex gap-4 items-start">
+                                {previewImages.latar_kop ? (
+                                    <img
+                                        src={previewImages.latar_kop}
+                                        alt="Latar Kop"
+                                        className="w-28 border bg-white"
+                                        style={{ aspectRatio: "210 / 297" }}
+                                    />
+                                ) : (
+                                    <div
+                                        className="w-28 flex items-center justify-center bg-gray-200 border text-xs text-gray-400 text-center p-2"
+                                        style={{ aspectRatio: "210 / 297" }}
+                                    >
+                                        Belum ada latar
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <InputLabel
+                                        value="5. Gambar Latar Kop (A4 penuh)"
+                                        className="mb-1"
+                                    />
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Gunakan satu gambar A4 tegak
+                                        (disarankan 2480×3508 px, JPG/PNG).
+                                        Area isi surat: sekitar 3 cm dari atas
+                                        sampai 6,5 cm dari bawah harus kosong.
+                                        Bila gambar ini diisi, alamat, kontak,
+                                        logo, watermark, dan banner di form ini
+                                        tidak dipakai di PDF.
+                                    </p>
+                                    {modeLatar && (
+                                        <span className="inline-block mb-2 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-2 py-0.5">
+                                            ● Mode latar penuh aktif
+                                        </span>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="text-xs w-full"
+                                        onChange={(e) =>
+                                            handleFileChange(e, "latar_kop")
+                                        }
+                                    />
+                                    <InputError message={errors.latar_kop} />
                                 </div>
                             </div>
                         </div>
