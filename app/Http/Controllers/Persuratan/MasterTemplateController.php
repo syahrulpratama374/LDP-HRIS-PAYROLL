@@ -12,7 +12,7 @@ class MasterTemplateController extends Controller
 {
     public function index()
     {
-        $templates = MasterTemplateSurat::with('ruteApprovals.jabatan')->latest()->get();
+        $templates = MasterTemplateSurat::with(['ruteApprovals.jabatan', 'ruteApprovals.role'])->latest()->get();
         
         // Ambil semua jabatan dan urutkan berdasarkan ID
         $jabatans = \App\Models\Jabatan::orderBy('id', 'asc')->get(); 

@@ -50,8 +50,10 @@ class SuratKeluarController extends Controller
 
     public function create()
     {
+        // Template dengan rute berbasis role (mis. SPJ-PD) dibuat lewat modulnya sendiri
         $templates = \App\Models\MasterTemplateSurat::with('ruteApprovals.jabatan')
             ->where('is_active', true)
+            ->tanpaRuteRole()
             ->get();
         
         $karyawans = \App\Models\Karyawan::with('jabatan')
@@ -78,6 +80,11 @@ class SuratKeluarController extends Controller
         ]);
 
         $template = \App\Models\MasterTemplateSurat::with('ruteApprovals')->findOrFail($request->template_id);
+        if ($template->ruteApprovals->contains(fn ($r) => $r->berbasisRole())) {
+            return redirect()->back()->withInput()->withErrors([
+                'template_id' => "Jenis surat {$template->kode_surat} memakai rute berbasis role dan dibuat lewat modulnya sendiri (mis. SPJ Perjalanan Dinas), bukan lewat Surat Keluar.",
+            ]);
+        }
 
         $surat = new SuratKeluar();
         $surat->template_id     = $template->id;

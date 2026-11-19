@@ -31,6 +31,15 @@ class MasterTemplateSurat extends Model
         return $this->hasMany(SuratKeluar::class, 'template_id');
     }
 
+    /**
+     * Template dengan langkah approval berbasis ROLE (mis. SPJ-PD) khusus dipakai modul lain;
+     * Surat Keluar hanya mendukung rute berbasis jabatan.
+     */
+    public function scopeTanpaRuteRole($query)
+    {
+        return $query->whereDoesntHave('ruteApprovals', fn ($q) => $q->where('tipe_penyetuju', RuteApprovalTemplate::TIPE_ROLE));
+    }
+
     // Relasi ke Rute Approval (Cetak Biru)
     public function ruteApprovals()
     {

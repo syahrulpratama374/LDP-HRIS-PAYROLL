@@ -170,10 +170,11 @@ export default function Index({ auth, templates, jabatans }) {
                                                             >
                                                                 {idx + 1}.{" "}
                                                                 {r.label_ttd} (
-                                                                {
-                                                                    r.jabatan
-                                                                        ?.nama_jabatan
-                                                                }
+                                                                {r.tipe_penyetuju ===
+                                                                "role"
+                                                                    ? `Role ${r.role?.nama_role ?? "-"}`
+                                                                    : r.jabatan
+                                                                          ?.nama_jabatan}
                                                                 )
                                                             </span>
                                                         ),

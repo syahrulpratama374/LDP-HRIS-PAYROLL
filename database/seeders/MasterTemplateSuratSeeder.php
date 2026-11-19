@@ -2,7 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Jabatan;
 use App\Models\MasterTemplateSurat;
+use App\Models\Role;
+use App\Models\RuteApprovalTemplate;
 use Illuminate\Database\Seeder;
 
 /**
@@ -69,6 +72,32 @@ class MasterTemplateSuratSeeder extends Seeder
                     ? MasterTemplateSurat::GAYA_JUDUL_TENGAH
                     : MasterTemplateSurat::GAYA_BLOK_NOMOR,
                 'is_active' => true,
+            ]);
+        }
+
+        $this->isiRuteSpjPd();
+    }
+
+    /**
+     * Rute SPJ-PD (HC -> Finance -> Direktur) untuk instalasi baru; hanya bila template belum punya
+     * rute, jadi rute yang sudah diatur HC tidak ditimpa. DB lama diisi lewat migrasi data.
+     */
+    private function isiRuteSpjPd(): void
+    {
+        $template = $this->cari('SPJ-PD');
+        $jabatanCeo = Jabatan::where('kode_jabatan', 'CEO')->value('id');
+        if (! $template || ! $jabatanCeo || Role::whereIn('id', [3, 4])->count() < 2 || $template->ruteApprovals()->exists()) {
+            return;
+        }
+
+        foreach ([
+            [1, RuteApprovalTemplate::TIPE_ROLE, 3, null, 'Diajukan Oleh'],
+            [2, RuteApprovalTemplate::TIPE_ROLE, 4, null, 'Diperiksa Oleh'],
+            [3, RuteApprovalTemplate::TIPE_JABATAN, null, $jabatanCeo, 'Disetujui Oleh'],
+        ] as [$urutan, $tipe, $roleId, $jabatanId, $label]) {
+            RuteApprovalTemplate::create([
+                'template_id' => $template->id, 'urutan_langkah' => $urutan, 'tipe_penyetuju' => $tipe,
+                'role_id' => $roleId, 'jabatan_id' => $jabatanId, 'label_ttd' => $label,
             ]);
         }
     }
