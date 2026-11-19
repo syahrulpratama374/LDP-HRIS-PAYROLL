@@ -5,6 +5,7 @@ namespace Tests\Feature\Spj;
 use App\Models\Spj;
 use App\Services\Spj\SpjKalkulator;
 use App\Support\Terbilang;
+use Database\Seeders\MasterTemplateSuratSeeder;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
@@ -83,7 +84,8 @@ class PengajuanSpjTest extends SpjTestCase
         $this->assertSame('9990000001', Crypt::decryptString($spj->pesertas[0]->rekening_encrypted));
         $this->assertSame('LDP-HC', $spj->unitPenerbit->kode);
 
-        $this->actingAs($pengaju)->post(route('spj.ajukan', $spj))->assertSessionHasNoErrors()->assertRedirect(route('spj.index'));
+        $this->seed(MasterTemplateSuratSeeder::class); // rute SPJ-PD
+        $this->actingAs($pengaju)->post(route('spj.ajukan', $spj))->assertSessionHasNoErrors()->assertRedirect(route('spj.show', $spj));
         $spj->refresh();
         $this->assertSame('Diajukan', $spj->status);
         $this->assertNotNull($spj->diajukan_pada);
@@ -115,6 +117,7 @@ class PengajuanSpjTest extends SpjTestCase
 
         // Setelah rekening dilengkapi, bisa diajukan (snapshot rekening diperbarui saat ajukan)
         $this->beriRekening($fahla, '9990000001');
+        $this->seed(MasterTemplateSuratSeeder::class); // rute SPJ-PD
         $this->actingAs($pengaju)->post(route('spj.ajukan', $spj))->assertSessionHasNoErrors();
         $this->assertSame('Diajukan', $spj->fresh()->status);
     }

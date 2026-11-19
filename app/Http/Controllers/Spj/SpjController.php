@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditTrail;
 use App\Models\Karyawan;
 use App\Models\MasterTarifSpj;
+use App\Models\MasterTemplateSurat;
 use App\Models\Spj;
+use App\Models\SpjApproval;
 use App\Models\UnitPenerbitSurat;
 use App\Models\User;
+use App\Services\Spj\OtorisasiApprovalSpj;
 use App\Services\Spj\RekeningSpj;
 use App\Services\Spj\SpjKalkulator;
+use App\Support\Terbilang;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +34,10 @@ class SpjController extends Controller
     /** Batas lama perjalanan agar tanggal yang keliru tidak menghasilkan nominal tak wajar. */
     private const MAKS_HARI = 60;
 
-    public function __construct(private SpjKalkulator $kalkulator) {}
+    public function __construct(
+        private SpjKalkulator $kalkulator,
+        private OtorisasiApprovalSpj $otorisasi,
+    ) {}
 
     public function index(Request $request)
     {
@@ -38,8 +45,10 @@ class SpjController extends Controller
         $cari = trim((string) $request->input('cari', ''));
         $status = $request->input('status');
 
+        $idsMenunggu = $this->otorisasi->idsMenungguUser($user);
+
         $spjs = Spj::query()
-            ->terlihatOleh($user)
+            ->terlihatOleh($user, $idsMenunggu)
             ->with(['pembuat:id,name', 'unitPenerbit:id,kode'])
             ->withCount('pesertas')
             ->when($status, fn ($q) => $q->where('status', $status))
@@ -65,10 +74,12 @@ class SpjController extends Controller
             'total_uang_harian' => (float) $spj->total_uang_harian,
             'pembuat' => $spj->pembuat?->name,
             'bisa_ubah' => $spj->bisaDiubahOleh($user),
+            'menunggu_saya' => in_array($spj->id, $idsMenunggu, true),
         ]);
 
         return Inertia::render('PerjalananDinas/Index', [
             'spjs' => $spjs,
+            'jumlahMenungguSaya' => count($idsMenunggu),
             'filter' => ['cari' => $cari, 'status' => $status],
             'statusList' => [Spj::STATUS_DRAFT, Spj::STATUS_DIAJUKAN, Spj::STATUS_DISETUJUI, Spj::STATUS_DITOLAK, Spj::STATUS_SELESAI, Spj::STATUS_DIBATALKAN],
         ]);
@@ -77,6 +88,74 @@ class SpjController extends Controller
     public function create(Request $request)
     {
         return Inertia::render('PerjalananDinas/Form', $this->dataForm($request->user()));
+    }
+
+    /** Detail SPJ: data, peserta (rekening sesuai peran), rincian, dan timeline persetujuan. */
+    public function show(Request $request, Spj $spj)
+    {
+        $user = $request->user();
+        abort_unless($this->bolehLihat($user, $spj), 403, 'Anda tidak berhak melihat SPJ ini.');
+
+        $spj->load(['pesertas', 'pembuat:id,name', 'unitPenerbit:id,kode,nama',
+            'approvals.role:id,nama_role', 'approvals.jabatan:id,nama_jabatan',
+            'approvals.userAktual.karyawan:id,user_id,nama_lengkap', 'approvals.atasNama:id,nama_lengkap']);
+        $langkahAktif = $spj->approvals->firstWhere('status', SpjApproval::MENUNGGU);
+        $cek = $this->otorisasi->periksa($spj, $user, $langkahAktif);
+
+        return Inertia::render('PerjalananDinas/Show', [
+            'spj' => [
+                'id' => $spj->id,
+                'nomor_surat' => $spj->nomor_surat,
+                'status' => $spj->status,
+                'provinsi' => $spj->provinsi,
+                'kota' => $spj->kota,
+                'tgl_berangkat' => $spj->tgl_berangkat,
+                'tgl_pulang' => $spj->tgl_pulang,
+                'jumlah_hari' => $spj->jumlah_hari,
+                'jumlah_malam' => $spj->jumlah_malam,
+                'keperluan' => $spj->keperluan,
+                'tanggal_risalah_awal' => $spj->tanggal_risalah_awal,
+                'unit_penerbit' => $spj->unitPenerbit ? "{$spj->unitPenerbit->kode} - {$spj->unitPenerbit->nama}" : null,
+                'pembuat' => $spj->pembuat?->name,
+                'diajukan_pada' => $spj->diajukan_pada?->toDateTimeString(),
+                'tanggal_terbit' => $spj->tanggal_terbit?->toDateTimeString(),
+                'catatan_revisi' => $spj->catatan_revisi,
+                'total_uang_harian' => (float) $spj->total_uang_harian,
+                'terbilang' => Terbilang::rupiah((float) $spj->total_uang_harian),
+            ],
+            'pesertas' => $spj->pesertas->map(fn ($p) => [
+                'karyawan_id' => $p->karyawan_id,
+                'nama' => $p->nama,
+                'posisi' => $p->posisi,
+                'departemen' => $p->departemen,
+                'kategori_tarif' => $p->kategori_tarif,
+                'tarif_uang_harian' => $p->tarif_uang_harian === null ? null : (float) $p->tarif_uang_harian,
+                'total_uang_harian' => (float) $p->total_uang_harian,
+                'tarif_penginapan' => $p->tarif_penginapan === null ? null : (float) $p->tarif_penginapan,
+                'batas_penginapan' => $p->batas_penginapan === null ? null : (float) $p->batas_penginapan,
+                'rekening' => RekeningSpj::untuk($user, $p->rekening_encrypted, $p->karyawan_id),
+            ])->values(),
+            'approvals' => $spj->approvals->map(fn (SpjApproval $a) => [
+                'id' => $a->id,
+                'urutan' => $a->urutan_langkah,
+                'label' => $a->label_ttd,
+                'penyetuju' => $a->namaPenyetuju(),
+                'status' => $a->status,
+                'aktif' => $langkahAktif && $a->id === $langkahAktif->id && $spj->status === Spj::STATUS_DIAJUKAN,
+                'nama_aktual' => $a->userAktual?->karyawan?->nama_lengkap ?? $a->userAktual?->name,
+                'atas_nama' => $a->atasNama?->nama_lengkap,
+                'waktu' => $a->waktu_approval?->toDateTimeString(),
+                'catatan' => $a->catatan,
+            ])->values(),
+            'bisaSetujui' => $cek['boleh'],
+            // Penjelasan untuk Admin/pengaju/peserta mengapa tombol Setujui tidak tersedia
+            'alasanTidakBisa' => ! $cek['boleh'] && $spj->status === Spj::STATUS_DIAJUKAN
+                && ((int) $user->role_id === 1 || (int) $spj->dibuat_oleh === (int) $user->id
+                    || $spj->pesertas->contains('karyawan_id', $user->karyawan?->id))
+                ? $cek['pesan'] : null,
+            'atasNama' => $cek['atas_nama']?->nama_lengkap,
+            'bisaUbah' => $spj->bisaDiubahOleh($user),
+        ]);
     }
 
     public function store(Request $request)
@@ -104,6 +183,8 @@ class SpjController extends Controller
                 'tanggal_risalah_awal' => $spj->tanggal_risalah_awal,
                 'unit_penerbit_id' => $spj->unit_penerbit_id,
                 'peserta' => $spj->pesertas->pluck('karyawan_id')->all(),
+                'status' => $spj->status,
+                'catatan_revisi' => $spj->catatan_revisi,
             ],
         ]);
     }
@@ -122,7 +203,8 @@ class SpjController extends Controller
         $this->pastikanBisaUbah($request->user(), $spj);
         $this->audit($request, 'Hapus draf SPJ', $spj);
         DB::transaction(function () use ($spj) {
-            $spj->pesertas()->delete(); // eksplisit, tidak bergantung pada cascade FK
+            $spj->approvals()->delete(); // eksplisit, tidak bergantung pada cascade FK
+            $spj->pesertas()->delete();
             $spj->delete();
         });
 
@@ -139,7 +221,7 @@ class SpjController extends Controller
         }
         $this->audit($request, 'Ajukan SPJ', $spj);
 
-        return redirect()->route('spj.index')->with('success', 'SPJ diajukan dan menunggu persetujuan HC.');
+        return redirect()->route('spj.show', $spj)->with('success', 'SPJ diajukan dan menunggu persetujuan HC.');
     }
 
     /** Pratinjau perhitungan untuk form (JSON). Sama persis dengan yang disimpan. */
@@ -289,11 +371,29 @@ class SpjController extends Controller
         if ($tanpaTarif->isNotEmpty()) {
             $galat[] = "Tarif uang harian {$spj->provinsi} belum ada untuk: ".$tanpaTarif->join(', ').'. Hubungi HC.';
         }
+        $rute = MasterTemplateSurat::whereRaw('UPPER(kode_surat) = ?', ['SPJ-PD'])->orderBy('id')->first()
+            ?->ruteApprovals()->get() ?? collect();
+        if ($rute->isEmpty()) {
+            $galat[] = 'Rute persetujuan SPJ-PD belum diatur di Master Template & Rute. Hubungi HC.';
+        }
         if ($galat) {
             return $galat;
         }
 
-        $spj->update(['status' => Spj::STATUS_DIAJUKAN, 'diajukan_pada' => now()]);
+        // Langkah persetujuan dibuat ulang dari rute template (juga saat diajukan ulang setelah ditolak)
+        $spj->approvals()->delete();
+        foreach ($rute as $r) {
+            $spj->approvals()->create([
+                'urutan_langkah' => $r->urutan_langkah,
+                'tipe_penyetuju' => $r->tipe_penyetuju ?? 'jabatan',
+                'role_id' => $r->role_id,
+                'jabatan_id' => $r->jabatan_id,
+                'label_ttd' => $r->label_ttd,
+                'status' => SpjApproval::MENUNGGU,
+            ]);
+        }
+
+        $spj->update(['status' => Spj::STATUS_DIAJUKAN, 'diajukan_pada' => now(), 'catatan_revisi' => null]);
 
         return [];
     }
@@ -311,7 +411,7 @@ class SpjController extends Controller
         }
         $this->audit($request, 'Ajukan SPJ', $spj);
 
-        return redirect()->route('spj.index')->with('success', 'SPJ diajukan dan menunggu persetujuan HC.');
+        return redirect()->route('spj.show', $spj)->with('success', 'SPJ diajukan dan menunggu persetujuan HC.');
     }
 
     /** Tambahkan rekening (disamarkan sesuai peran) ke baris hasil perhitungan. */
@@ -328,9 +428,14 @@ class SpjController extends Controller
     private function pastikanBisaUbah(User $user, Spj $spj): void
     {
         abort_unless($spj->bisaDiubahOleh($user), 403,
-            $spj->status === Spj::STATUS_DRAFT
-                ? 'Hanya pembuat SPJ yang dapat mengubah draf ini.'
+            in_array($spj->status, [Spj::STATUS_DRAFT, Spj::STATUS_DITOLAK], true)
+                ? 'Hanya pembuat SPJ yang dapat mengubah SPJ ini.'
                 : 'SPJ yang sudah diajukan tidak dapat diubah.');
+    }
+
+    private function bolehLihat(User $user, Spj $spj): bool
+    {
+        return Spj::whereKey($spj->id)->terlihatOleh($user, $this->otorisasi->idsMenungguUser($user))->exists();
     }
 
     private function audit(Request $request, string $aksi, Spj $spj): void

@@ -129,7 +129,7 @@ export default function Form({
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    {spj ? "Ubah Draf SPJ Perjalanan Dinas" : "Buat SPJ Perjalanan Dinas"}
+                    {spj ? (spj.status === "Ditolak" ? "Revisi SPJ Perjalanan Dinas" : "Ubah Draf SPJ Perjalanan Dinas") : "Buat SPJ Perjalanan Dinas"}
                 </h2>
             }
         >
@@ -139,6 +139,11 @@ export default function Form({
                 <div className="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-5">
                     {flash?.success && (
                         <div className="p-3 bg-green-50 border border-green-300 text-green-800 rounded text-sm">{flash.success}</div>
+                    )}
+                    {spj?.status === "Ditolak" && spj?.catatan_revisi && (
+                        <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded text-sm">
+                            <strong>SPJ ditolak.</strong> Alasan: {spj.catatan_revisi} — perbaiki lalu ajukan ulang.
+                        </div>
                     )}
                     {errors.ajukan && (
                         <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded text-sm">

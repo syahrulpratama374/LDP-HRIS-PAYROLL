@@ -5,7 +5,7 @@ import PrimaryButton from "@/Components/PrimaryButton";
 import formatRupiah from "@/Utils/formatRupiah";
 import { formatRentangTanggal, WARNA_STATUS_SPJ } from "@/Utils/spj";
 
-export default function Index({ spjs, filter = {}, statusList = [] }) {
+export default function Index({ spjs, filter = {}, statusList = [], jumlahMenungguSaya = 0 }) {
     const { flash, errors } = usePage().props;
     const [cari, setCari] = useState(filter.cari || "");
 
@@ -34,6 +34,11 @@ export default function Index({ spjs, filter = {}, statusList = [] }) {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
                     {flash?.success && (
                         <div className="p-3 bg-green-50 border border-green-300 text-green-800 rounded text-sm">{flash.success}</div>
+                    )}
+                    {jumlahMenungguSaya > 0 && (
+                        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-800 rounded text-sm">
+                            Ada <strong>{jumlahMenungguSaya}</strong> SPJ yang menunggu persetujuan Anda (ditandai "Menunggu Anda").
+                        </div>
                     )}
                     {errors?.ajukan && (
                         <div className="p-3 bg-red-50 border border-red-300 text-red-700 rounded text-sm">{errors.ajukan}</div>
@@ -96,6 +101,11 @@ export default function Index({ spjs, filter = {}, statusList = [] }) {
                                                 <span className={`inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${WARNA_STATUS_SPJ[s.status] || ""}`}>
                                                     {s.status}
                                                 </span>
+                                                {s.menunggu_saya && (
+                                                    <span className="inline-block mt-1 ml-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-indigo-600 text-white animate-pulse">
+                                                        Menunggu Anda
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="font-semibold text-gray-800">{s.kota}</div>
@@ -108,6 +118,12 @@ export default function Index({ spjs, filter = {}, statusList = [] }) {
                                             <td className="px-4 py-3 text-center">{s.jumlah_peserta}</td>
                                             <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatRupiah(s.total_uang_harian)}</td>
                                             <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
+                                                <Link
+                                                    href={route("spj.show", s.id)}
+                                                    className={`text-xs px-3 py-1.5 rounded font-bold border ${s.menunggu_saya ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+                                                >
+                                                    {s.menunggu_saya ? "Tinjau" : "Detail"}
+                                                </Link>
                                                 {s.bisa_ubah && (
                                                     <>
                                                         <Link
@@ -130,7 +146,6 @@ export default function Index({ spjs, filter = {}, statusList = [] }) {
                                                         </button>
                                                     </>
                                                 )}
-                                                {!s.bisa_ubah && <span className="text-xs text-gray-400">Detail menyusul</span>}
                                             </td>
                                         </tr>
                                     ))}

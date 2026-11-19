@@ -4,7 +4,8 @@ import Modal from "@/Components/Modal";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 
-export default function SignModal({ isOpen, onClose, suratId }) {
+// approveUrl opsional: dipakai modul lain (mis. SPJ); default tetap persetujuan Surat Keluar
+export default function SignModal({ isOpen, onClose, suratId, approveUrl = null }) {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
@@ -126,7 +127,7 @@ export default function SignModal({ isOpen, onClose, suratId }) {
 
         // Mengirim data menggunakan router Inertia
         // Inertia otomatis mengubah ini menjadi FormData (multipart/form-data) jika ada file
-        router.post(route("keluar.approve", suratId), payload, {
+        router.post(approveUrl ?? route("keluar.approve", suratId), payload, {
             onSuccess: () => {
                 closeModal();
             },

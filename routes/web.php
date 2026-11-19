@@ -87,6 +87,9 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::put('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'update'])->name('update');
         Route::delete('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'destroy'])->name('destroy');
         Route::post('/{spj}/ajukan', [\App\Http\Controllers\Spj\SpjController::class, 'ajukan'])->name('ajukan');
+        Route::get('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'show'])->name('show');
+        Route::post('/{spj}/setujui', [\App\Http\Controllers\Spj\SpjPersetujuanController::class, 'approve'])->name('approve');
+        Route::post('/{spj}/tolak', [\App\Http\Controllers\Spj\SpjPersetujuanController::class, 'tolak'])->name('tolak');
     });
 
     // SPJ model LAMA (per karyawan, dicairkan lewat payroll) — dipensiunkan di B9.

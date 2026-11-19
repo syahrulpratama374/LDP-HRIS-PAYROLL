@@ -52,6 +52,17 @@ class Spj extends Model
         return $this->hasMany(SpjPeserta::class)->orderBy('urutan');
     }
 
+    public function approvals()
+    {
+        return $this->hasMany(SpjApproval::class)->orderBy('urutan_langkah');
+    }
+
+    /** Langkah persetujuan yang sedang menunggu (urutan terkecil berstatus Menunggu). */
+    public function langkahAktif(): ?SpjApproval
+    {
+        return $this->approvals()->where('status', SpjApproval::MENUNGGU)->orderBy('urutan_langkah')->first();
+    }
+
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
@@ -62,8 +73,12 @@ class Spj extends Model
         return $this->belongsTo(UnitPenerbitSurat::class, 'unit_penerbit_id');
     }
 
-    /** SPJ yang boleh dilihat user: Admin/HC/Finance semua; lainnya buatan sendiri atau memuat dirinya. */
-    public function scopeTerlihatOleh(Builder $q, User $user): Builder
+    /**
+     * SPJ yang boleh dilihat user: Admin/HC/Finance semua; lainnya buatan sendiri, memuat dirinya
+     * sebagai peserta, pernah ia setujui/tolak, atau sedang menunggu tindakannya ($idsMenunggu dari
+     * OtorisasiApprovalSpj::idsMenungguUser, termasuk lewat delegasi).
+     */
+    public function scopeTerlihatOleh(Builder $q, User $user, array $idsMenunggu = []): Builder
     {
         if (in_array($user->role_id, self::ROLE_LIHAT_SEMUA, true)) {
             return $q;
@@ -71,16 +86,20 @@ class Spj extends Model
         $karyawanId = $user->karyawan?->id;
 
         return $q->where(fn ($w) => $w->where('dibuat_oleh', $user->id)
-            ->when($karyawanId, fn ($w2) => $w2->orWhereHas('pesertas', fn ($p) => $p->where('karyawan_id', $karyawanId))));
+            ->when($karyawanId, fn ($w2) => $w2->orWhereHas('pesertas', fn ($p) => $p->where('karyawan_id', $karyawanId)))
+            ->orWhereHas('approvals', fn ($a) => $a->where('user_id_aktual', $user->id))
+            ->when($idsMenunggu, fn ($w2) => $w2->orWhereIn('id', $idsMenunggu)));
     }
 
+    /** Draf, atau SPJ yang ditolak (untuk direvisi lalu diajukan ulang), oleh pembuatnya. */
     public function bisaDiubahOleh(User $user): bool
     {
-        return $this->status === self::STATUS_DRAFT && (int) $this->dibuat_oleh === (int) $user->id;
+        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_DITOLAK], true)
+            && (int) $this->dibuat_oleh === (int) $user->id;
     }
 
-    public function terlihatOleh(User $user): bool
+    public function memuatPeserta(?int $karyawanId): bool
     {
-        return static::whereKey($this->id)->terlihatOleh($user)->exists();
+        return $karyawanId !== null && $this->pesertas()->where('karyawan_id', $karyawanId)->exists();
     }
 }
