@@ -12,7 +12,7 @@ class Karyawan extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'departemen_id', 'jabatan_id', 'golongan_id', 'ptkp_id',
+        'user_id', 'departemen_id', 'jabatan_id', 'kategori_tarif_spj', 'golongan_id', 'ptkp_id',
         'nik_internal', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir',
         'agama', 'status_pernikahan', 'alamat_ktp', 'alamat_domisili',
         'email_kantor', 'no_telp', 'tgl_bergabung',

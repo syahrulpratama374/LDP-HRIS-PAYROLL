@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             MasterTarifTerSeeder::class,
             MasterKomponenPayrollSeeder::class,
             PengaturanSeeder::class,
+            MasterTarifSpjSeeder::class, // tarif SPJ per provinsi; tidak menimpa koreksi HC
 
             // 4. Master cuti & template persuratan
             MasterJenisCutiSeeder::class,
