@@ -76,10 +76,25 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
     Route::post('/pinjaman', [PinjamanController::class, 'store'])->name('pinjaman.store');
     Route::post('/pinjaman/cicilan/{cicilanId}/bayar', [PinjamanController::class, 'uploadBuktiBayar'])->name('pinjaman.bayarManual');
 
-    Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.index');
-    Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.create');
-    Route::post('/spj', [PengajuanSpjController::class, 'store'])->name('spj.store');
-    Route::post('/spj/{id}/laporan', [PengajuanSpjController::class, 'storeLaporan'])->name('spj.laporan');
+    // SPJ Perjalanan Dinas model BARU (banyak peserta, dibayar Finance, tidak lewat payroll).
+    // Akses lewat menu 'spj.index'; aturan per aksi ditegakkan di controller.
+    Route::prefix('perjalanan-dinas')->name('spj.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Spj\SpjController::class, 'index'])->name('index');
+        Route::get('/buat', [\App\Http\Controllers\Spj\SpjController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Spj\SpjController::class, 'store'])->name('store');
+        Route::post('/hitung', [\App\Http\Controllers\Spj\SpjController::class, 'hitung'])->name('hitung');
+        Route::get('/{spj}/ubah', [\App\Http\Controllers\Spj\SpjController::class, 'edit'])->name('edit');
+        Route::put('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'update'])->name('update');
+        Route::delete('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'destroy'])->name('destroy');
+        Route::post('/{spj}/ajukan', [\App\Http\Controllers\Spj\SpjController::class, 'ajukan'])->name('ajukan');
+    });
+
+    // SPJ model LAMA (per karyawan, dicairkan lewat payroll) — dipensiunkan di B9.
+    // URL tetap; nama 'spj.lama.*' tercakup menu 'spj.index' (prefix 'spj.').
+    Route::get('/spj', [PengajuanSpjController::class, 'index'])->name('spj.lama.index');
+    Route::get('/spj/ajukan', [PengajuanSpjController::class, 'create'])->name('spj.lama.create');
+    Route::post('/spj', [PengajuanSpjController::class, 'store'])->name('spj.lama.store');
+    Route::post('/spj/{id}/laporan', [PengajuanSpjController::class, 'storeLaporan'])->name('spj.lama.laporan');
 
     Route::get('/slip-gaji', [PayrollController::class, 'myPayslips'])->name('slip.index');
     Route::get('/slip-gaji/{id}', [PayrollController::class, 'show'])->name('slip.show');

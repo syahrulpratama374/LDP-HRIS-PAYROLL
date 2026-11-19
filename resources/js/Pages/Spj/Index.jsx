@@ -118,7 +118,7 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
 
     const submitLaporan = (e) => {
         e.preventDefault();
-        post(route("spj.laporan", selectedSpjId), {
+        post(route("spj.lama.laporan", selectedSpjId), {
             forceFormData: true,
             onSuccess: () => closeModalLapor(),
         });
@@ -243,7 +243,7 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
 
                             {!adaUtangLaporan ? (
                                 <Link
-                                    href={route("spj.create")}
+                                    href={route("spj.lama.create")}
                                     className="inline-flex h-9 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg bg-[#F3B817] px-4 text-sm font-bold text-[#2A164E] shadow-sm transition hover:bg-[#e0a80e]"
                                 >
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>

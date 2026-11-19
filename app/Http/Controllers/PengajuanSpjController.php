@@ -70,7 +70,7 @@ class PengajuanSpjController extends Controller
             'status_approval' => 'Menunggu Validasi Finance', // Terlempar ke Dasbor Finance
         ]);
 
-        return redirect()->route('spj.index')->with('success', 'Laporan perjalanan dinas dan bukti bon berhasil diunggah.');
+        return redirect()->route('spj.lama.index')->with('success', 'Laporan perjalanan dinas dan bukti bon berhasil diunggah.');
     }
 
     // [KARYAWAN] Menampilkan form pengajuan SPJ
@@ -129,7 +129,7 @@ class PengajuanSpjController extends Controller
             ]);
         }
 
-        return redirect()->route('spj.index')->with('success', 'Pengajuan Perjalanan Dinas (SPJ) berhasil dikirim.');
+        return redirect()->route('spj.lama.index')->with('success', 'Pengajuan Perjalanan Dinas (SPJ) berhasil dikirim.');
     }
 
     // ==========================================

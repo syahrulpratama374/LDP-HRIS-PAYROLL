@@ -28,6 +28,7 @@ export default function Edit({
         tgl_bergabung: karyawan.tgl_bergabung || "",
         departemen_id: karyawan.departemen_id || "",
         jabatan_id: karyawan.jabatan_id || "",
+        nama_posisi: karyawan.nama_posisi || "",
         golongan_id: karyawan.golongan_id || "",
         ptkp_id: karyawan.ptkp_id || "",
         jenis_kelamin: karyawan.jenis_kelamin || "Laki-laki",
@@ -419,6 +420,21 @@ export default function Edit({
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Nama Posisi (sesuai bagan)" />
+                                        <TextInput
+                                            className="mt-1 block w-full"
+                                            value={data.nama_posisi}
+                                            onChange={(e) =>
+                                                setData("nama_posisi", e.target.value)
+                                            }
+                                            placeholder="Mis. Head of Artistic - Creative Team"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Dipakai di dokumen (mis. PDF SPJ). Kosong = memakai nama jabatan.
+                                        </p>
+                                        <InputError message={errors.nama_posisi} />
                                     </div>
                                     <div>
                                         <InputLabel value="Golongan Gaji" />

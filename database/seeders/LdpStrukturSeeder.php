@@ -53,6 +53,9 @@ class LdpStrukturSeeder extends Seeder
      * username => [nama, jabatan di bagan, role_id, departemen, jenjang, atasan (username)]
      * Role: 2 Direktur, 3 HC, 4 Finance, 5 Supervisor, 6 Karyawan.
      */
+    /** Posisi "Head"/officer berjenjang MGR yang memakai tarif SPJ Staff. */
+    public const KATEGORI_TARIF_STAFF = ['fahla', 'mikha', 'elvira'];
+
     public const STRUKTUR = [
         // --- TOP MANAGEMENT ---
         'ceo' => ['Wahyu Jatmiko', 'Chief Executive Officer', 2, 'BOD', 'CEO', null],
@@ -136,7 +139,7 @@ class LdpStrukturSeeder extends Seeder
 
         $karyawan = [];
         $urut = 0;
-        foreach (self::STRUKTUR as $username => [$nama, , $roleId, $kodeDept, $jenjang, $atasan]) {
+        foreach (self::STRUKTUR as $username => [$nama, $posisi, $roleId, $kodeDept, $jenjang, $atasan]) {
             $urut++;
             $gol = $golongan[self::GOLONGAN_JENJANG[$jenjang]];
 
@@ -149,6 +152,8 @@ class LdpStrukturSeeder extends Seeder
                 $atasan ? $karyawan[$atasan]->id : null,
                 sprintf('62812000000%02d', $urut),
                 sprintf('LDP-26%03d', $urut),
+                $posisi,
+                $this->kategoriTarifAwal($username, $jenjang),
             );
         }
 
@@ -159,7 +164,8 @@ class LdpStrukturSeeder extends Seeder
 
     private function sinkronKaryawan(
         string $username, string $nama, int $roleId, int $deptId, int $jabatanId,
-        Golongan $golongan, int $ptkpId, ?int $atasanId, string $noTelp, string $nikBaru
+        Golongan $golongan, int $ptkpId, ?int $atasanId, string $noTelp, string $nikBaru,
+        string $posisi, string $kategoriTarif
     ): Karyawan {
         $email = "{$username}@ldp.co.id";
 
@@ -181,7 +187,13 @@ class LdpStrukturSeeder extends Seeder
                 'status_pernikahan' => 'Belum Kawin',
                 'tgl_bergabung' => '2026-01-01',
                 'no_ktp_encrypted' => 'DUMMY_KTP_ENCRYPTED_1234567890',
+                // Hanya untuk karyawan baru; setelah itu HC yang mengatur per orang
+                'kategori_tarif_spj' => $kategoriTarif,
             ]);
+        }
+        // Judul posisi dari bagan, hanya bila masih kosong (tidak menimpa koreksi HC)
+        if (blank($karyawan->nama_posisi)) {
+            $karyawan->nama_posisi = $posisi;
         }
         $karyawan->fill([
             'nama_lengkap' => $nama,
@@ -204,6 +216,16 @@ class LdpStrukturSeeder extends Seeder
         );
 
         return $karyawan;
+    }
+
+    /** Kategori tarif SPJ awal: CEO/MD -> Direksi, MGR -> Manager (kecuali posisi Head/officer), lainnya Staff. */
+    private function kategoriTarifAwal(string $username, string $jenjang): string
+    {
+        if (in_array($jenjang, ['CEO', 'MD'], true)) {
+            return 'Direksi';
+        }
+
+        return $jenjang === 'MGR' && ! in_array($username, self::KATEGORI_TARIF_STAFF, true) ? 'Manager' : 'Staff';
     }
 
     private function sinkronShift(): void

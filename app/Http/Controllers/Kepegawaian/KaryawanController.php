@@ -57,6 +57,7 @@ class KaryawanController extends Controller
         'tgl_bergabung' => 'required|date',
         'departemen_id' => 'required|exists:departemens,id',
         'jabatan_id' => 'required|exists:jabatans,id',
+        'nama_posisi' => 'nullable|string|max:150', // judul posisi di bagan (mis. Head of Artistic)
         'golongan_id' => 'required|exists:golongans,id',
         'ptkp_id' => 'required|exists:master_ptkps,id',
         'atasan_id' => 'nullable|exists:karyawans,id', 
@@ -94,6 +95,7 @@ class KaryawanController extends Controller
             'user_id' => $user->id,
             'departemen_id' => $validated['departemen_id'],
             'jabatan_id' => $validated['jabatan_id'],
+            'nama_posisi' => $validated['nama_posisi'] ?? null,
             'golongan_id' => $validated['golongan_id'],
             'ptkp_id' => $validated['ptkp_id'],
             'atasan_id' => $validated['atasan_id'] ?? null, 
@@ -187,6 +189,7 @@ class KaryawanController extends Controller
             'tgl_bergabung' => 'required|date',
             'departemen_id' => 'required|exists:departemens,id',
             'jabatan_id' => 'required|exists:jabatans,id',
+        'nama_posisi' => 'nullable|string|max:150', // judul posisi di bagan (mis. Head of Artistic)
             'golongan_id' => 'required|exists:golongans,id',
             'ptkp_id' => 'required|exists:master_ptkps,id',
             
@@ -238,6 +241,7 @@ class KaryawanController extends Controller
             $karyawan->update([
                 'departemen_id' => $validated['departemen_id'],
                 'jabatan_id' => $validated['jabatan_id'],
+                'nama_posisi' => $validated['nama_posisi'] ?? null,
                 'golongan_id' => $validated['golongan_id'],
                 'ptkp_id' => $validated['ptkp_id'],
                 'atasan_id' => $validated['atasan_id'] ?? null,

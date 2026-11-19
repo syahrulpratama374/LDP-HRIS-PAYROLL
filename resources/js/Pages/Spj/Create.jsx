@@ -47,7 +47,7 @@ export default function Create({ auth }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route("spj.store"));
+        post(route("spj.lama.store"));
     };
 
     return (
@@ -236,7 +236,7 @@ export default function Create({ auth }) {
                     {/* ACTIONS */}
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <Link
-                            href={route("spj.index")}
+                            href={route("spj.lama.index")}
                             className="inline-flex h-12 min-w-[120px] items-center justify-center rounded-xl border border-gray-300 bg-white px-6 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
                         >
                             Batal

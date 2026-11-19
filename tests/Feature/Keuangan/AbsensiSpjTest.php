@@ -204,7 +204,7 @@ class AbsensiSpjTest extends KeuanganTestCase
         [$pemilik, $kid] = $this->buatUser(6);
         [$lain] = $this->buatUser(6);
         $spj = $this->buatSpj($kid, 'Menunggu Pelaporan');
-        $kirim = fn ($user, $id) => $this->actingAs($user)->post(route('spj.laporan', $id), [
+        $kirim = fn ($user, $id) => $this->actingAs($user)->post(route('spj.lama.laporan', $id), [
             'laporan_hasil' => 'Instalasi selesai',
             'file_bukti' => UploadedFile::fake()->create('nota.pdf', 100, 'application/pdf'),
         ]);
@@ -215,7 +215,7 @@ class AbsensiSpjTest extends KeuanganTestCase
         $this->assertSame('Menunggu Pelaporan', $status($spj));
 
         // Pemilik berhasil -> Menunggu Validasi Finance, bukti tersimpan
-        $kirim($pemilik, $spj)->assertSessionHasNoErrors()->assertRedirect(route('spj.index'));
+        $kirim($pemilik, $spj)->assertSessionHasNoErrors()->assertRedirect(route('spj.lama.index'));
         $this->assertSame('Menunggu Validasi Finance', $status($spj));
         $path = DB::table('pengajuan_spjs')->where('id', $spj)->value('file_bukti_path');
         Storage::disk('public')->assertExists($path);

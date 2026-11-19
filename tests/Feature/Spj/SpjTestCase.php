@@ -4,6 +4,7 @@ namespace Tests\Feature\Spj;
 
 use App\Models\User;
 use Database\Seeders\MasterTarifSpjSeeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Tests\Feature\Persuratan\PersuratanTestCase;
 
@@ -27,5 +28,32 @@ abstract class SpjTestCase extends PersuratanTestCase
         DB::table('karyawans')->where('user_id', $user->id)->update(['kategori_tarif_spj' => $kategori]);
 
         return $user->fresh();
+    }
+
+    protected function beriRekening(User $user, string $nomor = '1234567890'): void
+    {
+        DB::table('karyawans')->where('user_id', $user->id)
+            ->update(['no_rek_bca_encrypted' => Crypt::encryptString($nomor)]);
+    }
+
+    protected function karyawanId(User $user): int
+    {
+        return (int) DB::table('karyawans')->where('user_id', $user->id)->value('id');
+    }
+
+    /** Data form SPJ contoh dokumen: Jawa Timur, 27-29 Agustus 2026. */
+    protected function formSpj(array $pesertaIds, array $ubah = []): array
+    {
+        return array_merge([
+            'provinsi' => 'Jawa Timur',
+            'kota' => 'Surabaya',
+            'tgl_berangkat' => '2026-08-27',
+            'tgl_pulang' => '2026-08-29',
+            'keperluan' => 'Instalasi perangkat pelanggan',
+            'tanggal_risalah_awal' => null,
+            'unit_penerbit_id' => $this->unit('LDP-HC')->id,
+            'peserta' => $pesertaIds,
+            'aksi' => 'draf',
+        ], $ubah);
     }
 }

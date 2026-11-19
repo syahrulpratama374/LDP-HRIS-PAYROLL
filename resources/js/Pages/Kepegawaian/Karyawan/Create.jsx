@@ -26,6 +26,7 @@ export default function Create({
         tgl_bergabung: "",
         departemen_id: departemens[0]?.id || "",
         jabatan_id: jabatans[0]?.id || "",
+        nama_posisi: "",
         golongan_id: golongans[0]?.id || "",
         ptkp_id: ptkps[0]?.id || "",
         jenis_kelamin: "Laki-laki",
@@ -403,6 +404,21 @@ export default function Create({
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Nama Posisi (sesuai bagan)" />
+                                        <TextInput
+                                            className="mt-1 block w-full"
+                                            value={data.nama_posisi}
+                                            onChange={(e) =>
+                                                setData("nama_posisi", e.target.value)
+                                            }
+                                            placeholder="Mis. Head of Artistic - Creative Team"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Dipakai di dokumen (mis. PDF SPJ). Kosong = memakai nama jabatan.
+                                        </p>
+                                        <InputError message={errors.nama_posisi} />
                                     </div>
                                     <div>
                                         <InputLabel value="Golongan Gaji" />
