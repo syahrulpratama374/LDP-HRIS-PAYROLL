@@ -161,7 +161,7 @@ class PenomoranSuratTest extends PersuratanTestCase
         $surat = $this->buatDraf($this->buatUser(6), 'SKET');
         $nomor = $this->setujui($surat);
 
-        $this->actingAs($this->admin())
+        $this->actingAs($this->ceo())
             ->post(route('keluar.approve', $surat->id), ['jenis_ttd' => 'qr_code'])
             ->assertSessionHas('error');
 
@@ -172,14 +172,13 @@ class PenomoranSuratTest extends PersuratanTestCase
 
     public function test_approval_bertahap_hanya_menerbitkan_nomor_di_tahap_terakhir(): void
     {
-        $direktur = $this->buatUser(2, $this->deptHc, $this->jabatanDirut);
+        $direktur = $this->ceo();
         $surat = $this->buatDraf($this->buatUser(6), 'SKET');
         DB::table('approval_surat_keluars')->insert([
             'surat_keluar_id' => $surat->id, 'urutan_langkah' => 2,
             'jabatan_id' => $this->jabatanDirut, 'label_ttd' => 'Mengetahui', 'status' => 'Menunggu',
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->beriMenu(2, 'keluar.index');
 
         $this->assertNull($this->setujui($surat, $direktur));
         $this->assertSame('Draft', $surat->fresh()->status);

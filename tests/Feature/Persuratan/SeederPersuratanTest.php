@@ -7,6 +7,7 @@ use App\Models\Pengaturan;
 use App\Models\UnitPenerbitSurat;
 use Database\Seeders\MasterTemplateSuratSeeder;
 use Database\Seeders\PengaturanPenomoranSuratSeeder;
+use Database\Seeders\PengaturanSeeder;
 use Database\Seeders\UnitPenerbitSuratSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -90,5 +91,19 @@ class SeederPersuratanTest extends TestCase
         $this->seed(PengaturanPenomoranSuratSeeder::class);
         $this->assertSame('per_penerbit', Pengaturan::teks('penomoran_surat_mode'));
         $this->assertSame(1, Pengaturan::where('kunci', 'penomoran_surat_mode')->count());
+    }
+
+    public function test_pengaturan_seeder_tidak_menimpa_nilai_yang_sudah_diubah(): void
+    {
+        $this->seed(PengaturanSeeder::class);
+        Pengaturan::where('kunci', 'radius_absensi')->update(['nilai' => '5000']);
+        Pengaturan::where('kunci', 'denda_terlambat')->delete();
+
+        $this->seed(PengaturanSeeder::class);
+
+        $this->assertSame('5000', Pengaturan::teks('radius_absensi'));
+        $this->assertSame('50000', Pengaturan::teks('denda_terlambat')); // kunci yang hilang dibuat lagi
+        $this->assertSame('global', Pengaturan::teks('penomoran_surat_mode'));
+        $this->assertSame(1, Pengaturan::where('kunci', 'radius_absensi')->count());
     }
 }

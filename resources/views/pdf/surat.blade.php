@@ -169,8 +169,10 @@
                         @endif
                     </div>
 
-                    <div class="nama-ttd">{{ $appr->userAktual->name ?? '........................' }}</div>
-                    <div class="jabatan-ttd">{{ $appr->jabatan->nama_jabatan ?? '' }}</div>
+                    {{-- Nama & jabatan dari karyawan yang benar-benar menyetujui, bukan dari label/jabatan langkah --}}
+                    @php $penyetuju = $appr->status === 'Disetujui' ? $appr->userAktual : null; @endphp
+                    <div class="nama-ttd">{{ $penyetuju ? ($penyetuju->karyawan->nama_lengkap ?? $penyetuju->name) : '........................' }}</div>
+                    <div class="jabatan-ttd">{{ $penyetuju ? ($penyetuju->karyawan->jabatan->nama_jabatan ?? '') : ($appr->jabatan->nama_jabatan ?? '') }}</div>
                 </td>
                 @endforeach
             </tr>

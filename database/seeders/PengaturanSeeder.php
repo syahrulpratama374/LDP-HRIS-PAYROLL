@@ -137,8 +137,9 @@ class PengaturanSeeder extends Seeder
             ],
         ];
 
+        // firstOrCreate: kunci baru dibuat, nilai yang sudah ada (mis. diubah HC) tidak pernah ditimpa
         foreach ($pengaturans as $pengaturan) {
-            Pengaturan::updateOrCreate(
+            Pengaturan::firstOrCreate(
                 ['kunci' => $pengaturan['kunci']],
                 $pengaturan
             );

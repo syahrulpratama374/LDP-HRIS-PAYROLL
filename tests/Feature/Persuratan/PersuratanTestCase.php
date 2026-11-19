@@ -28,6 +28,12 @@ abstract class PersuratanTestCase extends TestCase
 
     protected int $jabatanDirut;
 
+    protected int $jabatanManager;
+
+    protected int $deptBod;
+
+    private ?User $ceo = null;
+
     public function beginDatabaseTransaction()
     {
         Schema::disableForeignKeyConstraints();
@@ -44,14 +50,19 @@ abstract class PersuratanTestCase extends TestCase
 
         $this->deptHc = $this->buatDepartemen('HC', 'Human Capital');
         $this->deptSls = $this->buatDepartemen('SLS', 'Sales & Marketing');
+        $this->deptBod = $this->buatDepartemen('BOD', 'Board of Directors');
         $this->jabatanStaf = DB::table('jabatans')->insertGetId(['kode_jabatan' => 'STF', 'nama_jabatan' => 'Staff Pelaksana', 'tunjangan' => 0]);
-        $this->jabatanDirut = DB::table('jabatans')->insertGetId(['kode_jabatan' => 'DIR', 'nama_jabatan' => 'Direktur Utama', 'tunjangan' => 0]);
+        $this->jabatanDirut = DB::table('jabatans')->insertGetId(['kode_jabatan' => 'CEO', 'nama_jabatan' => 'Chief Executive Officer', 'tunjangan' => 0]);
 
         $this->buatUnit('LDP-HC', 'Human Capital', $this->deptHc);
         $this->buatUnit('LDP-FIN', 'Finance');
         $this->buatUnit('LDP-CORP', 'Corporate');
 
-        $this->beriMenu(6, 'keluar.index');
+        $this->jabatanManager = DB::table('jabatans')->insertGetId(['kode_jabatan' => 'MGR', 'nama_jabatan' => 'Manager / Head', 'tunjangan' => 0]);
+
+        foreach ([2, 3, 4, 5, 6] as $role) {
+            $this->beriMenu($role, 'keluar.index');
+        }
     }
 
     protected function buatDepartemen(string $kode, string $nama): int
@@ -127,8 +138,14 @@ abstract class PersuratanTestCase extends TestCase
         return $id;
     }
 
-    /** Draf surat dengan satu tahap approval (jabatan Direktur Utama). */
-    protected function buatDraf(User $pembuat, string $kodeJenis, ?string $kodePenerbit = 'LDP-HC'): SuratKeluar
+    /** CEO (departemen BOD), approver default di test. */
+    protected function ceo(): User
+    {
+        return $this->ceo ??= $this->buatUser(2, $this->deptBod, $this->jabatanDirut);
+    }
+
+    /** Draf surat dengan satu tahap approval (default jabatan CEO). */
+    protected function buatDraf(User $pembuat, string $kodeJenis, ?string $kodePenerbit = 'LDP-HC', ?int $jabatanLangkah = null): SuratKeluar
     {
         $templateId = DB::table('master_template_surats')->where('kode_surat', $kodeJenis)->value('id')
             ?? $this->buatTemplate($kodeJenis);
@@ -143,17 +160,17 @@ abstract class PersuratanTestCase extends TestCase
         ]);
         DB::table('approval_surat_keluars')->insert([
             'surat_keluar_id' => $surat->id, 'urutan_langkah' => 1,
-            'jabatan_id' => $this->jabatanDirut, 'label_ttd' => 'Menyetujui', 'status' => 'Menunggu',
+            'jabatan_id' => $jabatanLangkah ?? $this->jabatanDirut, 'label_ttd' => 'Menyetujui', 'status' => 'Menunggu',
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return $surat;
     }
 
-    /** Setujui sebagai Admin (bypass) dan kembalikan nomor yang terbit. */
+    /** Setujui (default sebagai CEO) dan kembalikan nomor yang terbit. */
     protected function setujui(SuratKeluar $surat, ?User $oleh = null): ?string
     {
-        $this->actingAs($oleh ?? $this->admin())
+        $this->actingAs($oleh ?? $this->ceo())
             ->post(route('keluar.approve', $surat->id), ['jenis_ttd' => 'qr_code'])
             ->assertRedirect();
 

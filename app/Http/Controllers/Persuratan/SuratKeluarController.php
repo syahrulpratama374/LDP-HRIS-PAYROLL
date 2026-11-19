@@ -200,9 +200,6 @@ class SuratKeluarController extends Controller
     {
         $surat = SuratKeluar::with(['template'])->findOrFail($id);
         $user = auth()->user();
-        
-        // Ambil data karyawan login beserta jabatan dan departemennya
-        $karyawanLogin = \App\Models\Karyawan::with(['jabatan', 'departemen'])->where('user_id', $user->id)->first();
 
         // 1. CARI ANTREAN AKTIF
         $approvalAktif = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
@@ -214,72 +211,10 @@ class SuratKeluarController extends Controller
             return redirect()->back()->with('error', 'Tidak ada antrean persetujuan aktif untuk surat ini.');
         }
 
-        $isAuthorized = false;
-        $keteranganApproval = '';
-
-        // 2. BYPASS SUPER ADMIN (Role ID 1)
-        if ($user->role_id === 1) { 
-            $isAuthorized = true;
-            $keteranganApproval = 'Disetujui langsung oleh Super Admin.';
-        } 
-        // 3. VALIDASI JABATAN DAN DEPARTEMEN NORMAL
-        else if ($karyawanLogin && $karyawanLogin->jabatan_id === $approvalAktif->jabatan_id) {
-            
-            $userPembuat = \App\Models\User::with('karyawan.departemen')->find($surat->created_by);
-            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
-            
-            // Cek apakah penyetuju adalah Direksi (CEO/Managing Director/Direktur)
-            $isDirektur = false;
-            if ($karyawanLogin->jabatan) {
-                $namaJabatan = strtolower($karyawanLogin->jabatan->nama_jabatan);
-                if (str_contains($namaJabatan, 'direktur') || str_contains($namaJabatan, 'ceo') || str_contains($namaJabatan, 'managing') || str_contains($namaJabatan, 'bod')) {
-                    $isDirektur = true;
-                }
-            }
-
-            // ATURAN KETAT:
-            // 1. Direksi BEBAS menyetujui surat dari departemen manapun.
-            // 2. Jika penyetuju bukan Direksi, mereka WAJIB memiliki departemen_id yang SAMA dengan pembuat surat.
-            if ($isDirektur) {
-                $isAuthorized = true;
-                $keteranganApproval = 'Disetujui oleh Jajaran Direksi.';
-            } else if ($karyawanPembuat && ($karyawanLogin->departemen_id === $karyawanPembuat->departemen_id)) {
-                $isAuthorized = true;
-                $keteranganApproval = 'Disetujui oleh pejabat berwenang di departemen.';
-            } else {
-                return redirect()->back()->with('error', 'Akses Ditolak: Anda bukan atasan/pejabat di departemen yang mengeluarkan surat ini.');
-            }
-
-        } 
-        // 4. VALIDASI DELEGASI WEWENANG (PLT)
-        else if ($karyawanLogin) {
-            $today = now()->toDateString();
-            $delegasi = \App\Models\DelegasiWewenang::with('pemberi')
-                ->where('penerima_id', $karyawanLogin->id)
-                ->where('status', 'Disetujui')
-                ->where('tgl_mulai', '<=', $today)
-                ->where('tgl_selesai', '>=', $today)
-                ->whereHas('pemberi', function($q) use ($approvalAktif) {
-                    $q->where('jabatan_id', $approvalAktif->jabatan_id);
-                })
-                ->first();
-
-            if ($delegasi) {
-                // Cek lagi apakah yang memberi wewenang berasal dari departemen pembuat surat
-                $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
-                $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
-
-                if ($karyawanPembuat && ($delegasi->pemberi->departemen_id === $karyawanPembuat->departemen_id)) {
-                    $isAuthorized = true;
-                    $keteranganApproval = "Disetujui oleh Plt. atas nama {$delegasi->pemberi->nama_lengkap}.";
-                }
-            }
-        }
-
-        // Eksekusi Tolak jika tidak punya wewenang
-        if (!$isAuthorized) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki hak wewenang untuk menyetujui tahap ini.');
-        }
+        // 2. OTORISASI (helper yang sama dengan can_approve di daftar surat)
+        $wewenang = $this->wewenangApproval($surat, $user, $approvalAktif);
+        abort_unless($wewenang['boleh'], 403, $wewenang['pesan']);
+        $keteranganApproval = $wewenang['pesan'];
 
         // --- (BAGIAN OLAH GAMBAR TTD DAN DATABASE TRANSACTION SAMA PERSIS SEPERTI SEBELUMNYA) ---
         
@@ -439,7 +374,7 @@ class SuratKeluarController extends Controller
 
     public function unduhPdf($id)
     {
-        $surat = SuratKeluar::with(['template', 'karyawan.jabatan', 'approvals.jabatan', 'approvals.userAktual'])
+        $surat = SuratKeluar::with(['template', 'karyawan.jabatan', 'approvals.jabatan', 'approvals.userAktual.karyawan.jabatan'])
             ->findOrFail($id);
 
         $layout = \App\Models\PengaturanSuratLayout::where('is_active', true)->first();
@@ -456,59 +391,79 @@ class SuratKeluarController extends Controller
         return $pdf->stream($filename);
     }
 
-    /**
-     * Fungsi Helper: Cek apakah user yang login berhak menyetujui surat ini
-     */
+    /** Dipakai daftar surat untuk menampilkan tombol Setujui. */
     private function checkCanApprove($surat, $user)
     {
         if (!$user) return false;
-        if ($user->role_id === 1) return true; // Super Admin bebas
-
-        $karyawanLogin = \App\Models\Karyawan::with(['jabatan'])->where('user_id', $user->id)->first();
-        if (!$karyawanLogin) return false;
 
         $approvalAktif = ApprovalSuratKeluar::where('surat_keluar_id', $surat->id)
             ->where('status', 'Menunggu')
             ->orderBy('urutan_langkah', 'asc')
             ->first();
 
-        if (!$approvalAktif) return false;
+        return $this->wewenangApproval($surat, $user, $approvalAktif)['boleh'];
+    }
 
-        // Cek Jabatan Normal
-        if ($karyawanLogin->jabatan_id === $approvalAktif->jabatan_id) {
-            $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
-            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
+    /**
+     * Satu-satunya aturan otorisasi persetujuan Surat Keluar (tampilan & proses):
+     * - Admin (role 1) dan user tanpa data karyawan tidak boleh menandatangani.
+     * - Pembuat tidak boleh menyetujui suratnya sendiri.
+     * - Approver harus menjabat jabatan langkah aktif. Direksi (kode jabatan CEO/MD) boleh lintas
+     *   departemen; jenjang lain wajib satu departemen dengan pembuat surat.
+     * - Delegasi berstatus 'Aktif' dengan hari ini di rentang tgl_mulai–tgl_selesai: penerima mewarisi
+     *   jabatan pemberi, dengan aturan departemen yang sama (berdasarkan pemberi).
+     *
+     * @return array{boleh: bool, pesan: string}
+     */
+    private function wewenangApproval(SuratKeluar $surat, \App\Models\User $user, ?ApprovalSuratKeluar $langkah): array
+    {
+        $tolak = fn (string $pesan) => ['boleh' => false, 'pesan' => $pesan];
 
-            $isDirektur = false;
-            if ($karyawanLogin->jabatan) {
-                $namaJabatan = strtolower($karyawanLogin->jabatan->nama_jabatan);
-                if (str_contains($namaJabatan, 'direktur') || str_contains($namaJabatan, 'ceo') || str_contains($namaJabatan, 'managing') || str_contains($namaJabatan, 'bod')) {
-                    $isDirektur = true;
-                }
-            }
-
-            if ($isDirektur) return true;
-            if ($karyawanPembuat && ($karyawanLogin->departemen_id === $karyawanPembuat->departemen_id)) return true;
+        if (!$langkah) {
+            return $tolak('Tidak ada antrean persetujuan aktif untuk surat ini.');
+        }
+        if ($user->role_id === 1) {
+            return $tolak('Admin tidak dapat menyetujui atau menandatangani Surat Keluar.');
+        }
+        if ((int) $surat->created_by === (int) $user->id) {
+            return $tolak('Pembuat surat tidak dapat menyetujui suratnya sendiri.');
         }
 
-        // Cek Delegasi
+        $karyawanLogin = \App\Models\Karyawan::with('jabatan')->where('user_id', $user->id)->first();
+        if (!$karyawanLogin) {
+            return $tolak('Akun Anda tidak terhubung dengan data karyawan.');
+        }
+
+        $departemenPembuat = \App\Models\Karyawan::where('user_id', $surat->created_by)->value('departemen_id');
+        $berwenang = fn (\App\Models\Karyawan $pejabat) => $pejabat->jabatan_id === $langkah->jabatan_id
+            && ($this->isDireksi($pejabat) || ($departemenPembuat && $pejabat->departemen_id === $departemenPembuat));
+
+        if ($berwenang($karyawanLogin)) {
+            return ['boleh' => true, 'pesan' => $this->isDireksi($karyawanLogin)
+                ? 'Disetujui oleh Jajaran Direksi.'
+                : 'Disetujui oleh pejabat berwenang di departemen.'];
+        }
+
         $today = now()->toDateString();
-        $delegasi = \App\Models\DelegasiWewenang::with('pemberi')
+        $delegasis = \App\Models\DelegasiWewenang::with('pemberi.jabatan')
             ->where('penerima_id', $karyawanLogin->id)
-            ->where('status', 'Disetujui')
-            ->where('tgl_mulai', '<=', $today)
-            ->where('tgl_selesai', '>=', $today)
-            ->whereHas('pemberi', function($q) use ($approvalAktif) {
-                $q->where('jabatan_id', $approvalAktif->jabatan_id);
-            })
-            ->first();
+            ->where('status', 'Aktif')
+            ->whereDate('tgl_mulai', '<=', $today)
+            ->whereDate('tgl_selesai', '>=', $today)
+            ->get();
 
-        if ($delegasi) {
-            $userPembuat = \App\Models\User::with('karyawan')->find($surat->created_by);
-            $karyawanPembuat = $userPembuat ? $userPembuat->karyawan : null;
-            if ($karyawanPembuat && ($delegasi->pemberi->departemen_id === $karyawanPembuat->departemen_id)) return true;
+        foreach ($delegasis as $delegasi) {
+            if ($delegasi->pemberi && $berwenang($delegasi->pemberi)) {
+                return ['boleh' => true, 'pesan' => "Disetujui oleh Plt. atas nama {$delegasi->pemberi->nama_lengkap}."];
+            }
         }
 
-        return false;
+        return $tolak('Anda tidak memiliki wewenang untuk menyetujui tahap ini.');
+    }
+
+    /** Direksi ditentukan dari kode jabatan, bukan kata di nama jabatan. */
+    private function isDireksi(\App\Models\Karyawan $karyawan): bool
+    {
+        return in_array(strtoupper((string) $karyawan->jabatan?->kode_jabatan), ['CEO', 'MD'], true);
     }
 }
