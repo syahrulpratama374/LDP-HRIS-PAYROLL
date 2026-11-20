@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
     zip \
@@ -21,12 +23,17 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     poppler-utils
 # poppler-utils: pdftoppm untuk merender PDF (SPJ, surat) ke PNG saat pengecekan visual
+# libjpeg-dev & libfreetype6-dev: GD dengan dukungan JPEG (foto risalah diperkecil saat unggah) & FreeType
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install ekstensi PHP
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+# Install ekstensi PHP (GD dikonfigurasi dengan JPEG & FreeType)
+RUN docker-php-ext-configure gd --with-jpeg --with-freetype \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Pengaturan PHP aplikasi: memory_limit untuk render PDF, batas unggah 5 MB per berkas (lihat docker/php/ldp.ini)
+COPY docker/php/ldp.ini /usr/local/etc/php/conf.d/zz-ldp.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

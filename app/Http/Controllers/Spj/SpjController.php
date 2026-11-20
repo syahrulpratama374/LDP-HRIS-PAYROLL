@@ -18,6 +18,7 @@ use App\Services\Spj\SpjPdfService;
 use App\Services\Spj\RekapSelisihSpjService;
 use App\Services\Spj\ReimburseSpjService;
 use App\Services\Spj\PembayaranSpjService;
+use App\Services\Spj\RisalahSpjService;
 use App\Models\SpjPembayaran;
 use App\Models\SpjBiaya;
 use App\Support\Terbilang;
@@ -46,6 +47,7 @@ class SpjController extends Controller
         private SpjPdfService $pdfService,
         private ReimburseSpjService $reimburse,
         private PembayaranSpjService $pembayaran,
+        private RisalahSpjService $risalah,
     ) {}
 
     public function index(Request $request)
@@ -221,6 +223,13 @@ class SpjController extends Controller
             'bisaValidasiNota' => $spj->status === Spj::STATUS_DISETUJUI && $this->reimburse->bolehValidasi($user),
             'jenisBiaya' => SpjBiaya::JENIS,
             'bisaCatatPembayaran' => $spj->status === Spj::STATUS_DISETUJUI && $this->pembayaran->bolehCatat($user),
+            // Koordinator & risalah (B8b)
+            'koordinator' => [
+                'karyawan_id' => $spj->koordinator_karyawan_id,
+                'nama' => $spj->pesertas->firstWhere('karyawan_id', $spj->koordinator_karyawan_id)?->nama,
+                'bisa_ubah' => $this->risalah->bolehUbahKoordinator($user, $spj),
+            ],
+            'risalah' => $this->ringkasRisalah($spj, $user),
         ]);
     }
 
@@ -306,6 +315,7 @@ class SpjController extends Controller
                 'tanggal_risalah_awal' => $spj->tanggal_risalah_awal,
                 'unit_penerbit_id' => $spj->unit_penerbit_id,
                 'peserta' => $spj->pesertas->pluck('karyawan_id')->all(),
+                'koordinator_karyawan_id' => $spj->koordinator_karyawan_id,
                 'status' => $spj->status,
                 'catatan_revisi' => $spj->catatan_revisi,
             ],
@@ -404,6 +414,8 @@ class SpjController extends Controller
             'unit_penerbit_id' => ['required', Rule::exists('unit_penerbit_surats', 'id')->where('is_active', true)],
             'peserta' => 'required|array|min:1',
             'peserta.*' => ['integer', 'distinct', Rule::exists('karyawans', 'id')->where('status_aktif', true)],
+            // Koordinator opsional, wajib salah satu peserta
+            'koordinator_karyawan_id' => ['nullable', 'integer', Rule::in((array) $request->input('peserta', []))],
             'aksi' => 'nullable|in:draf,ajukan',
         ], [
             'provinsi.in' => 'Provinsi belum punya tarif uang harian di Master Tarif SPJ.',
@@ -411,6 +423,7 @@ class SpjController extends Controller
             'peserta.min' => 'Pilih minimal satu peserta.',
             'peserta.*.distinct' => 'Peserta tidak boleh dipilih dua kali.',
             'peserta.*.exists' => 'Peserta harus karyawan aktif.',
+            'koordinator_karyawan_id.in' => 'Koordinator harus salah satu peserta.',
         ]);
 
         $hari = Carbon::parse($data['tgl_berangkat'])->diffInDays($data['tgl_pulang']) + 1;
@@ -440,6 +453,7 @@ class SpjController extends Controller
             'jumlah_malam' => $hasil['malam'],
             'keperluan' => $data['keperluan'],
             'tanggal_risalah_awal' => $data['tanggal_risalah_awal'] ?? null,
+            'koordinator_karyawan_id' => $data['koordinator_karyawan_id'] ?? null,
             'total_uang_harian' => $hasil['total_uang_harian'],
         ]);
         $spj->status ??= Spj::STATUS_DRAFT;
@@ -478,6 +492,8 @@ class SpjController extends Controller
             'tgl_pulang' => $spj->tgl_pulang, 'keperluan' => $spj->keperluan,
             'tanggal_risalah_awal' => $spj->tanggal_risalah_awal, 'unit_penerbit_id' => $spj->unit_penerbit_id,
             'peserta' => $spj->pesertas->pluck('karyawan_id')->all(),
+            // Wajib ikut agar simpan() tidak mengosongkan koordinator saat diajukan
+            'koordinator_karyawan_id' => $spj->koordinator_karyawan_id,
         ];
         $this->simpan($spj, $data);
         $spj->load('pesertas');
@@ -555,6 +571,27 @@ class SpjController extends Controller
             in_array($spj->status, [Spj::STATUS_DRAFT, Spj::STATUS_DITOLAK], true)
                 ? 'Hanya pembuat SPJ yang dapat mengubah SPJ ini.'
                 : 'SPJ yang sudah diajukan tidak dapat diubah.');
+    }
+
+    /** Ringkasan risalah untuk kartu di halaman detail. */
+    private function ringkasRisalah(Spj $spj, User $user): array
+    {
+        $r = $spj->risalah()->with('details.lampirans')->first();
+        $alasan = $this->risalah->alasanTidakBisaIsi($user, $spj);
+        $pihak = (int) $spj->dibuat_oleh === (int) $user->id || $this->risalah->adalahKoordinator($user, $spj);
+
+        return [
+            'terisi' => $r?->terisi() ?? false,
+            'topik' => $r?->topik,
+            'tempat' => $r?->tempat,
+            'waktu' => $r?->waktu,
+            'jumlah_kegiatan' => $r ? $r->details->sum(fn ($d) => count($d->kegiatan ?? [])) : 0,
+            'jumlah_lampiran' => $r ? $r->details->sum(fn ($d) => $d->lampirans->count()) : 0,
+            'diperbarui' => $r?->updated_at?->toDateTimeString(),
+            'bisa_isi' => $alasan === null,
+            // Hanya tampilkan alasan kepada pengaju/koordinator (mis. "diisi setelah perjalanan dimulai")
+            'alasan_tidak_bisa' => $pihak && $spj->status === Spj::STATUS_DISETUJUI ? $alasan : null,
+        ];
     }
 
     private function bolehLihat(User $user, Spj $spj): bool

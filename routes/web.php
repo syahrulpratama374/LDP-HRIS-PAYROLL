@@ -92,6 +92,14 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::post('/{spj}/pembayaran', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'store'])->name('pembayaran.store');
         Route::get('/pembayaran/{pembayaran}/bukti', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'bukti'])->name('pembayaran.bukti');
         Route::delete('/pembayaran/{pembayaran}', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'destroy'])->name('pembayaran.destroy');
+        // Koordinator & Risalah (B8b)
+        Route::put('/{spj}/koordinator', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'koordinator'])->name('koordinator');
+        Route::get('/{spj}/risalah', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'edit'])->name('risalah.edit');
+        Route::put('/{spj}/risalah', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'update'])->name('risalah.update');
+        Route::get('/{spj}/risalah/pdf', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'pdf'])->name('risalah.pdf');
+        Route::post('/{spj}/risalah/lampiran', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'lampiranStore'])->name('risalah.lampiran.store');
+        Route::get('/risalah/lampiran/{lampiran}', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'lampiranLihat'])->name('risalah.lampiran.lihat');
+        Route::delete('/risalah/lampiran/{lampiran}', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'lampiranDestroy'])->name('risalah.lampiran.destroy');
         Route::get('/buat', [\App\Http\Controllers\Spj\SpjController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Spj\SpjController::class, 'store'])->name('store');
         Route::post('/hitung', [\App\Http\Controllers\Spj\SpjController::class, 'hitung'])->name('hitung');

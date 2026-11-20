@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import SignModal from "@/Components/SignModal";
 import InputError from "@/Components/InputError";
@@ -30,7 +30,7 @@ function Kartu({ judul, children, kanan }) {
 
 export default function Show({
     spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null,
-    bisaValidasiNota = false, jenisBiaya = {}, bisaCatatPembayaran = false,
+    bisaValidasiNota = false, jenisBiaya = {}, bisaCatatPembayaran = false, koordinator = {}, risalah = {},
 }) {
     const { flash } = usePage().props;
     const [modalSetuju, setModalSetuju] = useState(false);
@@ -91,6 +91,16 @@ export default function Show({
                                     className="text-sm bg-white hover:bg-gray-50 text-indigo-700 px-4 py-2 rounded-md font-semibold border border-indigo-300"
                                 >
                                     🖨️ Cetak PDF
+                                </a>
+                            )}
+                            {risalah.terisi && (
+                                <a
+                                    href={route("spj.risalah.pdf", spj.id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm bg-white hover:bg-gray-50 text-indigo-700 px-4 py-2 rounded-md font-semibold border border-indigo-300"
+                                >
+                                    🖨️ Cetak Risalah
                                 </a>
                             )}
                             {bisaUbah && (
@@ -291,6 +301,8 @@ export default function Show({
                                 </p>
                             </Kartu>
 
+                            <KartuRisalah spj={spj} pesertas={pesertas} koordinator={koordinator} risalah={risalah} />
+
                             {["Disetujui", "Selesai"].includes(spj.status) && (
                                 <NotaReimburse spj={spj} pesertas={pesertas} bisaValidasi={bisaValidasiNota} jenisBiaya={jenisBiaya} />
                             )}
@@ -300,7 +312,7 @@ export default function Show({
                             )}
 
                             <div className="p-4 rounded border border-dashed text-xs text-gray-500 bg-white">
-                                Risalah perjalanan dinas dan penutupan SPJ tersedia di tahap berikutnya.
+                                Penutupan SPJ (status Selesai) tersedia di tahap berikutnya.
                             </div>
                         </div>
 
@@ -381,5 +393,101 @@ export default function Show({
                 </form>
             </Modal>
         </AuthenticatedLayout>
+    );
+}
+
+/** Koordinator (bisa diubah pengaju/HC) & status Risalah Perjalanan Dinas. */
+function KartuRisalah({ spj, pesertas, koordinator, risalah }) {
+    const [pilihan, setPilihan] = useState(koordinator.karyawan_id ?? "");
+    const [menyimpan, setMenyimpan] = useState(false);
+    const berubah = String(pilihan ?? "") !== String(koordinator.karyawan_id ?? "");
+
+    const simpanKoordinator = () => {
+        setMenyimpan(true);
+        router.put(
+            route("spj.koordinator", spj.id),
+            { koordinator_karyawan_id: pilihan || null },
+            { preserveScroll: true, onFinish: () => setMenyimpan(false) },
+        );
+    };
+
+    return (
+        <Kartu
+            judul="Koordinator & Risalah"
+            kanan={
+                risalah.terisi ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-green-50 text-green-700 border-green-200">Risalah terisi</span>
+                ) : (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-gray-50 text-gray-500 border-gray-200">Risalah belum diisi</span>
+                )
+            }
+        >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                <div>
+                    <div className="text-xs text-gray-500">Koordinator</div>
+                    {koordinator.bisa_ubah ? (
+                        <div className="flex gap-2 mt-1">
+                            <select
+                                value={pilihan ?? ""}
+                                onChange={(e) => setPilihan(e.target.value)}
+                                className="flex-1 border-gray-300 rounded-md shadow-sm text-sm"
+                            >
+                                <option value="">— Tanpa koordinator (pengaju) —</option>
+                                {pesertas.map((p) => (
+                                    <option key={p.karyawan_id} value={p.karyawan_id}>
+                                        {p.nama}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                disabled={!berubah || menyimpan}
+                                onClick={simpanKoordinator}
+                                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 rounded-md font-semibold disabled:opacity-40"
+                            >
+                                Simpan
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="font-semibold text-gray-800">{koordinator.nama ?? "— (pengaju)"}</div>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">Koordinator mengisi risalah dan boleh mengunggah nota peserta.</p>
+                </div>
+                <div>
+                    <div className="text-xs text-gray-500">Risalah Perjalanan Dinas</div>
+                    {risalah.terisi || risalah.topik ? (
+                        <div className="mt-1">
+                            <div className="font-semibold text-gray-800">{risalah.topik || "-"}</div>
+                            <div className="text-xs text-gray-500">
+                                {risalah.tempat || "-"} · {risalah.waktu || "-"} · {risalah.jumlah_kegiatan} kegiatan · {risalah.jumlah_lampiran} gambar
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-gray-400 mt-1">Belum diisi.</div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {risalah.bisa_isi && (
+                            <Link
+                                href={route("spj.risalah.edit", spj.id)}
+                                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-semibold"
+                            >
+                                {risalah.topik ? "Ubah Risalah" : "Isi Risalah"}
+                            </Link>
+                        )}
+                        {risalah.terisi && (
+                            <a
+                                href={route("spj.risalah.pdf", spj.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-md font-semibold hover:bg-indigo-50"
+                            >
+                                Cetak Risalah
+                            </a>
+                        )}
+                    </div>
+                    {risalah.alasan_tidak_bisa && <p className="text-xs text-amber-700 mt-2">{risalah.alasan_tidak_bisa}</p>}
+                </div>
+            </div>
+        </Kartu>
     );
 }

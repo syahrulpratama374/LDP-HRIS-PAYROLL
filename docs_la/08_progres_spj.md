@@ -2,7 +2,7 @@
 
 > Dokumen ini ditulis agar sesi AI/developer baru **tanpa konteks percakapan sebelumnya** bisa langsung
 > melanjutkan. Baca seluruhnya sebelum mengubah kode. Branch kerja: `fix/keuangan-la`.
-> Terakhir diperbarui: 2026-11-20, setelah commit B5 (`dacc99e`); B8a selesai (`2ac58a0`); B6 selesai (`ac56d94`); B7 selesai (commit B7). Berikutnya B8b.
+> Terakhir diperbarui: 2026-11-20, setelah commit B5 (`dacc99e`); B8a selesai (`2ac58a0`); B6 selesai (`ac56d94`); B7 selesai (`7e4c61a`); B8b selesai (commit B8b). Berikutnya B9.
 >
 > **Urutan kerja baru (ditetapkan pemilik): B5 → B8a (PDF SPJ) → B6 → B7 → B8b (Risalah) → B9.**
 
@@ -116,11 +116,11 @@ Prasyarat persuratan (sudah selesai sebelum SPJ):
 | **B5** | ✅ Selesai (uji manual lolos: monitor HC 27-11-2026 menampilkan kedua peserta SPJ 004 Dinas Luar; 26-11 & 30-11 tidak; Auto-Alpha manual dilewati, tercakup test) | `dacc99e` | `DinasLuarService` (SPJ lama + semua peserta SPJ baru Disetujui/Selesai) menggantikan 3 pemakaian `PengajuanSpj::aktifPada`; test `tests/Feature/Spj/DinasLuarSpjTest.php` |
 | **B8a** | ✅ Selesai (cek visual pemilik lolos; kepala tabel berulang di hal. 2) | `2ac58a0` | `SpjPdfService` + `pdf/spj.blade.php`; route `spj.pdf` (hanya SPJ bernomor & yang berhak melihat); tombol "Cetak PDF" di detail; verifikasi QR publik `verifikasi.spj` (`/verifikasi/spj/{token}`, tanpa rekening); test `PdfSpjTest` |
 | **B6** | ✅ Selesai (uji manual lolos) | `ac56d94` | `spj_biayas`, `spj_selisih_penginapans`, `ReimburseSpjService`, `SpjBiayaController`, kartu "Nota & Reimburse" di detail, rekap `spj.rekap-selisih`, panel dashboard HC/Finance/Admin, AKOMODASI PDF dari nota tervalidasi; test `ReimburseSpjTest` |
-| **B7** | ✅ Selesai (uji manual lolos) | (commit B7) | `spj_pembayarans`, `PembayaranSpjService`, `SpjPembayaranController`, kartu "Pembayaran" di detail; test `PembayaranSpjTest` |
-| B8b | ⏳ Belum | – | Risalah + PDF Risalah |
+| **B7** | ✅ Selesai (uji manual lolos) | `7e4c61a` | `spj_pembayarans`, `PembayaranSpjService`, `SpjPembayaranController`, kartu "Pembayaran" di detail; test `PembayaranSpjTest` |
+| **B8b** | ✅ Selesai (uji manual lolos) | (commit B8b) | Koordinator (form + detail), `spj_risalahs`/`_details`/`_lampirans`, `RisalahSpjService`, `SpjRisalahController`, halaman `Risalah.jsx`, `pdf/spj_risalah.blade.php`, tombol "Cetak Risalah"; perbaikan koordinator ter-reset saat diajukan; test `RisalahSpjTest` |
 | B9 | ⏳ Belum | – | Penutupan Selesai & pensiun SPJ lama |
 
-Hasil terakhir: **212 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
+Hasil terakhir: **220 test lolos** (1 test JPEG di-skip sampai image di-rebuild; sudah diverifikasi lolos di container sementara dengan GD JPEG) (sqlite `:memory:`), `npm run build` berhasil.
 
 ### Langkah uji manual B4 (sudah dijalankan & lolos, 2026-11-20)
 1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 November 2026 dengan peserta fahla dan Staff Creative 1,
@@ -225,7 +225,29 @@ Rencana awal:
 - B8a: PDF SPJ + tombol "Cetak PDF" di halaman detail, **hanya untuk SPJ yang sudah bernomor**. Bagian
   AKOMODASI kosong saat terbit (terisi nanti dari reimburse B6). Render contoh SPJ 004 untuk dicek visual.
 - **Data uji SPJ 004:** `004/SPJ-PD/LDP-HC/XI/2026`, Jawa Timur, **27–29 November 2026**, peserta fahla & Staff Creative 1.
-- B8b: tabel risalah + PDF Risalah (rincian di bawah).
+- B8b: tabel risalah + PDF Risalah (rincian di bawah) — ✅ selesai. Keputusan implementasi:
+  - Koordinator: dropdown opsional di form (dikosongkan otomatis bila pesertanya dihapus), validasi `Rule::in(peserta)`;
+    di detail diubah lewat `spj.koordinator` oleh **pengaju atau HC (role 3)** selama status bukan Selesai/Dibatalkan
+    (Admin tidak). **Bug diperbaiki:** `ajukanSpj()` menyimpan ulang tanpa koordinator sehingga koordinator selalu
+    ter-reset saat diajukan — kini ikut disimpan (test `test_koordinator_tetap_tersimpan_saat_diajukan_dan_diajukan_ulang`).
+  - Risalah boleh diisi bila SPJ **Disetujui** dan hari ini ≥ tanggal berangkat, oleh koordinator atau pengaju
+    (bisa diubah berulang). Kepala: Topik, Tempat, Waktu (teks bebas) wajib; minimal satu kegiatan di salah satu tanggal.
+    Satu blok per tanggal perjalanan (kegiatan bernomor, baris kosong dibuang). "Terisi" = `SpjRisalah::terisi()`
+    (dipakai tombol Cetak & syarat B9).
+  - Lampiran: JPG/PNG ≤ 5 MB, maks 10 per tanggal, disk privat `storage/app/private/spj/risalah/{spj_id}`; dibuka lewat
+    `spj.risalah.lampiran.lihat` (yang berhak melihat SPJ). **Foto PNG & JPEG dengan sisi terpanjang > 1600 px
+    diperkecil saat unggah** dan orientasi EXIF foto ponsel diluruskan (`RisalahSpjService::simpanGambar`). JPEG butuh
+    GD `--with-jpeg` (Dockerfile sejak commit B8b; **perlu rebuild image**); tanpa itu JPEG disimpan apa adanya
+    (DomPDF menyematkan JPEG tanpa decode). Ukuran tampil di PDF dihitung dari dimensi berkas agar muat 16 × 10,5 cm.
+  - Lingkungan (commit B8b): Dockerfile `libjpeg-dev`, `libfreetype6-dev`, `docker-php-ext-configure gd --with-jpeg
+    --with-freetype`; `docker/php/ldp.ini` → `memory_limit=256M`, `upload_max_filesize=6M`, `post_max_size=64M`;
+    nginx `client_max_body_size 64m` (sebelumnya bawaan 1m/2M menolak unggahan > 1–2 MB sebelum validasi 5 MB).
+    Rebuild: `docker-compose build app && docker-compose up -d app nginx`.
+  - PDF risalah: tabel kepala 3 kolom (logo | RISALAH PERJALANAN DINAS | PT. LINTAS DATA PRIMA), Date/Time
+    ("tgl – tgl / waktu"), Place, Topics, Attendance (peserta bernomor + posisi); Detail Perjalanan di luar tabel
+    agar bisa berlanjut ke halaman berikut; tanda tangan kanan bawah: "Koordinator Perjalanan Dinas" (atau "Pengaju"
+    bila tanpa koordinator), nama bergaris bawah + `nama_posisi` (fallback jenjang jabatan), ruang TTD basah.
+  - Contoh: `storage/app/contoh-pdf/Risalah_SPJ_004_DATA_UJI.pdf` (dirender dalam transaksi yang di-rollback; DB bersih).
   - **Tambahan B8b: pemilihan koordinator** (`spjs.koordinator_karyawan_id`) di form SPJ (dropdown dari peserta,
     opsional) dan di halaman detail (pengaju dapat mengganti selama SPJ belum Selesai). Koordinator mengisi risalah
     dan boleh mengunggah nota untuk semua peserta (`ReimburseSpjService::bolehUnggah` sudah memakai kolom ini);
@@ -294,6 +316,7 @@ Rincian:
 - `app/Models/SpjPeserta.php` — peserta + snapshot (rekening terenkripsi, `$hidden`)
 - `app/Models/SpjApproval.php` — langkah persetujuan
 - `app/Models/SpjBiaya.php` — nota reimburse per peserta; `app/Models/SpjSelisihPenginapan.php`
+- `app/Models/SpjRisalah.php` (`terisi()`), `SpjRisalahDetail.php` (kegiatan JSON), `SpjRisalahLampiran.php`
 - `app/Models/SpjPembayaran.php` — pembayaran per peserta (rekening snapshot di `$hidden`)
 - `app/Models/MasterTarifSpj.php` — `tarifBerlaku()`, `provinsiUangHarian()`
 - `app/Models/RuteApprovalTemplate.php` — tipe jabatan/role
@@ -303,6 +326,7 @@ Rincian:
 **Service / Support**
 - `app/Services/Spj/SpjKalkulator.php` — satu sumber perhitungan (form, simpan, PDF)
 - `app/Services/Spj/ReimburseSpjService.php` — aturan nota: hak unggah/validasi, min(nota, sisa batas), selisih, baris AKOMODASI PDF
+- `app/Services/Spj/RisalahSpjService.php` — koordinator, hak isi risalah, simpan, lampiran (perkecil PNG), data & PDF risalah
 - `app/Services/Spj/PembayaranSpjService.php` — hak/terbayar per peserta, batas nominal, bukti & status pembayaran
 - `app/Services/Spj/RekapSelisihSpjService.php` — rekap per provinsi, rincian kejadian, panel dashboard
 - `app/Services/Spj/SpjPdfService.php` — data & render PDF SPJ (rekening via `RekeningSpj`, TTD approver asli, QR)
@@ -317,6 +341,7 @@ Rincian:
 - `app/Http/Controllers/Spj/SpjController.php` — index, create, store, show, edit, update, destroy, ajukan, hitung
 - `app/Http/Controllers/Spj/SpjPersetujuanController.php` — approve, tolak
 - `app/Http/Controllers/Spj/SpjBiayaController.php` — nota: store, destroy, berkas, validasi, tolak
+- `app/Http/Controllers/Spj/SpjRisalahController.php` — koordinator, risalah edit/update, lampiran store/lihat/destroy, pdf
 - `app/Http/Controllers/Spj/SpjPembayaranController.php` — pembayaran: store, destroy (batal + alasan), bukti
 - `SpjController@rekapSelisih`; `DashboardController::dataEksekutif` → prop `spjReimburse`
 - `app/Http/Controllers/MasterData/MasterTarifSpjController.php` — tarif + kategori karyawan
@@ -327,15 +352,17 @@ Rincian:
   destroy, ajukan, show, pdf (`/{spj}/pdf`), approve (`/{spj}/setujui`), tolak
 - Nota (B6): `spj.nota.store` (`/{spj}/nota`), `spj.nota.berkas`, `spj.nota.validasi`, `spj.nota.tolak`, `spj.nota.destroy`
   (`/nota/{biaya}/…`); pembayaran (B7): `spj.pembayaran.store` (`/{spj}/pembayaran`), `spj.pembayaran.bukti`,
-  `spj.pembayaran.destroy` (`/pembayaran/{pembayaran}/…`); `spj.rekap-selisih` (`/rekap-selisih`, didaftarkan sebelum `/{spj}`)
+  `spj.pembayaran.destroy` (`/pembayaran/{pembayaran}/…`); B8b: `spj.koordinator` (PUT `/{spj}/koordinator`),
+  `spj.risalah.edit|update|pdf` (`/{spj}/risalah…`), `spj.risalah.lampiran.store` (`/{spj}/risalah/lampiran`),
+  `spj.risalah.lampiran.lihat|destroy` (`/risalah/lampiran/{lampiran}`); `spj.rekap-selisih` (`/rekap-selisih`, didaftarkan sebelum `/{spj}`)
 - Publik (tanpa login): `verifikasi.spj` (`/verifikasi/spj/{token}`) dari QR PDF SPJ
 - `tarif-spj.*` di `/master-data/tarif-spj` (+ `tarif-spj.kategori`)
 - SPJ lama: `spj.lama.*` (`/spj`), `admin.spj.*`
 
 **Halaman (React/Inertia)**
 - `resources/js/Pages/PerjalananDinas/Index.jsx`, `Form.jsx`, `Show.jsx`, `Verifikasi.jsx` (publik, dari QR),
-  `RekapSelisih.jsx`, `Partials/NotaReimburse.jsx`, `Partials/PembayaranSpj.jsx`; panel `PanelSpjReimburse` di `Pages/Dashboard.jsx`
-- `resources/views/pdf/spj.blade.php`
+  `RekapSelisih.jsx`, `Partials/NotaReimburse.jsx`, `Partials/PembayaranSpj.jsx`, `Risalah.jsx`; panel `PanelSpjReimburse` di `Pages/Dashboard.jsx`
+- `resources/views/pdf/spj.blade.php`, `resources/views/pdf/spj_risalah.blade.php`
 - `resources/js/Pages/MasterData/TarifSpj/Index.jsx`
 - `resources/js/Utils/spj.js` (rentang tanggal, warna status)
 - `resources/js/Components/SignModal.jsx` (prop `approveUrl`)
@@ -361,6 +388,7 @@ Rincian:
 - `2026_11_24_100200_tambah_menu_rekap_selisih_spj` (data)
 - `2026_11_25_100000_create_spj_pembayarans_table`
 - `2026_11_25_100100_add_pembatalan_to_spj_pembayarans_table`
+- `2026_11_26_100000_create_spj_risalahs_table` (risalahs + details + lampirans)
 
 **Seeder**
 - `MasterTarifSpjSeeder` (dipanggil `DatabaseSeeder`), `MasterTemplateSuratSeeder` (rute SPJ-PD untuk
@@ -372,7 +400,7 @@ Rincian:
 **Test** (`tests/Feature/Spj/`)
 - `SpjTestCase.php` (basis; mewarisi `tests/Feature/Persuratan/PersuratanTestCase.php`)
 - `MasterTarifSpjTest`, `SpjLamaDibatalkanTest`, `RuteApprovalSpjTest`, `DataKaryawanSpjTest`,
-  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence), `PdfSpjTest`, `ReimburseSpjTest`, `PembayaranSpjTest`
+  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence), `PdfSpjTest`, `ReimburseSpjTest`, `PembayaranSpjTest`, `RisalahSpjTest`
 
 **Akun uji** (password semua `password123`)
 | Username | Peran | Catatan |

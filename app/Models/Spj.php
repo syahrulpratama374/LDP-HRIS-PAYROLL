@@ -68,6 +68,16 @@ class Spj extends Model
         return $this->belongsTo(User::class, 'dibuat_oleh');
     }
 
+    public function koordinator()
+    {
+        return $this->belongsTo(Karyawan::class, 'koordinator_karyawan_id');
+    }
+
+    public function risalah()
+    {
+        return $this->hasOne(SpjRisalah::class);
+    }
+
     public function unitPenerbit()
     {
         return $this->belongsTo(UnitPenerbitSurat::class, 'unit_penerbit_id');

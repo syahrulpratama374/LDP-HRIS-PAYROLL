@@ -49,6 +49,7 @@ export default function Form({
         tanggal_risalah_awal: spj?.tanggal_risalah_awal ?? "",
         unit_penerbit_id: spj?.unit_penerbit_id ?? defaultUnitPenerbitId ?? "",
         peserta: spj?.peserta ?? [],
+        koordinator_karyawan_id: spj?.koordinator_karyawan_id ?? "",
         aksi: "draf",
     });
 
@@ -78,7 +79,13 @@ export default function Form({
         setData("peserta", [...data.peserta, k.id]);
         setCariPeserta("");
     };
-    const hapusPeserta = (id) => setData("peserta", data.peserta.filter((p) => p !== id));
+    // Koordinator ikut dikosongkan bila pesertanya dihapus
+    const hapusPeserta = (id) =>
+        setData((d) => ({
+            ...d,
+            peserta: d.peserta.filter((p) => p !== id),
+            koordinator_karyawan_id: String(d.koordinator_karyawan_id) === String(id) ? "" : d.koordinator_karyawan_id,
+        }));
 
     // Hitung ulang di server setiap provinsi, tanggal, atau peserta berubah (sama dengan yang disimpan & PDF)
     useEffect(() => {
@@ -359,6 +366,27 @@ export default function Form({
                                 ))}
                             </tbody>
                         </table>
+
+                        <div className="mt-4 max-w-md">
+                            <InputLabel value="Koordinator (opsional)" />
+                            <select
+                                value={data.koordinator_karyawan_id || ""}
+                                onChange={(e) => setData("koordinator_karyawan_id", e.target.value)}
+                                disabled={pesertaTerpilih.length === 0}
+                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm disabled:bg-gray-50"
+                            >
+                                <option value="">-- Tanpa koordinator (pengaju mengisi risalah) --</option>
+                                {pesertaTerpilih.map((k) => (
+                                    <option key={k.id} value={k.id}>
+                                        {k.nama}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Dipilih dari peserta. Koordinator mengisi risalah setelah perjalanan dan boleh mengunggah nota peserta.
+                            </p>
+                            <InputError message={errors.koordinator_karyawan_id} />
+                        </div>
                     </Kartu>
 
                     {/* C. RINCIAN BIAYA */}
