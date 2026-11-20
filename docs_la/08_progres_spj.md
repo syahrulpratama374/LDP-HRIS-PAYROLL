@@ -11,7 +11,7 @@
 
 ## 1. Gambaran modul
 
-### SPJ model BARU (sedang dibangun)
+### SPJ model BARU
 - **Satu SPJ untuk banyak peserta** (karyawan). Tiap peserta punya rincian dan rekening sendiri.
 - **Di luar payroll.** Finance membayar uang harian dan reimburse langsung, lalu mencatatnya dengan
   unggah bukti transfer. `PayrollCalculator`/`PayrollFinalizer` hanya membaca tabel lama `pengajuan_spjs`,
@@ -25,7 +25,7 @@
   rute approval template SPJ-PD (bukan hard-code).
 - URL: `/perjalanan-dinas` (route `spj.*`). Menu "Perjalanan Dinas (SPJ)" (`spj.index`) dimiliki semua role.
 
-### SPJ model LAMA (dibiarkan sampai B9)
+### SPJ model LAMA (arsip)
 - Tabel `pengajuan_spjs` + `komponen_biaya_spjs`, controller `PengajuanSpjController`, halaman `Pages/Spj/*`.
   Satu SPJ per karyawan, plafon per golongan, dicairkan lewat payroll ("Pencairan SPJ").
 - Route sudah diganti nama ke **`spj.lama.*`** dengan URL tetap (`/spj`, `/spj/ajukan`, `/spj/{id}/laporan`).
@@ -84,7 +84,8 @@
 9. Tanggal risalah awal diisi manual & opsional; bila kosong, kalimat "Sesuai dengan Risalah Perjalanan Dinas
    tanggal …" tidak ditampilkan di PDF.
 10. Status `Selesai` ditetapkan Finance, hanya bila: uang harian semua peserta sudah dicatat dibayar, semua
-    nota sudah divalidasi, dan risalah sudah terisi.
+    nota sudah divalidasi, reimburse semua peserta sudah lunas sesuai total nota tervalidasi, dan risalah sudah
+    terisi (diimplementasikan di B9, `PenutupanSpjService::syaratBelumTerpenuhi`).
 - Kategori tarif awal (tabel di §5) sudah dikonfirmasi benar.
 
 ### 2.3 Keputusan tambahan
@@ -124,7 +125,7 @@ Prasyarat persuratan (sudah selesai sebelum SPJ):
 Hasil terakhir: **227 test lolos tanpa skip** setelah rebuild image (GD JPEG aktif); `npm run build` berhasil.
 
 **Data demo:** SPJ `004/SPJ-PD/LDP-HC/XI/2026` (Jawa Timur, 27–29 Nov 2026) dipertahankan untuk demo — pembayaran
-lunas, menunggu risalah diisi setelah 27 November, lalu Tandai Selesai. (sqlite `:memory:`), `npm run build` berhasil.
+lunas, menunggu risalah diisi setelah 27 November, lalu Tandai Selesai.
 
 ### Langkah uji manual B4 (sudah dijalankan & lolos, 2026-11-20)
 1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 November 2026 dengan peserta fahla dan Staff Creative 1,
@@ -171,7 +172,7 @@ Rencana awal:
 ### B6 — Nota & reimburse, catatan selisih, dashboard, rekap — ✅ selesai
 Keputusan implementasi:
 - Unggah nota: SPJ **Disetujui** saja; oleh pengaju (untuk peserta mana pun), koordinator (`koordinator_karyawan_id`,
-  belum ada UI pengisiannya), atau peserta (hanya untuk dirinya). HC/Finance/Admin tidak mengunggah.
+  dipilih di form/detail sejak B8b), atau peserta (hanya untuk dirinya). HC/Finance/Admin tidak mengunggah.
 - Validasi & tolak nota: **hanya Finance (role 4)** — Admin juga tidak (`ReimburseSpjService::ROLE_VALIDASI`).
 - Nota penginapan wajib `jumlah_malam` (1..malam perjalanan) agar nota per malam bisa dibandingkan dengan tarif.
 - Tanggal nota harus dalam rentang perjalanan. Berkas (PDF/JPG/PNG ≤ 5 MB) di disk privat `local`
@@ -344,6 +345,24 @@ Bangka Belitung, Banten, Bengkulu, DI Yogyakarta, DKI Jakarta, Jambi, Jawa Barat
 Lampung, Riau, Sumatera Barat, Sumatera Selatan, Sumatera Utara). **NTB & NTT** hanya punya tarif penginapan, jadi belum
 bisa dipilih di form SPJ (dropdown hanya provinsi bertarif uang harian). Belum ada tarif sama sekali: seluruh Kalimantan,
 Sulawesi, Gorontalo, Maluku, Maluku Utara, Papua dan pemekarannya.
+
+---
+
+## 4a. Finishing UI — input nominal Rupiah (commit `417b145`)
+- Komponen `resources/js/Components/InputRupiah.jsx` + pengurai `resources/js/Utils/angkaRupiah.js`: tampil
+  "Rp 492.000" saat diketik, nilai ke server tetap angka bulat tanpa titik ("492000" atau "" bila kosong); tempel
+  "Rp 1.476.000" terbaca; huruf ditolak; kursor tidak melompat (Backspace/Delete di titik ribuan menghapus digit di
+  sebelahnya); nilai server "492000.00" tampil "492.000". Validasi server tidak diubah.
+- **Sudah memakai InputRupiah:** modal Catat Pembayaran SPJ (`PerjalananDinas/Partials/PembayaranSpj.jsx`), plus
+  tombol "Isi sisa" dan sisa hak tampil dengan format Rupiah lengkap di luar dropdown.
+- **Belum dipasang** (masih `type="number"`), daftar sasaran: `PerjalananDinas/Partials/NotaReimburse.jsx`
+  (`nominal_nota`, `nominal_dibayar`), `MasterData/TarifSpj/Index.jsx` (`nominal`), `Pinjaman/Create.jsx`
+  (`total_pinjaman`), `Payroll/KomponenGaji/Karyawan.jsx` (`nominal`), `Kepegawaian/Karyawan/Show.jsx`
+  (`nominal_gaji_pokok`), `MasterData/Golongan/Index.jsx` (`gaji_pokok`), `MasterData/Jabatan/Index.jsx`
+  (`tunjangan`), `MasterData/Ptkp/Index.jsx` (`nominal_neto_tahunan`), `MasterData/TarifTer/Index.jsx`
+  (`batas_bawah`, `batas_atas`; kolom tarif % tidak), `Admin/Pengaturan/Index.jsx` (`maksimal_kasbon_finance`,
+  `maksimal_kasbon_divisi`, `batas_approval_finance`), `Aset/Create.jsx` & `Aset/Edit.jsx` (`harga_beli`).
+  `Pages/Pengaturan/Index.jsx` (tanpa `Admin/`) tidak dirender controller mana pun, jadi dilewati.
 
 ---
 
