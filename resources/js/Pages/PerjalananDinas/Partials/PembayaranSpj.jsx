@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
+import InputRupiah from "@/Components/InputRupiah";
 import SecondaryButton from "@/Components/SecondaryButton";
 import formatRupiah from "@/Utils/formatRupiah";
 import { formatTanggal } from "@/Utils/spj";
@@ -191,23 +192,34 @@ export default function PembayaranSpj({ spj, pesertas, bisaCatat }) {
                                     onChange={(e) => form.setData((d) => ({ ...d, jenis: e.target.value, nominal: sisaUntuk(catatUntuk, e.target.value) }))}
                                     className="mt-1 block w-full border-gray-300 rounded-md text-sm"
                                 >
-                                    <option value="uang_harian">Uang Harian (sisa {formatRupiah(sisaUntuk(catatUntuk, "uang_harian"))})</option>
-                                    <option value="reimburse">Reimburse (sisa {formatRupiah(sisaUntuk(catatUntuk, "reimburse"))})</option>
+                                    <option value="uang_harian">Uang Harian</option>
+                                    <option value="reimburse">Reimburse</option>
                                 </select>
                                 <InputError message={form.errors.jenis} />
                             </label>
                             <label className="text-sm">
                                 <span className="text-gray-600">Nominal (Rp)</span>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={sisaUntuk(catatUntuk, form.data.jenis)}
+                                <InputRupiah
                                     value={form.data.nominal}
-                                    onChange={(e) => form.setData("nominal", e.target.value)}
-                                    className="mt-1 block w-full border-gray-300 rounded-md text-sm"
+                                    onChange={(v) => form.setData("nominal", v)}
+                                    wrapperClassName="mt-1"
+                                    className="text-sm"
                                 />
                                 <InputError message={form.errors.nominal} />
                             </label>
+                            <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 text-xs bg-gray-50 border rounded px-3 py-2">
+                                <span>
+                                    Sisa hak {form.data.jenis === "reimburse" ? "reimburse" : "uang harian"}:{" "}
+                                    <strong className="tabular-nums">{formatRupiah(sisaUntuk(catatUntuk, form.data.jenis))}</strong>
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => form.setData("nominal", String(Math.round(sisaUntuk(catatUntuk, form.data.jenis))))}
+                                    className="text-indigo-700 font-semibold hover:underline"
+                                >
+                                    Isi sisa
+                                </button>
+                            </div>
                             <label className="text-sm">
                                 <span className="text-gray-600">Tanggal transfer</span>
                                 <input
