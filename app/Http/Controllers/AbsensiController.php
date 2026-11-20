@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Absensi;
 use App\Models\Pengaturan;
-use App\Models\PengajuanSpj;
 use App\Models\LogbookShift;
 use App\Models\MasterShift;
 use App\Models\JadwalShiftKaryawan;
+use App\Services\Spj\DinasLuarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -45,10 +45,8 @@ class AbsensiController extends Controller
 
         $karyawans = $query->orderBy('nama_lengkap')->get();
 
-        // 2. Data SPJ Aktif
-        $spjKaryawanIds = PengajuanSpj::aktifPada($tanggal)
-            ->pluck('karyawan_id')
-            ->toArray();
+        // 2. Data SPJ Aktif (SPJ lama + semua peserta SPJ baru yang Disetujui/Selesai)
+        $spjKaryawanIds = app(DinasLuarService::class)->karyawanIdsAktifPada($tanggal);
 
         // 3. Data Cuti/Izin Approved
         $cutiKaryawan = \App\Models\PengajuanCuti::with('masterJenisCuti')
@@ -239,9 +237,7 @@ class AbsensiController extends Controller
 
         // SPJ aktif (sudah disetujui atasan & dalam rentang tanggal perjalanan) -> radius kantor diabaikan,
         // tetapi selfie & koordinat tetap dicatat dan status menjadi 'Dinas Luar'.
-        $sedangSPJ = PengajuanSpj::where('karyawan_id', $karyawan->id)
-            ->aktifPada($tanggal)
-            ->exists();
+        $sedangSPJ = app(DinasLuarService::class)->sedangDinasLuar($karyawan->id, $tanggal);
 
         if (!$sedangSPJ && $jarakMeter > $radiusMaksimal) {
             return back()->withErrors(['error' => "Gagal: Anda di luar jangkauan kantor. Jarak Anda " . round($jarakMeter) . "m (Batas: {$radiusMaksimal}m)."]);

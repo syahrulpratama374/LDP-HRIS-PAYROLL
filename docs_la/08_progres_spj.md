@@ -2,7 +2,9 @@
 
 > Dokumen ini ditulis agar sesi AI/developer baru **tanpa konteks percakapan sebelumnya** bisa langsung
 > melanjutkan. Baca seluruhnya sebelum mengubah kode. Branch kerja: `fix/keuangan-la`.
-> Terakhir diperbarui: 2026-11-20, setelah commit B4 (`86564a7`).
+> Terakhir diperbarui: 2026-11-20, setelah commit B5.
+>
+> **Urutan kerja baru (ditetapkan pemilik): B5 → B8a (PDF SPJ) → B6 → B7 → B8b (Risalah) → B9.**
 
 ---
 
@@ -110,17 +112,18 @@ Prasyarat persuratan (sudah selesai sebelum SPJ):
 | **B1** | ✅ Selesai | `d4ced41` | Tabel `master_tarif_spjs` + `MasterTarifSpjSeeder` (firstOrCreate, tidak menimpa); kolom `karyawans.kategori_tarif_spj` + migrasi data kategori awal (fahla, mikha, elvira = Staff); menu "Master Tarif SPJ" lewat migrasi data; halaman Master Tarif SPJ (matriks tarif + kategori per karyawan; HC/Admin ubah, Finance lihat); pembatalan 2 SPJ lama data uji |
 | **B2** | ✅ Selesai | `ba117e0` | `rute_approval_templates` + `tipe_penyetuju` (jabatan/role) & `role_id`, `jabatan_id` nullable; rute SPJ-PD (role HC "Diajukan Oleh" → role Finance "Diperiksa Oleh" → jabatan CEO "Disetujui Oleh"); Surat Keluar menyembunyikan & menolak template berbasis role |
 | **B3** | ✅ Selesai | `130f600` | `SpjKalkulator` + `Terbilang`; tabel `spjs` & `spj_pesertas` (snapshot); form baru `/perjalanan-dinas/buat` (detail, peserta, tabel rincian meniru dokumen, Simpan Draf/Ajukan); daftar SPJ; `nama_posisi`; rekening DUMMY uji (fahla `9990000001`, staff.cre1 `9990000002`); route lama → `spj.lama.*` |
-| **B4** | ⚠️ **Kode selesai, uji manual browser BELUM dilakukan** | `86564a7` | Tabel `spj_approvals`; `OtorisasiApprovalSpj`; Setujui (SignModal) & Tolak (alasan wajib); nomor SPJ-PD di persetujuan terakhir; halaman detail + timeline; "Menunggu Anda" di daftar; migrasi pengaman langkah untuk SPJ Diajukan tanpa langkah |
-| B5 | ⏳ Belum | – | DinasLuarService |
-| B6 | ⏳ Belum | – | Nota & reimburse, selisih, dashboard, rekap |
+| **B4** | ✅ Selesai (uji manual lolos: nomor `004/SPJ-PD/LDP-HC/XI/2026`, timeline yoga → muslih → ceo, rekening sesuai peran) | `86564a7` | Tabel `spj_approvals`; `OtorisasiApprovalSpj`; Setujui (SignModal) & Tolak (alasan wajib); nomor SPJ-PD di persetujuan terakhir; halaman detail + timeline; "Menunggu Anda" di daftar; migrasi pengaman langkah untuk SPJ Diajukan tanpa langkah |
+| **B5** | ✅ Selesai (uji manual lolos: monitor HC 27-11-2026 menampilkan kedua peserta SPJ 004 Dinas Luar; 26-11 & 30-11 tidak; Auto-Alpha manual dilewati, tercakup test) | (commit B5) | `DinasLuarService` (SPJ lama + semua peserta SPJ baru Disetujui/Selesai) menggantikan 3 pemakaian `PengajuanSpj::aktifPada`; test `tests/Feature/Spj/DinasLuarSpjTest.php` |
+| B8a | ⏳ Berikutnya | – | PDF SPJ + tombol "Cetak PDF" di detail (hanya SPJ bernomor); tabel akomodasi kosong saat terbit |
+| B6 | ⏳ Belum | – | Nota & reimburse, selisih, dashboard, rekap (mengisi bagian AKOMODASI PDF) |
 | B7 | ⏳ Belum | – | Pembayaran & bukti transfer |
-| B8 | ⏳ Belum | – | Risalah, PDF SPJ & PDF Risalah |
+| B8b | ⏳ Belum | – | Risalah + PDF Risalah |
 | B9 | ⏳ Belum | – | Penutupan Selesai & pensiun SPJ lama |
 
-Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
+Hasil terakhir: **189 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
 
-### Langkah uji manual B4 (belum dijalankan — lakukan sebelum mulai B5)
-1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 Agustus 2026 dengan peserta fahla dan Staff Creative 1,
+### Langkah uji manual B4 (sudah dijalankan & lolos, 2026-11-20)
+1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 November 2026 dengan peserta fahla dan Staff Creative 1,
    lalu klik **Ajukan**.
    - Pindah ke detail berstatus "Diajukan".
    - Timeline 3 langkah: Diajukan Oleh (Role HC, aktif), Diperiksa Oleh (Role Finance), Disetujui Oleh
@@ -142,9 +145,13 @@ Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil
 
 ---
 
-## 4. Rincian bagian berikutnya (B5–B9)
+## 4. Rincian bagian berikutnya (urutan: B5 → B8a → B6 → B7 → B8b → B9)
 
-### B5 — DinasLuarService (Dinas Luar otomatis untuk semua peserta)
+### B5 — DinasLuarService (Dinas Luar otomatis untuk semua peserta) — ✅ selesai
+- Implementasi: `app/Services/Spj/DinasLuarService.php` — `karyawanIdsAktifPada($tanggal, ?$karyawanId)` dan
+  `sedangDinasLuar($karyawanId, $tanggal)`; batas tanggal inklusif; hasil unik (karyawan di SPJ lama & baru dihitung sekali).
+
+Rencana awal:
 - Buat `App\Services\Spj\DinasLuarService::karyawanIdsAktifPada($tanggal): array` yang menggabungkan:
   - SPJ lama: `PengajuanSpj::aktifPada($tanggal)->pluck('karyawan_id')` (status `Menunggu Pelaporan`,
     `Menunggu Validasi Finance`, `Selesai`).
@@ -182,7 +189,13 @@ Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil
 - Rekening: lengkap untuk HC/Finance/Admin & pemilik; lainnya disamarkan (`RekeningSpj`).
 - Test: rekening tersembunyi untuk yang tidak berhak; hanya Finance yang mencatat pembayaran.
 
-### B8 — Risalah, PDF SPJ & PDF Risalah
+### B8 — dipecah: **B8a** PDF SPJ (dimajukan sebelum B6) dan **B8b** Risalah + PDF Risalah (setelah B7)
+- B8a: PDF SPJ + tombol "Cetak PDF" di halaman detail, **hanya untuk SPJ yang sudah bernomor**. Bagian
+  AKOMODASI kosong saat terbit (terisi nanti dari reimburse B6). Render contoh SPJ 004 untuk dicek visual.
+- **Data uji SPJ 004:** `004/SPJ-PD/LDP-HC/XI/2026`, Jawa Timur, **27–29 November 2026**, peserta fahla & Staff Creative 1.
+- B8b: tabel risalah + PDF Risalah (rincian di bawah).
+
+Rincian:
 - Tabel `spj_risalahs` (topik, tempat, diisi_oleh, koordinator) + `spj_risalah_details` (per tanggal, uraian) +
   `spj_risalah_lampirans` (rundown/foto). Diisi SETELAH perjalanan oleh koordinator (atau pengaju).
 - **PDF SPJ** (`resources/views/pdf/spj.blade.php`) meniru dokumen perusahaan 047/SPJ-PD/LDP-HC/VIII/2026:
@@ -216,6 +229,8 @@ Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil
   `admin.spj.index` → "Approval SPJ (Lama)" atau arsip, sesuaikan dashboard Supervisor (`pendingSpj`) dan
   pintasan `admin.spj.index` di dashboard eksekutif agar tidak ada tautan mati.
 - Perbaiki bug `PengajuanSpj::$fillable` yang tidak memuat `laporan_hasil` (laporan lama tidak tersimpan).
+- Menu **"Approval SPJ" di Approval Center** diarahkan ke daftar SPJ baru (`spj.index`) dengan filter
+  **"Menunggu Anda"** (bukan lagi `admin.spj.index` model lama).
 - Ringkasan akhir: provinsi yang belum punya tarif (lihat §7).
 
 ---
@@ -233,6 +248,8 @@ Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil
 
 **Service / Support**
 - `app/Services/Spj/SpjKalkulator.php` — satu sumber perhitungan (form, simpan, PDF)
+- `app/Services/Spj/DinasLuarService.php` — karyawan sedang Dinas Luar (SPJ lama + baru); dipakai
+  `AbsensiController@index/store` dan `RunDailyAutomation::generateAlpha`
 - `app/Services/Spj/OtorisasiApprovalSpj.php` — aturan siapa boleh menyetujui
 - `app/Services/Spj/RekeningSpj.php` — tampil lengkap/disamarkan
 - `app/Support/Terbilang.php`
@@ -283,7 +300,7 @@ Hasil terakhir: **184 test lolos** (sqlite `:memory:`), `npm run build` berhasil
 **Test** (`tests/Feature/Spj/`)
 - `SpjTestCase.php` (basis; mewarisi `tests/Feature/Persuratan/PersuratanTestCase.php`)
 - `MasterTarifSpjTest`, `SpjLamaDibatalkanTest`, `RuteApprovalSpjTest`, `DataKaryawanSpjTest`,
-  `PengajuanSpjTest`, `PersetujuanSpjTest`
+  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence)
 
 **Akun uji** (password semua `password123`)
 | Username | Peran | Catatan |
@@ -339,7 +356,7 @@ Staff = semua lainnya (termasuk fahla, mikha, elvira, anas).
 ---
 
 ## 8. Rencana dokumen setelah SPJ selesai
-1. **Alur proses bisnis SPJ** (diagram & narasi): pengajuan → persetujuan HC/Finance/Direktur → nomor → perjalanan
+1. **Alur proses bisnis SPJ** (diagram & narasi): pengajuan → persetujuan HC/Finance/Direktur → nomor & PDF → perjalanan
    (Dinas Luar otomatis) → risalah → nota & reimburse → pembayaran → Selesai.
 2. **Penjelasan untuk perusahaan**: aturan tarif, kategori, batas penginapan, rekening, delegasi, cara membaca
    PDF, peran tiap akun.

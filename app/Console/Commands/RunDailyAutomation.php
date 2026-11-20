@@ -4,12 +4,12 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\PengajuanCuti;
-use App\Models\PengajuanSpj;
 use App\Models\Absensi;
 use App\Models\Aset;
 use App\Models\Karyawan;
 use App\Models\JadwalShiftKaryawan;
 use App\Models\Pengumuman;
+use App\Services\Spj\DinasLuarService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -92,7 +92,7 @@ class RunDailyAutomation extends Command
      * pada hari kerja. Hari kerja: bukan hari libur nasional/cuti bersama; karyawan shift
      * (departemen wajib logbook) hanya jika terjadwal di roster (tidak ada roster = off shift);
      * karyawan reguler hanya Senin-Jumat.
-     * - Punya SPJ aktif (PengajuanSpj::aktifPada) -> 'Dinas Luar' otomatis (bukan Alpha), dengan
+     * - Punya SPJ aktif (DinasLuarService: SPJ lama + peserta SPJ baru) -> 'Dinas Luar' otomatis (bukan Alpha), dengan
      *   catatan khusus agar HC dapat membedakannya dari Dinas Luar yang presensi dengan selfie.
      * - Selain itu -> 'Alpha'.
      *
@@ -112,7 +112,7 @@ class RunDailyAutomation extends Command
             ->whereDate('tanggal_selesai', '>=', $tanggal)
             ->pluck('karyawan_id')->all();
         $terjadwal = JadwalShiftKaryawan::whereDate('tanggal', $tanggal)->pluck('karyawan_id')->all();
-        $sedangSpj = PengajuanSpj::aktifPada($tanggal)->pluck('karyawan_id')->all();
+        $sedangSpj = app(DinasLuarService::class)->karyawanIdsAktifPada($tanggal);
 
         $jumlah = 0;
         $jumlahDinasLuar = 0;
