@@ -17,6 +17,8 @@ use App\Services\Spj\SpjKalkulator;
 use App\Services\Spj\SpjPdfService;
 use App\Services\Spj\RekapSelisihSpjService;
 use App\Services\Spj\ReimburseSpjService;
+use App\Services\Spj\PembayaranSpjService;
+use App\Models\SpjPembayaran;
 use App\Models\SpjBiaya;
 use App\Support\Terbilang;
 use Carbon\Carbon;
@@ -43,6 +45,7 @@ class SpjController extends Controller
         private OtorisasiApprovalSpj $otorisasi,
         private SpjPdfService $pdfService,
         private ReimburseSpjService $reimburse,
+        private PembayaranSpjService $pembayaran,
     ) {}
 
     public function index(Request $request)
@@ -102,7 +105,7 @@ class SpjController extends Controller
         $user = $request->user();
         abort_unless($this->bolehLihat($user, $spj), 403, 'Anda tidak berhak melihat SPJ ini.');
 
-        $spj->load(['pesertas.biayas.pengunggah:id,name', 'pesertas.biayas.validator:id,name', 'pesertas.biayas.selisih',
+        $spj->load(['pesertas.pembayarans.pencatat:id,name', 'pesertas.pembayarans.pembatal:id,name', 'pesertas.biayas.pengunggah:id,name', 'pesertas.biayas.validator:id,name', 'pesertas.biayas.selisih',
             'pembuat:id,name', 'unitPenerbit:id,kode,nama',
             'approvals.role:id,nama_role', 'approvals.jabatan:id,nama_jabatan',
             'approvals.userAktual.karyawan:id,user_id,nama_lengkap', 'approvals.atasNama:id,nama_lengkap']);
@@ -175,6 +178,24 @@ class SpjController extends Controller
                         ? $this->reimburse->pratinjau($b->setRelation('peserta', $p)) : null,
                     'bisa_hapus' => $this->reimburse->bolehHapus($user, $b->setRelation('peserta', $p->setRelation('spj', $spj))),
                 ])->values(),
+                // Pembayaran (B7): status per jenis + riwayat transfer; rekening mengikuti RekeningSpj
+                'status_pembayaran' => $this->pembayaran->status($p),
+                'bisa_lihat_bukti' => $this->pembayaran->bolehLihatBukti($user, $p),
+                'pembayarans' => $p->pembayarans->map(fn (SpjPembayaran $b) => [
+                    'id' => $b->id,
+                    'jenis' => $b->jenis,
+                    'label_jenis' => $b->labelJenis(),
+                    'nominal' => (float) $b->nominal,
+                    'tanggal_transfer' => $b->tanggal_transfer,
+                    'rekening' => RekeningSpj::untuk($user, $b->rekening_encrypted, $p->karyawan_id),
+                    'dicatat_oleh' => $b->pencatat?->name,
+                    'dicatat_pada' => $b->created_at?->toDateTimeString(),
+                    'catatan' => $b->catatan,
+                    'dibatalkan' => $b->dibatalkan(),
+                    'dibatalkan_pada' => $b->dibatalkan_pada?->toDateTimeString(),
+                    'dibatalkan_oleh' => $b->pembatal?->name,
+                    'alasan_batal' => $b->alasan_batal,
+                ])->values(),
             ])->values(),
             'approvals' => $spj->approvals->map(fn (SpjApproval $a) => [
                 'id' => $a->id,
@@ -199,6 +220,7 @@ class SpjController extends Controller
             'bisaCetak' => filled($spj->nomor_surat),
             'bisaValidasiNota' => $spj->status === Spj::STATUS_DISETUJUI && $this->reimburse->bolehValidasi($user),
             'jenisBiaya' => SpjBiaya::JENIS,
+            'bisaCatatPembayaran' => $spj->status === Spj::STATUS_DISETUJUI && $this->pembayaran->bolehCatat($user),
         ]);
     }
 

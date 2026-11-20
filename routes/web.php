@@ -88,6 +88,10 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::post('/nota/{biaya}/validasi', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'validasi'])->name('nota.validasi');
         Route::post('/nota/{biaya}/tolak', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'tolak'])->name('nota.tolak');
         Route::delete('/nota/{biaya}', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'destroy'])->name('nota.destroy');
+        // Pembayaran (B7): Finance mencatat uang harian & reimburse dengan bukti transfer
+        Route::post('/{spj}/pembayaran', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'store'])->name('pembayaran.store');
+        Route::get('/pembayaran/{pembayaran}/bukti', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'bukti'])->name('pembayaran.bukti');
+        Route::delete('/pembayaran/{pembayaran}', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'destroy'])->name('pembayaran.destroy');
         Route::get('/buat', [\App\Http\Controllers\Spj\SpjController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Spj\SpjController::class, 'store'])->name('store');
         Route::post('/hitung', [\App\Http\Controllers\Spj\SpjController::class, 'hitung'])->name('hitung');

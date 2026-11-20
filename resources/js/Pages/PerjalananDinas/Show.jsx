@@ -8,6 +8,7 @@ import SecondaryButton from "@/Components/SecondaryButton";
 import formatRupiah from "@/Utils/formatRupiah";
 import { formatRentangTanggal, formatTanggal, WARNA_STATUS_SPJ } from "@/Utils/spj";
 import NotaReimburse from "./Partials/NotaReimburse";
+import PembayaranSpj from "./Partials/PembayaranSpj";
 
 const WARNA_LANGKAH = {
     Menunggu: "bg-amber-50 text-amber-700 border-amber-200",
@@ -29,7 +30,7 @@ function Kartu({ judul, children, kanan }) {
 
 export default function Show({
     spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null,
-    bisaValidasiNota = false, jenisBiaya = {},
+    bisaValidasiNota = false, jenisBiaya = {}, bisaCatatPembayaran = false,
 }) {
     const { flash } = usePage().props;
     const [modalSetuju, setModalSetuju] = useState(false);
@@ -294,8 +295,12 @@ export default function Show({
                                 <NotaReimburse spj={spj} pesertas={pesertas} bisaValidasi={bisaValidasiNota} jenisBiaya={jenisBiaya} />
                             )}
 
+                            {["Disetujui", "Selesai"].includes(spj.status) && (
+                                <PembayaranSpj spj={spj} pesertas={pesertas} bisaCatat={bisaCatatPembayaran} />
+                            )}
+
                             <div className="p-4 rounded border border-dashed text-xs text-gray-500 bg-white">
-                                Pencatatan pembayaran & bukti transfer serta risalah tersedia di tahap berikutnya.
+                                Risalah perjalanan dinas dan penutupan SPJ tersedia di tahap berikutnya.
                             </div>
                         </div>
 

@@ -35,4 +35,9 @@ class SpjPeserta extends Model
     {
         return $this->hasMany(SpjBiaya::class)->orderBy('tanggal')->orderBy('id');
     }
+
+    public function pembayarans()
+    {
+        return $this->hasMany(SpjPembayaran::class)->orderBy('tanggal_transfer')->orderBy('id');
+    }
 }
