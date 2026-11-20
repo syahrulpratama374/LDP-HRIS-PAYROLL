@@ -44,6 +44,7 @@ Route::get('/', function () {
 Route::get('/scan-aset/{kode_aset}', [AsetController::class, 'showPublic'])->name('aset.scan');
 Route::get('/verifikasi/surat/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('surat.verifikasi');
 Route::get('/v/{uuid}', [SuratKeluarController::class, 'verifikasi'])->name('keluar.verifikasi');
+Route::get('/verifikasi/spj/{token}', [\App\Http\Controllers\Spj\SpjController::class, 'verifikasi'])->name('verifikasi.spj');
 
 
 // =========================================================================
@@ -88,6 +89,7 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::delete('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'destroy'])->name('destroy');
         Route::post('/{spj}/ajukan', [\App\Http\Controllers\Spj\SpjController::class, 'ajukan'])->name('ajukan');
         Route::get('/{spj}', [\App\Http\Controllers\Spj\SpjController::class, 'show'])->name('show');
+        Route::get('/{spj}/pdf', [\App\Http\Controllers\Spj\SpjController::class, 'pdf'])->name('pdf');
         Route::post('/{spj}/setujui', [\App\Http\Controllers\Spj\SpjPersetujuanController::class, 'approve'])->name('approve');
         Route::post('/{spj}/tolak', [\App\Http\Controllers\Spj\SpjPersetujuanController::class, 'tolak'])->name('tolak');
     });

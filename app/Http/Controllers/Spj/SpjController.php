@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Spj\OtorisasiApprovalSpj;
 use App\Services\Spj\RekeningSpj;
 use App\Services\Spj\SpjKalkulator;
+use App\Services\Spj\SpjPdfService;
 use App\Support\Terbilang;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ use Inertia\Inertia;
 /**
  * SPJ Perjalanan Dinas model baru: pengajuan (draf -> ajukan) dan daftar.
  * Semua karyawan boleh membuat SPJ. Perhitungan selalu di server (SpjKalkulator).
- * Persetujuan, nomor, nota, pembayaran, risalah, dan PDF menyusul di bagian berikutnya.
+ * PDF SPJ (B8a) dan halaman verifikasi QR publik ada di sini; nota, pembayaran, dan risalah menyusul.
  */
 class SpjController extends Controller
 {
@@ -37,6 +38,7 @@ class SpjController extends Controller
     public function __construct(
         private SpjKalkulator $kalkulator,
         private OtorisasiApprovalSpj $otorisasi,
+        private SpjPdfService $pdfService,
     ) {}
 
     public function index(Request $request)
@@ -155,6 +157,47 @@ class SpjController extends Controller
                 ? $cek['pesan'] : null,
             'atasNama' => $cek['atas_nama']?->nama_lengkap,
             'bisaUbah' => $spj->bisaDiubahOleh($user),
+            'bisaCetak' => filled($spj->nomor_surat),
+        ]);
+    }
+
+    /** PDF SPJ resmi; hanya untuk SPJ yang sudah bernomor. Rekening mengikuti peran pengunduh. */
+    public function pdf(Request $request, Spj $spj)
+    {
+        $user = $request->user();
+        abort_unless($this->bolehLihat($user, $spj), 403, 'Anda tidak berhak melihat SPJ ini.');
+        abort_if(blank($spj->nomor_surat), 404, 'PDF tersedia setelah SPJ disetujui penuh dan bernomor.');
+
+        return $this->pdfService->buat($spj, $user)->stream($this->pdfService->nama($spj));
+    }
+
+    /** Halaman publik dari QR di PDF: membuktikan SPJ resmi terbit (tanpa rekening). */
+    public function verifikasi(string $token)
+    {
+        $spj = Spj::with(['pesertas:id,spj_id,nama,posisi,departemen,urutan',
+            'approvals.userAktual.karyawan:id,user_id,nama_lengkap,nama_posisi'])
+            ->where('qr_code_token', $token)->whereNotNull('nomor_surat')->firstOrFail();
+
+        return Inertia::render('PerjalananDinas/Verifikasi', [
+            'spj' => [
+                'nomor_surat' => $spj->nomor_surat,
+                'status' => $spj->status,
+                'tujuan' => trim(ucwords((string) $spj->kota).', '.$spj->provinsi, ', '),
+                'keperluan' => $spj->keperluan,
+                'tgl_berangkat' => $spj->tgl_berangkat,
+                'tgl_pulang' => $spj->tgl_pulang,
+                'jumlah_hari' => $spj->jumlah_hari,
+                'tanggal_terbit' => $spj->tanggal_terbit?->toDateTimeString(),
+                'total_uang_harian' => (float) $spj->total_uang_harian,
+            ],
+            'pesertas' => $spj->pesertas->map(fn ($p) => ['nama' => $p->nama, 'posisi' => $p->posisi, 'departemen' => $p->departemen])->values(),
+            'approvals' => $spj->approvals->map(fn (SpjApproval $a) => [
+                'label' => $a->label_ttd,
+                'status' => $a->status,
+                'nama' => $a->userAktual?->karyawan?->nama_lengkap ?? $a->userAktual?->name,
+                'posisi' => $a->userAktual?->karyawan?->nama_posisi,
+                'waktu' => $a->waktu_approval?->toDateTimeString(),
+            ])->values(),
         ]);
     }
 
@@ -309,7 +352,8 @@ class SpjController extends Controller
         $spj->fill([
             'unit_penerbit_id' => $data['unit_penerbit_id'],
             'provinsi' => $data['provinsi'],
-            'kota' => $data['kota'],
+            // Huruf kapital di awal tiap kata ("malang" -> "Malang"); huruf besar lain (mis. "DKI") dipertahankan
+            'kota' => ucwords(preg_replace('/\s+/u', ' ', trim($data['kota']))),
             'tgl_berangkat' => $data['tgl_berangkat'],
             'tgl_pulang' => $data['tgl_pulang'],
             'jumlah_hari' => $hasil['hari'],

@@ -26,7 +26,7 @@ function Kartu({ judul, children, kanan }) {
     );
 }
 
-export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, alasanTidakBisa = null }) {
+export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null }) {
     const { flash } = usePage().props;
     const [modalSetuju, setModalSetuju] = useState(false);
     const [modalTolak, setModalTolak] = useState(false);
@@ -74,6 +74,16 @@ export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, 
                             <Link href={route("spj.index")}>
                                 <SecondaryButton>Kembali</SecondaryButton>
                             </Link>
+                            {bisaCetak && (
+                                <a
+                                    href={route("spj.pdf", spj.id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm bg-white hover:bg-gray-50 text-indigo-700 px-4 py-2 rounded-md font-semibold border border-indigo-300"
+                                >
+                                    🖨️ Cetak PDF
+                                </a>
+                            )}
                             {bisaUbah && (
                                 <Link
                                     href={route("spj.edit", spj.id)}

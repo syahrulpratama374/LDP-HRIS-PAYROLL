@@ -2,7 +2,7 @@
 
 > Dokumen ini ditulis agar sesi AI/developer baru **tanpa konteks percakapan sebelumnya** bisa langsung
 > melanjutkan. Baca seluruhnya sebelum mengubah kode. Branch kerja: `fix/keuangan-la`.
-> Terakhir diperbarui: 2026-11-20, setelah commit B5.
+> Terakhir diperbarui: 2026-11-20, setelah commit B5 (`dacc99e`); B8a selesai (commit B8a). Berikutnya B6.
 >
 > **Urutan kerja baru (ditetapkan pemilik): B5 → B8a (PDF SPJ) → B6 → B7 → B8b (Risalah) → B9.**
 
@@ -113,14 +113,14 @@ Prasyarat persuratan (sudah selesai sebelum SPJ):
 | **B2** | ✅ Selesai | `ba117e0` | `rute_approval_templates` + `tipe_penyetuju` (jabatan/role) & `role_id`, `jabatan_id` nullable; rute SPJ-PD (role HC "Diajukan Oleh" → role Finance "Diperiksa Oleh" → jabatan CEO "Disetujui Oleh"); Surat Keluar menyembunyikan & menolak template berbasis role |
 | **B3** | ✅ Selesai | `130f600` | `SpjKalkulator` + `Terbilang`; tabel `spjs` & `spj_pesertas` (snapshot); form baru `/perjalanan-dinas/buat` (detail, peserta, tabel rincian meniru dokumen, Simpan Draf/Ajukan); daftar SPJ; `nama_posisi`; rekening DUMMY uji (fahla `9990000001`, staff.cre1 `9990000002`); route lama → `spj.lama.*` |
 | **B4** | ✅ Selesai (uji manual lolos: nomor `004/SPJ-PD/LDP-HC/XI/2026`, timeline yoga → muslih → ceo, rekening sesuai peran) | `86564a7` | Tabel `spj_approvals`; `OtorisasiApprovalSpj`; Setujui (SignModal) & Tolak (alasan wajib); nomor SPJ-PD di persetujuan terakhir; halaman detail + timeline; "Menunggu Anda" di daftar; migrasi pengaman langkah untuk SPJ Diajukan tanpa langkah |
-| **B5** | ✅ Selesai (uji manual lolos: monitor HC 27-11-2026 menampilkan kedua peserta SPJ 004 Dinas Luar; 26-11 & 30-11 tidak; Auto-Alpha manual dilewati, tercakup test) | (commit B5) | `DinasLuarService` (SPJ lama + semua peserta SPJ baru Disetujui/Selesai) menggantikan 3 pemakaian `PengajuanSpj::aktifPada`; test `tests/Feature/Spj/DinasLuarSpjTest.php` |
-| B8a | ⏳ Berikutnya | – | PDF SPJ + tombol "Cetak PDF" di detail (hanya SPJ bernomor); tabel akomodasi kosong saat terbit |
-| B6 | ⏳ Belum | – | Nota & reimburse, selisih, dashboard, rekap (mengisi bagian AKOMODASI PDF) |
+| **B5** | ✅ Selesai (uji manual lolos: monitor HC 27-11-2026 menampilkan kedua peserta SPJ 004 Dinas Luar; 26-11 & 30-11 tidak; Auto-Alpha manual dilewati, tercakup test) | `dacc99e` | `DinasLuarService` (SPJ lama + semua peserta SPJ baru Disetujui/Selesai) menggantikan 3 pemakaian `PengajuanSpj::aktifPada`; test `tests/Feature/Spj/DinasLuarSpjTest.php` |
+| **B8a** | ✅ Selesai (cek visual pemilik lolos; kepala tabel berulang di hal. 2) | (commit B8a) | `SpjPdfService` + `pdf/spj.blade.php`; route `spj.pdf` (hanya SPJ bernomor & yang berhak melihat); tombol "Cetak PDF" di detail; verifikasi QR publik `verifikasi.spj` (`/verifikasi/spj/{token}`, tanpa rekening); test `PdfSpjTest` |
+| B6 | ⏳ Berikutnya | – | Nota & reimburse, selisih, dashboard, rekap (mengisi bagian AKOMODASI PDF) |
 | B7 | ⏳ Belum | – | Pembayaran & bukti transfer |
 | B8b | ⏳ Belum | – | Risalah + PDF Risalah |
 | B9 | ⏳ Belum | – | Penutupan Selesai & pensiun SPJ lama |
 
-Hasil terakhir: **189 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
+Hasil terakhir: **199 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
 
 ### Langkah uji manual B4 (sudah dijalankan & lolos, 2026-11-20)
 1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 November 2026 dengan peserta fahla dan Staff Creative 1,
@@ -194,6 +194,22 @@ Rencana awal:
   AKOMODASI kosong saat terbit (terisi nanti dari reimburse B6). Render contoh SPJ 004 untuk dicek visual.
 - **Data uji SPJ 004:** `004/SPJ-PD/LDP-HC/XI/2026`, Jawa Timur, **27–29 November 2026**, peserta fahla & Staff Creative 1.
 - B8b: tabel risalah + PDF Risalah (rincian di bawah).
+- Catatan teknis B8a (DomPDF 3.1):
+  - Kepala tabel hanya berulang bila tabel terbelah **di antara row group**, jadi tiap baris dibungkus
+    `<tbody>` sendiri dan `thead` tanpa `rowspan`. Terverifikasi: 8–14 peserta → kepala tabel muncul lagi di puncak hal. 2.
+  - Subtotal, TOTAL, dan Terbilang dihitung di view dari baris yang ditampilkan (`SpjPdfService::ringkasan`),
+    bukan dari `spjs.total_uang_harian`. Test: 10 peserta → Rp 4.920.000 / "Empat Juta Sembilan Ratus Dua Puluh Ribu Rupiah".
+  - Kolom TGL 20% (`white-space: nowrap`), PERINCIAN 24%.
+  - Kota dirapikan saat SPJ disimpan: `ucwords` + spasi tunggal ("malang" → "Malang"; "DKI" tetap). Data lama tidak diubah;
+    PDF & halaman verifikasi tetap menampilkan huruf kapital awal.
+  - Cek visual: `pdftoppm` (poppler-utils) dipasang **manual** di container `ldp_app` (hilang bila image di-rebuild;
+    belum ada di Dockerfile). Contoh: `docker exec ldp_app pdftoppm -r 80 -png <file.pdf> <prefix>`.
+  - Keterbatasan (DITERIMA pemilik): bila daftar Nama/Jabatan sangat panjang (±20+ peserta) sehingga tabel mulai tepat di dasar
+    halaman 1, DomPDF memecah tepat setelah `thead` dan kepala tidak diulang. Tidak terjadi pada jumlah peserta wajar.
+  - SPJ 004 (2 peserta) muat 1 halaman termasuk tanda tangan; QR verifikasi di kanan Terbilang (bila semua
+    penanda tangan memakai gambar TTD), atau di kolom TTD (bila ada yang memilih QR).
+  - AKOMODASI: `SpjPdfService::data()` mengisi `$akomodasi = []`; B6 tinggal mengisinya dari nota tervalidasi
+    (kunci baris: perincian, tgl, harian, total, ket).
 
 Rincian:
 - Tabel `spj_risalahs` (topik, tempat, diisi_oleh, koordinator) + `spj_risalah_details` (per tanggal, uraian) +
@@ -248,6 +264,7 @@ Rincian:
 
 **Service / Support**
 - `app/Services/Spj/SpjKalkulator.php` — satu sumber perhitungan (form, simpan, PDF)
+- `app/Services/Spj/SpjPdfService.php` — data & render PDF SPJ (rekening via `RekeningSpj`, TTD approver asli, QR)
 - `app/Services/Spj/DinasLuarService.php` — karyawan sedang Dinas Luar (SPJ lama + baru); dipakai
   `AbsensiController@index/store` dan `RunDailyAutomation::generateAlpha`
 - `app/Services/Spj/OtorisasiApprovalSpj.php` — aturan siapa boleh menyetujui
@@ -263,12 +280,14 @@ Rincian:
 
 **Route** (`routes/web.php`)
 - `spj.*` di prefix `/perjalanan-dinas`: index, create (`/buat`), store, hitung, edit (`/{spj}/ubah`), update,
-  destroy, ajukan, show, approve (`/{spj}/setujui`), tolak
+  destroy, ajukan, show, pdf (`/{spj}/pdf`), approve (`/{spj}/setujui`), tolak
+- Publik (tanpa login): `verifikasi.spj` (`/verifikasi/spj/{token}`) dari QR PDF SPJ
 - `tarif-spj.*` di `/master-data/tarif-spj` (+ `tarif-spj.kategori`)
 - SPJ lama: `spj.lama.*` (`/spj`), `admin.spj.*`
 
 **Halaman (React/Inertia)**
-- `resources/js/Pages/PerjalananDinas/Index.jsx`, `Form.jsx`, `Show.jsx`
+- `resources/js/Pages/PerjalananDinas/Index.jsx`, `Form.jsx`, `Show.jsx`, `Verifikasi.jsx` (publik, dari QR)
+- `resources/views/pdf/spj.blade.php`
 - `resources/js/Pages/MasterData/TarifSpj/Index.jsx`
 - `resources/js/Utils/spj.js` (rentang tanggal, warna status)
 - `resources/js/Components/SignModal.jsx` (prop `approveUrl`)
@@ -300,7 +319,7 @@ Rincian:
 **Test** (`tests/Feature/Spj/`)
 - `SpjTestCase.php` (basis; mewarisi `tests/Feature/Persuratan/PersuratanTestCase.php`)
 - `MasterTarifSpjTest`, `SpjLamaDibatalkanTest`, `RuteApprovalSpjTest`, `DataKaryawanSpjTest`,
-  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence)
+  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence), `PdfSpjTest`
 
 **Akun uji** (password semua `password123`)
 | Username | Peran | Catatan |
