@@ -59,7 +59,9 @@ class MenuSeeder extends Seeder
         $subApproval = [
             ['parent_id' => $approvalGroup, 'title' => 'Approval Cuti', 'route_name' => 'admin.cuti.index', 'order' => 1],
             ['parent_id' => $approvalGroup, 'title' => 'Approval Lembur', 'route_name' => 'admin.lembur.index', 'order' => 2],
-            ['parent_id' => $approvalGroup, 'title' => 'Approval SPJ', 'route_name' => 'admin.spj.index', 'order' => 3],
+            // SPJ baru: daftar dengan filter "Menunggu Anda"; SPJ lama tetap dapat dibaca lewat arsip
+            ['parent_id' => $approvalGroup, 'title' => 'Approval SPJ', 'route_name' => 'spj.menunggu', 'order' => 3],
+            ['parent_id' => $approvalGroup, 'title' => 'Arsip Approval SPJ (Lama)', 'route_name' => 'admin.spj.index', 'order' => 9],
             ['parent_id' => $approvalGroup, 'title' => 'Delegasi Wewenang (Plt)', 'route_name' => 'admin.delegasi.index', 'order' => 4],
             ['parent_id' => $approvalGroup, 'title' => 'Penilaian KPI Kinerja', 'route_name' => 'admin.kinerja.index', 'order' => 5],
         ];
@@ -136,12 +138,12 @@ class MenuSeeder extends Seeder
         $akses = [
             // Direktur: ESS + persetujuan + pemantauan
             2 => array_merge($ess, [
-                'admin.cuti.index', 'admin.lembur.index', 'admin.spj.index', 'admin.kinerja.index',
+                'admin.cuti.index', 'admin.lembur.index', 'spj.menunggu', 'admin.spj.index', 'admin.kinerja.index',
                 'karyawan.index', 'absensi.index', 'pengumuman.index',
             ]),
             // HC: ESS + kepegawaian + master data SDM + persetujuan cuti/lembur/SPJ (TANPA payroll/kasbon)
             3 => array_merge($ess, [
-                'admin.cuti.index', 'admin.lembur.index', 'admin.spj.index', 'admin.delegasi.index', 'admin.kinerja.index',
+                'admin.cuti.index', 'admin.lembur.index', 'spj.menunggu', 'admin.spj.index', 'admin.delegasi.index', 'admin.kinerja.index',
                 'karyawan.index', 'absensi.index', 'jadwal-shift.index', 'pengumuman.index', 'admin.sp.index',
                 'departemen.index', 'jabatan.index', 'golongan.index', 'shift.index', 'master-cuti.index', 'hc.cuti.index',
                 'template.index', 'layout.index', 'admin.ticket.index', 'admin.aset.index', 'tarif-spj.index',
@@ -150,13 +152,13 @@ class MenuSeeder extends Seeder
             // Finance: ESS + kasbon + payroll + master komponen/PTKP/TER
             4 => array_merge($ess, [
                 'admin.pinjaman.index', 'admin.payroll.index', 'admin.komponen.index', 'admin.komponen.karyawan.index',
-                'ptkp.index', 'tarif-ter.index', 'admin.spj.index', 'admin.lembur.index', 'karyawan.index',
+                'ptkp.index', 'tarif-ter.index', 'spj.menunggu', 'admin.spj.index', 'admin.lembur.index', 'karyawan.index',
                 'tarif-spj.index', // lihat saja; ubah dibatasi controller untuk HC & Admin
                 'spj.rekap-selisih',
             ]),
             // Supervisor: ESS + persetujuan bawahan (controller membatasi ke atasan_id)
             5 => array_merge($ess, [
-                'admin.cuti.index', 'admin.lembur.index', 'admin.spj.index', 'admin.pinjaman.index',
+                'admin.cuti.index', 'admin.lembur.index', 'spj.menunggu', 'admin.spj.index', 'admin.pinjaman.index',
                 'admin.delegasi.index', 'admin.kinerja.index', 'absensi.index', 'jadwal-shift.index',
             ]),
             // Karyawan: hanya ESS

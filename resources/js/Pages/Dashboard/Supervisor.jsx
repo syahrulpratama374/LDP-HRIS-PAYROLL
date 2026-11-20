@@ -278,17 +278,17 @@ export default function Supervisor({
                                 <div className="rounded-2xl border border-purple-200 bg-white p-5 shadow-sm hover:shadow-md transition">
                                     <div className="flex items-center gap-3 mb-4 border-b border-purple-100 pb-3">
                                         <div className="p-2 rounded-lg bg-purple-50 text-purple-600"><Icon name="travel" /></div>
-                                        <h4 className="font-bold text-slate-800 text-sm">Pengajuan SPJ ({pendingSpj.length})</h4>
+                                        <h4 className="font-bold text-slate-800 text-sm">SPJ Menunggu Anda ({pendingSpj.length})</h4>
                                     </div>
                                     <ul className="space-y-3 mb-5">
                                         {pendingSpj.slice(0, 3).map((spj) => (
                                             <li key={spj.id} className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                                <span className="font-bold text-slate-800 block">{spj.karyawan?.nama_lengkap}</span>
+                                                <span className="font-bold text-slate-800 block">{spj.pengaju}</span>
                                                 <span className="text-slate-500 mt-1 block">Tujuan: {spj.tujuan}</span>
                                             </li>
                                         ))}
                                     </ul>
-                                    <Link href={route("admin.spj.index")} className="w-full inline-flex justify-center items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold py-2.5 rounded-xl text-xs transition">
+                                    <Link href={route("spj.menunggu")} className="w-full inline-flex justify-center items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold py-2.5 rounded-xl text-xs transition">
                                         Proses SPJ &rarr;
                                     </Link>
                                 </div>

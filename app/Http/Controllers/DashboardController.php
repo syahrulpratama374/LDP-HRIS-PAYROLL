@@ -8,7 +8,6 @@ use App\Models\Absensi;
 use App\Models\Karyawan;
 use App\Models\PengajuanCuti;
 use App\Models\PengajuanLembur;
-use App\Models\PengajuanSpj;
 use App\Models\SaldoCuti;
 use App\Models\MasterJenisCuti;
 use App\Models\PinjamanKaryawan;
@@ -113,7 +112,14 @@ class DashboardController extends Controller
 
                     $pendingCuti = PengajuanCuti::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
                     $pendingLembur = PengajuanLembur::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
-                    $pendingSpj = PengajuanSpj::with('karyawan')->whereIn('karyawan_id', $bawahanIds)->where('status_approval', 'Pending')->get();
+                    // SPJ baru yang menunggu tindakan supervisor ini (mis. lewat Delegasi Wewenang); SPJ lama dipensiunkan
+                    $idsSpjMenunggu = app(\App\Services\Spj\OtorisasiApprovalSpj::class)->idsMenungguUser($user);
+                    $pendingSpj = \App\Models\Spj::with('pembuat:id,name')->whereIn('id', $idsSpjMenunggu)->latest('id')->get()
+                        ->map(fn ($s) => [
+                            'id' => $s->id,
+                            'pengaju' => $s->pembuat?->name,
+                            'tujuan' => trim("{$s->kota}, {$s->provinsi}", ', '),
+                        ])->values();
 
                     // --- 2. ABSENSI PRIBADI SPV ---
                     $absensiHariIni = Absensi::where('karyawan_id', $karyawan->id)
@@ -371,9 +377,9 @@ class DashboardController extends Controller
 
         $kandidatPintasan = [
             1 => ['karyawan.index', 'admin.role.index', 'admin.payroll.index', 'pengumuman.index', 'admin.audit.index', 'absensi.index'],
-            2 => ['karyawan.index', 'admin.payroll.index', 'admin.pinjaman.index', 'admin.spj.index', 'absensi.index', 'pengumuman.index'],
+            2 => ['karyawan.index', 'admin.payroll.index', 'admin.pinjaman.index', 'spj.menunggu', 'absensi.index', 'pengumuman.index'],
             3 => ['karyawan.index', 'absensi.index', 'admin.cuti.index', 'jadwal-shift.index', 'pengumuman.index', 'admin.lembur.index'],
-            4 => ['admin.payroll.index', 'admin.pinjaman.index', 'admin.spj.index', 'admin.komponen.index', 'absensi.index', 'pengumuman.index'],
+            4 => ['admin.payroll.index', 'admin.pinjaman.index', 'spj.menunggu', 'admin.komponen.index', 'absensi.index', 'pengumuman.index'],
         ];
         $labelPintasan = [
             'karyawan.index'           => 'Data Karyawan',
@@ -383,7 +389,7 @@ class DashboardController extends Controller
             'admin.audit.index'        => 'Audit Trail',
             'absensi.index'            => 'Rekap Absensi',
             'admin.pinjaman.index'     => 'Kasbon',
-            'admin.spj.index'          => 'SPJ Dinas',
+            'spj.menunggu'             => 'Approval SPJ',
             'admin.cuti.index'         => 'Approval Cuti',
             'admin.lembur.index'       => 'Approval Lembur',
             'jadwal-shift.index'       => 'Jadwal Shift',

@@ -225,12 +225,13 @@ class PengajuanSpjTest extends SpjTestCase
         $this->assertSame(0, DB::table('spj_pesertas')->count());
     }
 
-    public function test_form_spj_lama_tetap_bisa_dibuka_lewat_url(): void
+    public function test_daftar_spj_lama_tetap_bisa_dibuka_form_lama_dialihkan_ke_spj_baru(): void
     {
         $karyawan = $this->karyawanSpj('staff.cre1');
 
         $this->actingAs($karyawan)->get('/spj')->assertOk()->assertInertia(fn ($p) => $p->component('Spj/Index'));
-        $this->actingAs($karyawan)->get('/spj/ajukan')->assertOk()->assertInertia(fn ($p) => $p->component('Spj/Create'));
+        // B9: SPJ lama dipensiunkan, form lama diarahkan ke form SPJ baru
+        $this->actingAs($karyawan)->get('/spj/ajukan')->assertRedirect(route('spj.create'));
         $this->assertSame(url('/perjalanan-dinas'), route('spj.index'));
     }
 }

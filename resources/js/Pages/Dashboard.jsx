@@ -34,7 +34,7 @@ const IKON_PINTASAN = {
     "admin.audit.index": History,
     "absensi.index": UserCheck,
     "admin.pinjaman.index": Wallet,
-    "admin.spj.index": Plane,
+    "spj.menunggu": Plane,
     "admin.cuti.index": CalendarOff,
     "admin.lembur.index": Clock,
     "jadwal-shift.index": CalendarClock,

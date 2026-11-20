@@ -162,9 +162,9 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         </div>
                         <div>
-                            <h3 className="text-sm font-bold text-rose-800">Akses Pengajuan Baru Dikunci!</h3>
+                            <h3 className="text-sm font-bold text-rose-800">Laporan SPJ Lama Belum Diunggah</h3>
                             <p className="mt-1 text-xs leading-relaxed text-rose-700 sm:text-sm">
-                                Anda memiliki jadwal perjalanan dinas yang sudah selesai namun <strong>belum dilaporkan</strong>. Harap unggah laporan hasil dan bukti bon pada tabel di bawah agar Anda dapat membuat pengajuan SPJ baru.
+                                Anda memiliki perjalanan dinas (model lama) yang sudah selesai namun <strong>belum dilaporkan</strong>. Harap unggah laporan hasil dan bukti bon pada tabel di bawah.
                             </p>
                         </div>
                     </div>
@@ -226,7 +226,9 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
                     <div className="flex flex-col gap-4 border-b border-gray-100 p-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h2 className="text-base font-bold text-[#2A164E]">Daftar Pengajuan SPJ</h2>
-                            <p className="text-xs text-gray-500 mt-0.5">Kelola riwayat perjalanan dinas Anda.</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Arsip SPJ model lama (hanya dibaca dan pelaporan). Pengajuan baru lewat menu <strong>Perjalanan Dinas (SPJ)</strong>.
+                            </p>
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
@@ -241,23 +243,13 @@ export default function Index({ auth, spj = [], adaUtangLaporan }) {
                                 />
                             </div>
 
-                            {!adaUtangLaporan ? (
-                                <Link
-                                    href={route("spj.lama.create")}
-                                    className="inline-flex h-9 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg bg-[#F3B817] px-4 text-sm font-bold text-[#2A164E] shadow-sm transition hover:bg-[#e0a80e]"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                    Ajukan SPJ
-                                </Link>
-                            ) : (
-                                <button
-                                    disabled
-                                    className="inline-flex h-9 w-full sm:w-auto shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-200 px-4 text-sm font-bold text-gray-400"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                    Ajukan SPJ
-                                </button>
-                            )}
+                            <Link
+                                href={route("spj.create")}
+                                className="inline-flex h-9 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-lg bg-[#F3B817] px-4 text-sm font-bold text-[#2A164E] shadow-sm transition hover:bg-[#e0a80e]"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                Ajukan SPJ Baru
+                            </Link>
                         </div>
                     </div>
 

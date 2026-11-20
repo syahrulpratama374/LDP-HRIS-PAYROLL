@@ -10,7 +10,11 @@ export default function Index({ spjs, filter = {}, statusList = [], jumlahMenung
     const [cari, setCari] = useState(filter.cari || "");
 
     const terapkan = (ubah) =>
-        router.get(route("spj.index"), { cari, status: filter.status || "", ...ubah }, { preserveState: true, replace: true });
+        router.get(
+            route("spj.index"),
+            { cari, status: filter.status || "", menunggu: filter.menunggu ? 1 : undefined, ...ubah },
+            { preserveState: true, replace: true },
+        );
 
     const ajukan = (spj) => {
         if (confirm("Ajukan SPJ ini? Setelah diajukan, SPJ tidak bisa diubah.")) {
@@ -35,7 +39,8 @@ export default function Index({ spjs, filter = {}, statusList = [], jumlahMenung
                     {flash?.success && (
                         <div className="p-3 bg-green-50 border border-green-300 text-green-800 rounded text-sm">{flash.success}</div>
                     )}
-                    {jumlahMenungguSaya > 0 && (
+                    {flash?.error && <div className="p-3 bg-red-50 border border-red-300 text-red-700 rounded text-sm">{flash.error}</div>}
+                    {jumlahMenungguSaya > 0 && !filter.menunggu && (
                         <div className="p-3 bg-amber-50 border border-amber-300 text-amber-800 rounded text-sm">
                             Ada <strong>{jumlahMenungguSaya}</strong> SPJ yang menunggu persetujuan Anda (ditandai "Menunggu Anda").
                         </div>
@@ -66,6 +71,17 @@ export default function Index({ spjs, filter = {}, statusList = [], jumlahMenung
                                         </option>
                                     ))}
                                 </select>
+                                <button
+                                    type="button"
+                                    onClick={() => terapkan({ menunggu: filter.menunggu ? undefined : 1 })}
+                                    className={`text-sm px-3 py-2 rounded-md border font-semibold ${
+                                        filter.menunggu
+                                            ? "bg-amber-500 text-white border-amber-500"
+                                            : "bg-white text-amber-700 border-amber-300 hover:bg-amber-50"
+                                    }`}
+                                >
+                                    Menunggu Anda ({jumlahMenungguSaya})
+                                </button>
                             </div>
                             <Link href={route("spj.create")}>
                                 <PrimaryButton className="!bg-indigo-600 hover:!bg-indigo-700">+ Buat SPJ</PrimaryButton>
@@ -138,12 +154,14 @@ export default function Index({ spjs, filter = {}, statusList = [], jumlahMenung
                                                         >
                                                             Ajukan
                                                         </button>
-                                                        <button
-                                                            onClick={() => hapus(s)}
-                                                            className="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1.5 rounded font-bold border border-red-200"
-                                                        >
-                                                            Hapus
-                                                        </button>
+                                                        {s.status === "Draft" && (
+                                                            <button
+                                                                onClick={() => hapus(s)}
+                                                                className="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1.5 rounded font-bold border border-red-200"
+                                                            >
+                                                                Hapus
+                                                            </button>
+                                                        )}
                                                     </>
                                                 )}
                                             </td>

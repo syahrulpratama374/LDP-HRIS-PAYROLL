@@ -63,6 +63,9 @@
     <div class="judul-surat">
         <h1>SPJ BIAYA PERJALANAN DINAS</h1>
         <p>Nomor : {{ $nomor }}</p>
+        @if($spj->status === \App\Models\Spj::STATUS_DIBATALKAN)
+            <p style="color: #b91c1c; margin-top: 4px;">DIBATALKAN{{ $spj->dibatalkan_pada ? ' pada '.$spj->dibatalkan_pada->locale('id')->translatedFormat('d F Y') : '' }}</p>
+        @endif
     </div>
 
     @if($tanggalRisalah)

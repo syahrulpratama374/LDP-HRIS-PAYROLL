@@ -147,6 +147,9 @@ export default function Form({
                     {flash?.success && (
                         <div className="p-3 bg-green-50 border border-green-300 text-green-800 rounded text-sm">{flash.success}</div>
                     )}
+                    {flash?.error && (
+                        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-800 rounded text-sm">{flash.error}</div>
+                    )}
                     {spj?.status === "Ditolak" && spj?.catatan_revisi && (
                         <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded text-sm">
                             <strong>SPJ ditolak.</strong> Alasan: {spj.catatan_revisi} — perbaiki lalu ajukan ulang.
@@ -517,7 +520,8 @@ export default function Form({
                             <Link href={route("spj.index")}>
                                 <SecondaryButton>Kembali</SecondaryButton>
                             </Link>
-                            {spj && (
+                            {/* Hanya draf yang bisa dihapus; SPJ Ditolak dibatalkan dari halaman detail */}
+                            {spj && spj.status === "Draft" && (
                                 <button
                                     type="button"
                                     onClick={hapusDraf}

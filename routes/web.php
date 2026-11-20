@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
     Route::prefix('perjalanan-dinas')->name('spj.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Spj\SpjController::class, 'index'])->name('index');
         Route::get('/rekap-selisih', [\App\Http\Controllers\Spj\SpjController::class, 'rekapSelisih'])->name('rekap-selisih');
+        Route::get('/menunggu-saya', [\App\Http\Controllers\Spj\SpjController::class, 'menunggu'])->name('menunggu');
         // Nota & reimburse (B6)
         Route::post('/{spj}/nota', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'store'])->name('nota.store');
         Route::get('/nota/{biaya}/berkas', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'berkas'])->name('nota.berkas');
@@ -92,6 +93,9 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
         Route::post('/{spj}/pembayaran', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'store'])->name('pembayaran.store');
         Route::get('/pembayaran/{pembayaran}/bukti', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'bukti'])->name('pembayaran.bukti');
         Route::delete('/pembayaran/{pembayaran}', [\App\Http\Controllers\Spj\SpjPembayaranController::class, 'destroy'])->name('pembayaran.destroy');
+        // Penutupan (B9)
+        Route::post('/{spj}/selesai', [\App\Http\Controllers\Spj\SpjPenutupanController::class, 'selesai'])->name('selesai');
+        Route::post('/{spj}/batalkan', [\App\Http\Controllers\Spj\SpjPenutupanController::class, 'batal'])->name('batal');
         // Koordinator & Risalah (B8b)
         Route::put('/{spj}/koordinator', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'koordinator'])->name('koordinator');
         Route::get('/{spj}/risalah', [\App\Http\Controllers\Spj\SpjRisalahController::class, 'edit'])->name('risalah.edit');

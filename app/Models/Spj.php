@@ -32,12 +32,15 @@ class Spj extends Model
         'provinsi', 'kota', 'tgl_berangkat', 'tgl_pulang', 'jumlah_hari', 'jumlah_malam',
         'keperluan', 'tanggal_risalah_awal', 'status', 'total_uang_harian', 'diajukan_pada',
         'tanggal_terbit', 'qr_code_token', 'catatan_revisi',
+        'diselesaikan_pada', 'diselesaikan_oleh', 'dibatalkan_pada', 'dibatalkan_oleh', 'alasan_batal',
     ];
 
     protected $casts = [
         'total_uang_harian' => 'decimal:2',
         'diajukan_pada' => 'datetime',
         'tanggal_terbit' => 'datetime',
+        'diselesaikan_pada' => 'datetime',
+        'dibatalkan_pada' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -66,6 +69,16 @@ class Spj extends Model
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function penyelesai()
+    {
+        return $this->belongsTo(User::class, 'diselesaikan_oleh');
+    }
+
+    public function pembatal()
+    {
+        return $this->belongsTo(User::class, 'dibatalkan_oleh');
     }
 
     public function koordinator()

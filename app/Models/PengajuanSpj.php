@@ -28,7 +28,8 @@ class PengajuanSpj extends Model
         'total_biaya',
         'file_bukti_path',
         'status_approval',
-        'sudah_dibayar'
+        'sudah_dibayar',
+        'laporan_hasil', // bug lama: tidak ada di $fillable sehingga laporan tidak tersimpan
     ];
 
     public function karyawan()

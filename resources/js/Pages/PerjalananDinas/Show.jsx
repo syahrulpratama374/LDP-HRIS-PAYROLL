@@ -30,7 +30,7 @@ function Kartu({ judul, children, kanan }) {
 
 export default function Show({
     spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null,
-    bisaValidasiNota = false, jenisBiaya = {}, bisaCatatPembayaran = false, koordinator = {}, risalah = {},
+    bisaValidasiNota = false, jenisBiaya = {}, bisaCatatPembayaran = false, koordinator = {}, risalah = {}, penutupan = {},
 }) {
     const { flash } = usePage().props;
     const [modalSetuju, setModalSetuju] = useState(false);
@@ -138,6 +138,26 @@ export default function Show({
                     {alasanTidakBisa && (
                         <div className="p-3 bg-gray-50 border border-gray-300 text-gray-700 rounded text-sm">
                             <strong>Anda tidak dapat menyetujui SPJ ini.</strong> {alasanTidakBisa}
+                        </div>
+                    )}
+
+                    {spj.status === "Dibatalkan" && (
+                        <div className="p-4 bg-gray-100 border-l-4 border-gray-500 text-gray-700 rounded text-sm">
+                            <strong>SPJ dibatalkan</strong>
+                            {penutupan.dibatalkan_oleh && ` oleh ${penutupan.dibatalkan_oleh}`}
+                            {penutupan.dibatalkan_pada && ` · ${penutupan.dibatalkan_pada}`}.
+                            {penutupan.alasan_batal && <div className="mt-1">Alasan: {penutupan.alasan_batal}</div>}
+                            {spj.nomor_surat && (
+                                <div className="mt-1 text-xs text-gray-500">Nomor {spj.nomor_surat} tetap tercatat dan tidak dipakai ulang.</div>
+                            )}
+                        </div>
+                    )}
+                    {spj.status === "Selesai" && (
+                        <div className="p-3 bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 rounded text-sm">
+                            <strong>SPJ Selesai</strong>
+                            {penutupan.diselesaikan_oleh && ` — ditandai oleh ${penutupan.diselesaikan_oleh}`}
+                            {penutupan.diselesaikan_pada && ` · ${penutupan.diselesaikan_pada}`}. Nota, pembayaran, risalah, dan koordinator
+                            terkunci.
                         </div>
                     )}
 
@@ -311,9 +331,7 @@ export default function Show({
                                 <PembayaranSpj spj={spj} pesertas={pesertas} bisaCatat={bisaCatatPembayaran} />
                             )}
 
-                            <div className="p-4 rounded border border-dashed text-xs text-gray-500 bg-white">
-                                Penutupan SPJ (status Selesai) tersedia di tahap berikutnya.
-                            </div>
+                            <KartuPenutupan spj={spj} penutupan={penutupan} />
                         </div>
 
                         {/* TIMELINE PERSETUJUAN */}
@@ -488,6 +506,115 @@ function KartuRisalah({ spj, pesertas, koordinator, risalah }) {
                     {risalah.alasan_tidak_bisa && <p className="text-xs text-amber-700 mt-2">{risalah.alasan_tidak_bisa}</p>}
                 </div>
             </div>
+        </Kartu>
+    );
+}
+
+/** Penutupan: Tandai Selesai (Finance, dengan daftar syarat) dan Batalkan SPJ (pengaju/HC sesuai status). */
+function KartuPenutupan({ spj, penutupan }) {
+    const [modalBatal, setModalBatal] = useState(false);
+    const batal = useForm({ alasan: "" });
+    const [menyimpan, setMenyimpan] = useState(false);
+    const syarat = penutupan.syarat_belum || [];
+    const tampilSelesai = penutupan.bisa_selesai;
+    const tampilBatal = penutupan.bisa_batal || penutupan.alasan_tidak_bisa_batal;
+    if (!tampilSelesai && !tampilBatal) return null;
+
+    const tandaiSelesai = () => {
+        if (!confirm("Tandai SPJ ini Selesai? Nota, pembayaran, risalah, dan koordinator akan terkunci.")) return;
+        setMenyimpan(true);
+        router.post(route("spj.selesai", spj.id), {}, { preserveScroll: true, onFinish: () => setMenyimpan(false) });
+    };
+
+    const kirimBatal = (e) => {
+        e.preventDefault();
+        batal.post(route("spj.batal", spj.id), { preserveScroll: true, onSuccess: () => setModalBatal(false) });
+    };
+
+    return (
+        <Kartu judul="Penutupan SPJ">
+            <div className="space-y-4 text-sm">
+                {tampilSelesai && (
+                    <div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-gray-700">
+                                {syarat.length === 0 ? (
+                                    <span className="text-green-700 font-semibold">Semua syarat terpenuhi. SPJ dapat ditandai Selesai.</span>
+                                ) : (
+                                    <span className="text-gray-600">Syarat yang belum terpenuhi:</span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                disabled={syarat.length > 0 || menyimpan}
+                                onClick={tandaiSelesai}
+                                className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                ✓ Tandai Selesai
+                            </button>
+                        </div>
+                        {syarat.length > 0 && (
+                            <ul className="mt-2 space-y-1">
+                                {syarat.map((s, i) => (
+                                    <li key={i} className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                                        • {s}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+
+                {tampilBatal && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t">
+                        <div className="text-xs text-gray-500 max-w-md">
+                            {penutupan.alasan_tidak_bisa_batal ??
+                                (penutupan.alasan_wajib
+                                    ? "Pembatalan SPJ yang sudah disetujui wajib disertai alasan. Nomor surat tetap tercatat dan tidak dipakai ulang."
+                                    : "Batalkan pengajuan SPJ ini. Riwayat persetujuan tetap tersimpan.")}
+                        </div>
+                        <button
+                            type="button"
+                            disabled={!penutupan.bisa_batal}
+                            onClick={() => {
+                                batal.reset();
+                                batal.clearErrors();
+                                setModalBatal(true);
+                            }}
+                            className="text-sm bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded-md font-semibold border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Batalkan SPJ
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <Modal show={modalBatal} onClose={() => setModalBatal(false)} maxWidth="md">
+                <form onSubmit={kirimBatal} className="p-6 space-y-3">
+                    <h2 className="text-lg font-bold text-gray-900">Batalkan SPJ</h2>
+                    <p className="text-sm text-gray-600">
+                        SPJ akan berstatus <strong>Dibatalkan</strong> dan tidak dapat diproses lagi.
+                        {spj.nomor_surat && ` Nomor ${spj.nomor_surat} tetap tercatat dan tidak dipakai ulang.`}
+                    </p>
+                    <textarea
+                        rows={3}
+                        value={batal.data.alasan}
+                        onChange={(e) => batal.setData("alasan", e.target.value)}
+                        className="block w-full border-gray-300 rounded-md text-sm"
+                        placeholder={penutupan.alasan_wajib ? "Alasan pembatalan (wajib)" : "Alasan pembatalan (opsional)"}
+                    />
+                    <InputError message={batal.errors.alasan} />
+                    <div className="flex justify-end gap-2">
+                        <SecondaryButton onClick={() => setModalBatal(false)}>Tutup</SecondaryButton>
+                        <button
+                            disabled={batal.processing}
+                            className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
+                        >
+                            Batalkan SPJ
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </Kartu>
     );
 }

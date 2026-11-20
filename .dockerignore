@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+*.sql
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+storage/app/*
+storage/framework/*
+storage/logs/*
+storage/fonts/*
+bootstrap/cache/*.php
+docs_la

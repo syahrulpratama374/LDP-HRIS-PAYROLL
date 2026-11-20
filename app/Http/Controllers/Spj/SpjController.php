@@ -19,6 +19,7 @@ use App\Services\Spj\RekapSelisihSpjService;
 use App\Services\Spj\ReimburseSpjService;
 use App\Services\Spj\PembayaranSpjService;
 use App\Services\Spj\RisalahSpjService;
+use App\Services\Spj\PenutupanSpjService;
 use App\Models\SpjPembayaran;
 use App\Models\SpjBiaya;
 use App\Support\Terbilang;
@@ -48,6 +49,7 @@ class SpjController extends Controller
         private ReimburseSpjService $reimburse,
         private PembayaranSpjService $pembayaran,
         private RisalahSpjService $risalah,
+        private PenutupanSpjService $penutupan,
     ) {}
 
     public function index(Request $request)
@@ -55,6 +57,7 @@ class SpjController extends Controller
         $user = $request->user();
         $cari = trim((string) $request->input('cari', ''));
         $status = $request->input('status');
+        $menungguSaja = $request->boolean('menunggu');
 
         $idsMenunggu = $this->otorisasi->idsMenungguUser($user);
 
@@ -63,6 +66,8 @@ class SpjController extends Controller
             ->with(['pembuat:id,name', 'unitPenerbit:id,kode'])
             ->withCount('pesertas')
             ->when($status, fn ($q) => $q->where('status', $status))
+            // Filter "Menunggu Anda" (menu Approval SPJ di Approval Center)
+            ->when($menungguSaja, fn ($q) => $q->whereIn('id', $idsMenunggu ?: [0]))
             ->when($cari !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('nomor_surat', 'like', "%{$cari}%")
                 ->orWhere('provinsi', 'like', "%{$cari}%")
@@ -91,9 +96,17 @@ class SpjController extends Controller
         return Inertia::render('PerjalananDinas/Index', [
             'spjs' => $spjs,
             'jumlahMenungguSaya' => count($idsMenunggu),
-            'filter' => ['cari' => $cari, 'status' => $status],
+            'filter' => ['cari' => $cari, 'status' => $status, 'menunggu' => $menungguSaja],
             'statusList' => [Spj::STATUS_DRAFT, Spj::STATUS_DIAJUKAN, Spj::STATUS_DISETUJUI, Spj::STATUS_DITOLAK, Spj::STATUS_SELESAI, Spj::STATUS_DIBATALKAN],
         ]);
+    }
+
+    /** Menu "Approval SPJ" (Approval Center): daftar SPJ baru dengan filter "Menunggu Anda". */
+    public function menunggu(Request $request)
+    {
+        $request->merge(['menunggu' => 1]);
+
+        return $this->index($request);
     }
 
     public function create(Request $request)
@@ -108,7 +121,7 @@ class SpjController extends Controller
         abort_unless($this->bolehLihat($user, $spj), 403, 'Anda tidak berhak melihat SPJ ini.');
 
         $spj->load(['pesertas.pembayarans.pencatat:id,name', 'pesertas.pembayarans.pembatal:id,name', 'pesertas.biayas.pengunggah:id,name', 'pesertas.biayas.validator:id,name', 'pesertas.biayas.selisih',
-            'pembuat:id,name', 'unitPenerbit:id,kode,nama',
+            'pembuat:id,name', 'penyelesai:id,name', 'pembatal:id,name', 'unitPenerbit:id,kode,nama',
             'approvals.role:id,nama_role', 'approvals.jabatan:id,nama_jabatan',
             'approvals.userAktual.karyawan:id,user_id,nama_lengkap', 'approvals.atasNama:id,nama_lengkap']);
         $langkahAktif = $spj->approvals->firstWhere('status', SpjApproval::MENUNGGU);
@@ -230,6 +243,21 @@ class SpjController extends Controller
                 'bisa_ubah' => $this->risalah->bolehUbahKoordinator($user, $spj),
             ],
             'risalah' => $this->ringkasRisalah($spj, $user),
+            // Penutupan (B9)
+            'penutupan' => [
+                'bisa_selesai' => $spj->status === Spj::STATUS_DISETUJUI && $this->penutupan->bolehMenandaiSelesai($user),
+                'syarat_belum' => $spj->status === Spj::STATUS_DISETUJUI ? $this->penutupan->syaratBelumTerpenuhi($spj) : [],
+                'bisa_batal' => $this->penutupan->alasanTidakBisaBatal($user, $spj) === null,
+                'alasan_wajib' => $this->penutupan->alasanWajib($spj),
+                // Penjelasan untuk HC bila SPJ Disetujui tidak bisa dibatalkan (mis. sudah ada pembayaran)
+                'alasan_tidak_bisa_batal' => $spj->status === Spj::STATUS_DISETUJUI && (int) $user->role_id === 3
+                    ? $this->penutupan->alasanTidakBisaBatal($user, $spj) : null,
+                'diselesaikan_pada' => $spj->diselesaikan_pada?->toDateTimeString(),
+                'diselesaikan_oleh' => $spj->penyelesai?->name,
+                'dibatalkan_pada' => $spj->dibatalkan_pada?->toDateTimeString(),
+                'dibatalkan_oleh' => $spj->pembatal?->name,
+                'alasan_batal' => $spj->alasan_batal,
+            ],
         ]);
     }
 
@@ -334,6 +362,8 @@ class SpjController extends Controller
     public function destroy(Request $request, Spj $spj)
     {
         $this->pastikanBisaUbah($request->user(), $spj);
+        // Hanya draf yang dihapus permanen; SPJ Ditolak/Diajukan dibatalkan (riwayat persetujuan tetap ada)
+        abort_unless($spj->status === Spj::STATUS_DRAFT, 403, 'Hanya draf yang dapat dihapus. SPJ yang pernah diajukan dibatalkan lewat tombol Batalkan SPJ.');
         $this->audit($request, 'Hapus draf SPJ', $spj);
         DB::transaction(function () use ($spj) {
             $spj->approvals()->delete(); // eksplisit, tidak bergantung pada cascade FK

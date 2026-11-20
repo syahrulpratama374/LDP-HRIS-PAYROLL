@@ -161,8 +161,8 @@ export default function AdminLayout({ header, children }) {
                                     label="Apprv Lembur"
                                 />
                                 <SidebarItem
-                                    href={route("admin.spj.index")}
-                                    active={route().current("admin.spj.*")}
+                                    href={route("spj.menunggu")}
+                                    active={route().current("spj.menunggu")}
                                     icon={BadgeDollarSign}
                                     label="Apprv SPJ"
                                 />

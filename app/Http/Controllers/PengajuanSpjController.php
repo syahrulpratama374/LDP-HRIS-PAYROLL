@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\PengajuanSpj;
-use App\Models\KomponenBiayaSpj;
-use App\Models\Pengaturan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -73,63 +71,19 @@ class PengajuanSpjController extends Controller
         return redirect()->route('spj.lama.index')->with('success', 'Laporan perjalanan dinas dan bukti bon berhasil diunggah.');
     }
 
-    // [KARYAWAN] Menampilkan form pengajuan SPJ
+    /** Pesan pengalihan: SPJ model lama sudah dipensiunkan (B9); pengajuan baru lewat Perjalanan Dinas (SPJ). */
+    public const PESAN_PENSIUN = 'Pengajuan SPJ model lama sudah tidak digunakan. Silakan ajukan perjalanan dinas lewat menu Perjalanan Dinas (SPJ) yang baru. Data SPJ lama tetap dapat dilihat.';
+
+    // SPJ lama dipensiunkan: form tidak lagi membuat pengajuan baru, diarahkan ke SPJ baru
     public function create()
     {
-        return Inertia::render('Spj/Create');
+        return redirect()->route('spj.create')->with('error', self::PESAN_PENSIUN);
     }
 
-    // [KARYAWAN] Menyimpan data SPJ dan Rincian Biayanya
+    // [KARYAWAN] SPJ lama dipensiunkan (B9): tidak menerima pengajuan baru
     public function store(Request $request)
     {
-        $request->validate([
-            'tujuan' => 'required|string|max:150',
-            'keperluan' => 'required|string',
-            'tgl_mulai' => 'required|date',
-            'tgl_selesai' => 'required|date|after_or_equal:tgl_mulai',
-            'komponen_biaya' => 'required|array|min:1',
-            'komponen_biaya.*.jenis_biaya' => 'required|string',
-            'komponen_biaya.*.nominal' => 'required|numeric|min:0',
-        ]);
-
-        $karyawan = $request->user()->karyawan()->with('golongan')->first();
-
-        if (!$karyawan) return redirect()->back()->withErrors(['error' => 'Data kepegawaian tidak ditemukan.']);
-
-        $totalBiaya = collect($request->komponen_biaya)->sum('nominal');
-        $kodeGolongan = $karyawan->golongan ? $karyawan->golongan->kode_golongan : 'DEFAULT';
-        $plafonSetting = Pengaturan::where('kunci', 'plafon_spj_' . $kodeGolongan)->value('nilai');
-        $batasMaksimal = $plafonSetting ? (float) $plafonSetting : 1500000;
-
-        if ($totalBiaya > $batasMaksimal) {
-            return redirect()->back()->withErrors([
-                'error' => 'Total pengajuan (Rp ' . number_format($totalBiaya, 0, ',', '.') . 
-                           ') melebihi batas plafon SPJ untuk Golongan ' . $kodeGolongan . 
-                           ' (Rp ' . number_format($batasMaksimal, 0, ',', '.') . ').'
-            ]);
-        }
-
-        $spj = PengajuanSpj::create([
-            'karyawan_id' => $karyawan->id,
-            'tujuan' => $request->tujuan,
-            'keperluan' => $request->keperluan,
-            'tgl_mulai' => $request->tgl_mulai,
-            'tgl_selesai' => $request->tgl_selesai,
-            'total_biaya' => $totalBiaya,
-            'status_approval' => 'Pending',
-            'sudah_dibayar' => false,
-        ]);
-
-        foreach ($request->komponen_biaya as $komponen) {
-            KomponenBiayaSpj::create([
-                'pengajuan_spj_id' => $spj->id,
-                'jenis_biaya' => $komponen['jenis_biaya'],
-                'nominal' => $komponen['nominal'],
-                'keterangan' => $komponen['keterangan'] ?? null,
-            ]);
-        }
-
-        return redirect()->route('spj.lama.index')->with('success', 'Pengajuan Perjalanan Dinas (SPJ) berhasil dikirim.');
+        return redirect()->route('spj.create')->with('error', self::PESAN_PENSIUN);
     }
 
     // ==========================================
