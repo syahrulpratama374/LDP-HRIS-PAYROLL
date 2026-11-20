@@ -2,7 +2,7 @@
 
 > Dokumen ini ditulis agar sesi AI/developer baru **tanpa konteks percakapan sebelumnya** bisa langsung
 > melanjutkan. Baca seluruhnya sebelum mengubah kode. Branch kerja: `fix/keuangan-la`.
-> Terakhir diperbarui: 2026-11-20, setelah commit B5 (`dacc99e`); B8a selesai (commit B8a). Berikutnya B6.
+> Terakhir diperbarui: 2026-11-20, setelah commit B5 (`dacc99e`); B8a selesai (`2ac58a0`); B6 selesai (commit B6). Berikutnya B7.
 >
 > **Urutan kerja baru (ditetapkan pemilik): B5 → B8a (PDF SPJ) → B6 → B7 → B8b (Risalah) → B9.**
 
@@ -114,13 +114,13 @@ Prasyarat persuratan (sudah selesai sebelum SPJ):
 | **B3** | ✅ Selesai | `130f600` | `SpjKalkulator` + `Terbilang`; tabel `spjs` & `spj_pesertas` (snapshot); form baru `/perjalanan-dinas/buat` (detail, peserta, tabel rincian meniru dokumen, Simpan Draf/Ajukan); daftar SPJ; `nama_posisi`; rekening DUMMY uji (fahla `9990000001`, staff.cre1 `9990000002`); route lama → `spj.lama.*` |
 | **B4** | ✅ Selesai (uji manual lolos: nomor `004/SPJ-PD/LDP-HC/XI/2026`, timeline yoga → muslih → ceo, rekening sesuai peran) | `86564a7` | Tabel `spj_approvals`; `OtorisasiApprovalSpj`; Setujui (SignModal) & Tolak (alasan wajib); nomor SPJ-PD di persetujuan terakhir; halaman detail + timeline; "Menunggu Anda" di daftar; migrasi pengaman langkah untuk SPJ Diajukan tanpa langkah |
 | **B5** | ✅ Selesai (uji manual lolos: monitor HC 27-11-2026 menampilkan kedua peserta SPJ 004 Dinas Luar; 26-11 & 30-11 tidak; Auto-Alpha manual dilewati, tercakup test) | `dacc99e` | `DinasLuarService` (SPJ lama + semua peserta SPJ baru Disetujui/Selesai) menggantikan 3 pemakaian `PengajuanSpj::aktifPada`; test `tests/Feature/Spj/DinasLuarSpjTest.php` |
-| **B8a** | ✅ Selesai (cek visual pemilik lolos; kepala tabel berulang di hal. 2) | (commit B8a) | `SpjPdfService` + `pdf/spj.blade.php`; route `spj.pdf` (hanya SPJ bernomor & yang berhak melihat); tombol "Cetak PDF" di detail; verifikasi QR publik `verifikasi.spj` (`/verifikasi/spj/{token}`, tanpa rekening); test `PdfSpjTest` |
-| B6 | ⏳ Berikutnya | – | Nota & reimburse, selisih, dashboard, rekap (mengisi bagian AKOMODASI PDF) |
+| **B8a** | ✅ Selesai (cek visual pemilik lolos; kepala tabel berulang di hal. 2) | `2ac58a0` | `SpjPdfService` + `pdf/spj.blade.php`; route `spj.pdf` (hanya SPJ bernomor & yang berhak melihat); tombol "Cetak PDF" di detail; verifikasi QR publik `verifikasi.spj` (`/verifikasi/spj/{token}`, tanpa rekening); test `PdfSpjTest` |
+| **B6** | ✅ Selesai (uji manual lolos) | (commit B6) | `spj_biayas`, `spj_selisih_penginapans`, `ReimburseSpjService`, `SpjBiayaController`, kartu "Nota & Reimburse" di detail, rekap `spj.rekap-selisih`, panel dashboard HC/Finance/Admin, AKOMODASI PDF dari nota tervalidasi; test `ReimburseSpjTest` |
 | B7 | ⏳ Belum | – | Pembayaran & bukti transfer |
 | B8b | ⏳ Belum | – | Risalah + PDF Risalah |
 | B9 | ⏳ Belum | – | Penutupan Selesai & pensiun SPJ lama |
 
-Hasil terakhir: **199 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
+Hasil terakhir: **207 test lolos** (sqlite `:memory:`), `npm run build` berhasil.
 
 ### Langkah uji manual B4 (sudah dijalankan & lolos, 2026-11-20)
 1. **Login `staff.cre1`:** buat SPJ Jawa Timur 27–29 November 2026 dengan peserta fahla dan Staff Creative 1,
@@ -164,7 +164,21 @@ Rencana awal:
 - `AbsensiSpjTest` lama harus tetap lolos. Test baru: semua peserta SPJ baru yang disetujui → Dinas Luar
   otomatis & bypass radius; SPJ Draft/Diajukan/Ditolak tidak.
 
-### B6 — Nota & reimburse, catatan selisih, dashboard, rekap
+### B6 — Nota & reimburse, catatan selisih, dashboard, rekap — ✅ selesai
+Keputusan implementasi:
+- Unggah nota: SPJ **Disetujui** saja; oleh pengaju (untuk peserta mana pun), koordinator (`koordinator_karyawan_id`,
+  belum ada UI pengisiannya), atau peserta (hanya untuk dirinya). HC/Finance/Admin tidak mengunggah.
+- Validasi & tolak nota: **hanya Finance (role 4)** — Admin juga tidak (`ReimburseSpjService::ROLE_VALIDASI`).
+- Nota penginapan wajib `jumlah_malam` (1..malam perjalanan) agar nota per malam bisa dibandingkan dengan tarif.
+- Tanggal nota harus dalam rentang perjalanan. Berkas (PDF/JPG/PNG ≤ 5 MB) di disk privat `local`
+  (`storage/app/private/spj/nota/{spj_id}`), dibuka lewat `spj.nota.berkas` (hanya yang berhak melihat SPJ).
+- Nota Menunggu boleh dihapus pengunggah/pengaju; nota tervalidasi/ditolak final (ditolak → unggah nota pengganti).
+- Selisih sama persis dengan tarif tidak dicatat; persen = (nota/malam − tarif)/tarif × 100.
+- Total di halaman detail & PDF = uang harian + reimburse tervalidasi.
+- Rekap & panel: Admin, HC, Finance (`RekapSelisihSpjService::ROLE_LIHAT`); Direktur tidak. Menu "Rekap Selisih SPJ"
+  (Master Data, order 10) lewat migrasi data `2026_11_24_100200` + `MenuSeeder`.
+
+Rencana awal:
 - Tabel `spj_biayas`: `spj_peserta_id`, jenis (`penginapan`/`tiket`/`transport`/`lainnya`), tanggal,
   keterangan, `nominal_nota`, `file_nota_path`, status (Menunggu/Divalidasi/Ditolak), `nominal_dibayar`,
   `divalidasi_oleh`, `divalidasi_pada`, catatan.
@@ -202,8 +216,8 @@ Rencana awal:
   - Kolom TGL 20% (`white-space: nowrap`), PERINCIAN 24%.
   - Kota dirapikan saat SPJ disimpan: `ucwords` + spasi tunggal ("malang" → "Malang"; "DKI" tetap). Data lama tidak diubah;
     PDF & halaman verifikasi tetap menampilkan huruf kapital awal.
-  - Cek visual: `pdftoppm` (poppler-utils) dipasang **manual** di container `ldp_app` (hilang bila image di-rebuild;
-    belum ada di Dockerfile). Contoh: `docker exec ldp_app pdftoppm -r 80 -png <file.pdf> <prefix>`.
+  - Cek visual: `pdftoppm` (poppler-utils) ada di Dockerfile `ldp_app` (sejak commit B6; perlu rebuild image:
+    `docker-compose build app && docker-compose up -d app`). Contoh: `docker exec ldp_app pdftoppm -r 80 -png <file.pdf> <prefix>`.
   - Keterbatasan (DITERIMA pemilik): bila daftar Nama/Jabatan sangat panjang (±20+ peserta) sehingga tabel mulai tepat di dasar
     halaman 1, DomPDF memecah tepat setelah `thead` dan kepala tidak diulang. Tidak terjadi pada jumlah peserta wajar.
   - SPJ 004 (2 peserta) muat 1 halaman termasuk tanda tangan; QR verifikasi di kanan Terbilang (bila semua
@@ -257,6 +271,7 @@ Rincian:
 - `app/Models/Spj.php` — header SPJ, status, scope `terlihatOleh`, `langkahAktif()`, `bisaDiubahOleh()`
 - `app/Models/SpjPeserta.php` — peserta + snapshot (rekening terenkripsi, `$hidden`)
 - `app/Models/SpjApproval.php` — langkah persetujuan
+- `app/Models/SpjBiaya.php` — nota reimburse per peserta; `app/Models/SpjSelisihPenginapan.php`
 - `app/Models/MasterTarifSpj.php` — `tarifBerlaku()`, `provinsiUangHarian()`
 - `app/Models/RuteApprovalTemplate.php` — tipe jabatan/role
 - Terkait: `Karyawan` (`kategori_tarif_spj`, `nama_posisi`, `no_rek_bca_encrypted`), `DelegasiWewenang`,
@@ -264,6 +279,8 @@ Rincian:
 
 **Service / Support**
 - `app/Services/Spj/SpjKalkulator.php` — satu sumber perhitungan (form, simpan, PDF)
+- `app/Services/Spj/ReimburseSpjService.php` — aturan nota: hak unggah/validasi, min(nota, sisa batas), selisih, baris AKOMODASI PDF
+- `app/Services/Spj/RekapSelisihSpjService.php` — rekap per provinsi, rincian kejadian, panel dashboard
 - `app/Services/Spj/SpjPdfService.php` — data & render PDF SPJ (rekening via `RekeningSpj`, TTD approver asli, QR)
 - `app/Services/Spj/DinasLuarService.php` — karyawan sedang Dinas Luar (SPJ lama + baru); dipakai
   `AbsensiController@index/store` dan `RunDailyAutomation::generateAlpha`
@@ -275,18 +292,23 @@ Rincian:
 **Controller**
 - `app/Http/Controllers/Spj/SpjController.php` — index, create, store, show, edit, update, destroy, ajukan, hitung
 - `app/Http/Controllers/Spj/SpjPersetujuanController.php` — approve, tolak
+- `app/Http/Controllers/Spj/SpjBiayaController.php` — nota: store, destroy, berkas, validasi, tolak
+- `SpjController@rekapSelisih`; `DashboardController::dataEksekutif` → prop `spjReimburse`
 - `app/Http/Controllers/MasterData/MasterTarifSpjController.php` — tarif + kategori karyawan
 - SPJ lama: `app/Http/Controllers/PengajuanSpjController.php`
 
 **Route** (`routes/web.php`)
 - `spj.*` di prefix `/perjalanan-dinas`: index, create (`/buat`), store, hitung, edit (`/{spj}/ubah`), update,
   destroy, ajukan, show, pdf (`/{spj}/pdf`), approve (`/{spj}/setujui`), tolak
+- Nota (B6): `spj.nota.store` (`/{spj}/nota`), `spj.nota.berkas`, `spj.nota.validasi`, `spj.nota.tolak`, `spj.nota.destroy`
+  (`/nota/{biaya}/…`); `spj.rekap-selisih` (`/rekap-selisih`, didaftarkan sebelum `/{spj}`)
 - Publik (tanpa login): `verifikasi.spj` (`/verifikasi/spj/{token}`) dari QR PDF SPJ
 - `tarif-spj.*` di `/master-data/tarif-spj` (+ `tarif-spj.kategori`)
 - SPJ lama: `spj.lama.*` (`/spj`), `admin.spj.*`
 
 **Halaman (React/Inertia)**
-- `resources/js/Pages/PerjalananDinas/Index.jsx`, `Form.jsx`, `Show.jsx`, `Verifikasi.jsx` (publik, dari QR)
+- `resources/js/Pages/PerjalananDinas/Index.jsx`, `Form.jsx`, `Show.jsx`, `Verifikasi.jsx` (publik, dari QR),
+  `RekapSelisih.jsx`, `Partials/NotaReimburse.jsx`; panel `PanelSpjReimburse` di `Pages/Dashboard.jsx`
 - `resources/views/pdf/spj.blade.php`
 - `resources/js/Pages/MasterData/TarifSpj/Index.jsx`
 - `resources/js/Utils/spj.js` (rentang tanggal, warna status)
@@ -308,6 +330,9 @@ Rincian:
 - `2026_11_22_100400_create_spj_pesertas_table`
 - `2026_11_23_100000_create_spj_approvals_table`
 - `2026_11_23_100100_buat_langkah_approval_spj_diajukan` (data, pengaman)
+- `2026_11_24_100000_create_spj_biayas_table`
+- `2026_11_24_100100_create_spj_selisih_penginapans_table`
+- `2026_11_24_100200_tambah_menu_rekap_selisih_spj` (data)
 
 **Seeder**
 - `MasterTarifSpjSeeder` (dipanggil `DatabaseSeeder`), `MasterTemplateSuratSeeder` (rute SPJ-PD untuk
@@ -319,7 +344,7 @@ Rincian:
 **Test** (`tests/Feature/Spj/`)
 - `SpjTestCase.php` (basis; mewarisi `tests/Feature/Persuratan/PersuratanTestCase.php`)
 - `MasterTarifSpjTest`, `SpjLamaDibatalkanTest`, `RuteApprovalSpjTest`, `DataKaryawanSpjTest`,
-  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence), `PdfSpjTest`
+  `PengajuanSpjTest`, `PersetujuanSpjTest`, `DinasLuarSpjTest` (basis `KeuanganTestCase`, fixture geofence), `PdfSpjTest`, `ReimburseSpjTest`
 
 **Akun uji** (password semua `password123`)
 | Username | Peran | Catatan |

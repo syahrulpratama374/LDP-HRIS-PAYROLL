@@ -442,6 +442,13 @@ class DashboardController extends Controller
             'pintasan'          => $pintasan,
             'aksiUtama'         => $aksiUtama,
             'tanggalHariIni'    => $hariIni,
+            // Panel nota & selisih penginapan SPJ (HC, Finance, Admin)
+            'spjReimburse'      => in_array((int) $user->role_id, \App\Services\Spj\RekapSelisihSpjService::ROLE_LIHAT, true)
+                ? app(\App\Services\Spj\RekapSelisihSpjService::class)->panelDashboard($tahunIni) + [
+                    'urlRekap' => route('spj.rekap-selisih'),
+                    'urlDaftar' => route('spj.index'),
+                ]
+                : null,
         ];
     }
 }

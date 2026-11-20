@@ -14,7 +14,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 /**
  * PDF "SPJ BIAYA PERJALANAN DINAS" (meniru dokumen perusahaan 047/SPJ-PD/LDP-HC/VIII/2026).
  * Semua data diambil dari SPJ (snapshot peserta + approver asli); rekening mengikuti peran pengunduh
- * (RekeningSpj). Bagian AKOMODASI kosong saat terbit dan nanti diisi dari nota reimburse tervalidasi (B6).
+ * (RekeningSpj). Bagian AKOMODASI berisi nota reimburse yang sudah divalidasi Finance (kosong saat terbit).
  * Subtotal, TOTAL, dan Terbilang SELALU dihitung view dari baris yang ditampilkan (SpjPdfService::ringkasan),
  * tidak dari total tersimpan, agar angka di PDF tidak mungkin berbeda dari rinciannya.
  */
@@ -56,8 +56,8 @@ class SpjPdfService
                 .' ('.$p->nama.')',
         ])->all();
 
-        // Diisi dari nota reimburse tervalidasi pada B6; saat terbit selalu kosong.
-        $akomodasi = [];
+        // Nota reimburse yang SUDAH divalidasi Finance (B6); kosong saat SPJ baru terbit.
+        $akomodasi = app(ReimburseSpjService::class)->barisAkomodasiPdf($spj, $viewer);
 
         $departemen = $spj->pesertas->pluck('departemen')->filter()->unique()->implode(', ');
 

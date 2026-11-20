@@ -7,6 +7,7 @@ import InputError from "@/Components/InputError";
 import SecondaryButton from "@/Components/SecondaryButton";
 import formatRupiah from "@/Utils/formatRupiah";
 import { formatRentangTanggal, formatTanggal, WARNA_STATUS_SPJ } from "@/Utils/spj";
+import NotaReimburse from "./Partials/NotaReimburse";
 
 const WARNA_LANGKAH = {
     Menunggu: "bg-amber-50 text-amber-700 border-amber-200",
@@ -26,12 +27,19 @@ function Kartu({ judul, children, kanan }) {
     );
 }
 
-export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null }) {
+export default function Show({
+    spj, pesertas = [], approvals = [], bisaSetujui, atasNama, bisaUbah, bisaCetak = false, alasanTidakBisa = null,
+    bisaValidasiNota = false, jenisBiaya = {},
+}) {
     const { flash } = usePage().props;
     const [modalSetuju, setModalSetuju] = useState(false);
     const [modalTolak, setModalTolak] = useState(false);
     const tolak = useForm({ alasan: "" });
     const rentang = formatRentangTanggal(spj.tgl_berangkat, spj.tgl_pulang);
+    // Baris AKOMODASI = nota yang sudah divalidasi Finance (sama dengan PDF)
+    const akomodasi = pesertas.flatMap((p) =>
+        (p.biayas || []).filter((b) => b.status === "Divalidasi").map((b) => ({ ...b, peserta: p })),
+    );
 
     const kirimTolak = (e) => {
         e.preventDefault();
@@ -221,25 +229,51 @@ export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, 
                                                 <td className="px-2 py-1 border border-gray-400 text-center font-bold">B</td>
                                                 <td colSpan={5} className="px-2 py-1 border border-gray-400 font-bold">AKOMODASI ({spj.jumlah_malam} malam)</td>
                                             </tr>
-                                            <tr>
+                                            {akomodasi.length === 0 ? (
+                                                <tr>
+                                                    <td className="px-2 py-1 border border-gray-400"></td>
+                                                    <td colSpan={5} className="px-2 py-2 border border-gray-400 text-xs text-gray-600">
+                                                        <em>Belum ada nota akomodasi yang divalidasi.</em> Batas penginapan:
+                                                        <ul className="mt-1 space-y-0.5">
+                                                            {pesertas.map((p) => (
+                                                                <li key={p.karyawan_id}>
+                                                                    • {p.nama}:{" "}
+                                                                    {p.batas_penginapan === null
+                                                                        ? "tarif penginapan belum ada (validasi manual Finance)"
+                                                                        : `${formatRupiah(p.tarif_penginapan)} x ${spj.jumlah_malam} malam = ${formatRupiah(p.batas_penginapan)}`}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                akomodasi.map((b, i) => (
+                                                    <tr key={b.id}>
+                                                        <td className="px-2 py-1 border border-gray-400 text-center">{i + 1}</td>
+                                                        <td className="px-2 py-1 border border-gray-400">
+                                                            {b.label_jenis} {b.peserta.nama}
+                                                            {b.jumlah_malam ? ` (${b.jumlah_malam} malam)` : ""}
+                                                            {b.keterangan && <span className="block text-xs text-gray-500">{b.keterangan}</span>}
+                                                        </td>
+                                                        <td className="px-2 py-1 border border-gray-400 text-center whitespace-nowrap">{formatTanggal(b.tanggal)}</td>
+                                                        <td className="px-2 py-1 border border-gray-400 text-right tabular-nums">
+                                                            {b.jumlah_malam ? formatRupiah(b.nominal_dibayar / b.jumlah_malam) : "-"}
+                                                        </td>
+                                                        <td className="px-2 py-1 border border-gray-400 text-right tabular-nums">{formatRupiah(b.nominal_dibayar)}</td>
+                                                        <td className="px-2 py-1 border border-gray-400 text-xs">
+                                                            {b.peserta.rekening ? `Reimburse // ${b.peserta.rekening} (${b.peserta.nama})` : "Reimburse"}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                            <tr className="font-bold">
+                                                <td colSpan={4} className="px-2 py-1 border border-gray-400 text-right">TOTAL AKOMODASI</td>
+                                                <td className="px-2 py-1 border border-gray-400 text-right tabular-nums">{formatRupiah(spj.total_akomodasi)}</td>
                                                 <td className="px-2 py-1 border border-gray-400"></td>
-                                                <td colSpan={5} className="px-2 py-2 border border-gray-400 text-xs text-gray-600">
-                                                    <em>Diisi lewat reimburse setelah perjalanan.</em> Batas penginapan:
-                                                    <ul className="mt-1 space-y-0.5">
-                                                        {pesertas.map((p) => (
-                                                            <li key={p.karyawan_id}>
-                                                                • {p.nama}:{" "}
-                                                                {p.batas_penginapan === null
-                                                                    ? "tarif penginapan belum ada (validasi manual Finance)"
-                                                                    : `${formatRupiah(p.tarif_penginapan)} x ${spj.jumlah_malam} malam = ${formatRupiah(p.batas_penginapan)}`}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </td>
                                             </tr>
                                             <tr className="font-bold bg-indigo-50">
                                                 <td colSpan={4} className="px-2 py-2 border border-gray-400 text-right">TOTAL</td>
-                                                <td className="px-2 py-2 border border-gray-400 text-right tabular-nums">{formatRupiah(spj.total_uang_harian)}</td>
+                                                <td className="px-2 py-2 border border-gray-400 text-right tabular-nums">{formatRupiah(spj.total)}</td>
                                                 <td className="px-2 py-2 border border-gray-400"></td>
                                             </tr>
                                             <tr>
@@ -256,8 +290,12 @@ export default function Show({ spj, pesertas = [], approvals = [], bisaSetujui, 
                                 </p>
                             </Kartu>
 
+                            {["Disetujui", "Selesai"].includes(spj.status) && (
+                                <NotaReimburse spj={spj} pesertas={pesertas} bisaValidasi={bisaValidasiNota} jenisBiaya={jenisBiaya} />
+                            )}
+
                             <div className="p-4 rounded border border-dashed text-xs text-gray-500 bg-white">
-                                Pembayaran uang harian, nota & reimburse, risalah, dan PDF SPJ tersedia di tahap berikutnya.
+                                Pencatatan pembayaran & bukti transfer serta risalah tersedia di tahap berikutnya.
                             </div>
                         </div>
 

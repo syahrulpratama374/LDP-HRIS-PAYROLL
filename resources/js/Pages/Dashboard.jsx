@@ -111,7 +111,7 @@ function StatusPayroll({ status }) {
     );
 }
 
-export default function Dashboard({ kpi, sebaranDepartemen, komposisiPayroll, pending, jumlahPending, pengumuman, pintasan, aksiUtama }) {
+export default function Dashboard({ kpi, sebaranDepartemen, komposisiPayroll, pending, jumlahPending, pengumuman, pintasan, aksiUtama, spjReimburse = null }) {
     const { auth } = usePage().props;
     const user = auth.user;
     const namaDepan = (user.karyawan?.nama_lengkap || user.name || "").split(" ")[0];
@@ -213,6 +213,9 @@ export default function Dashboard({ kpi, sebaranDepartemen, komposisiPayroll, pe
                             )}
                         </Kartu>
                     </section>
+
+                    {/* ===== NOTA & SELISIH PENGINAPAN SPJ (HC, Finance, Admin) ===== */}
+                    {spjReimburse && <PanelSpjReimburse data={spjReimburse} />}
 
                     {/* ===== OPERASIONAL & PENGUMUMAN ===== */}
                     <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -321,6 +324,57 @@ export default function Dashboard({ kpi, sebaranDepartemen, komposisiPayroll, pe
                 </div>
             </div>
         </AdminLayout>
+    );
+}
+
+function PanelSpjReimburse({ data }) {
+    return (
+        <Kartu className="p-6">
+            <JudulKartu
+                judul="SPJ: Nota & Selisih Penginapan"
+                sub={`Tahun ${data.tahun} · ${data.peringatanTahunIni} peringatan (di atas tarif), ${data.infoTahunIni} info (di bawah tarif)`}
+                aksi={
+                    <Link href={data.urlRekap} className="text-xs font-semibold text-[#431D6D] hover:text-[#2A164E] whitespace-nowrap">
+                        Rekap per provinsi →
+                    </Link>
+                }
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <Link
+                    href={data.urlDaftar}
+                    className="lg:col-span-3 rounded-xl border border-slate-200/70 p-4 hover:border-[#431D6D]/30 transition"
+                >
+                    <div className="text-xs text-slate-500">Nota menunggu validasi Finance</div>
+                    <div className={`text-3xl font-bold mt-1 ${data.notaMenunggu > 0 ? "text-amber-600" : "text-slate-800"}`}>{data.notaMenunggu}</div>
+                </Link>
+                <div className="lg:col-span-9">
+                    <div className="text-xs font-semibold text-[#2A164E] mb-2">Peringatan terbaru: nota penginapan di atas tarif</div>
+                    {data.peringatanTerbaru.length ? (
+                        <ul className="divide-y divide-slate-100 text-sm">
+                            {data.peringatanTerbaru.map((k) => (
+                                <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                                    <div>
+                                        <span className="font-medium text-slate-800">{k.peserta}</span>
+                                        <span className="text-slate-400"> · {k.provinsi} · {k.kategori_tarif}</span>
+                                        <div className="text-[11px] text-slate-400">
+                                            {formatRupiah(k.nota_per_malam)}/malam vs tarif {formatRupiah(k.tarif_per_malam)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-semibold text-red-700">+{k.persen}%</span>
+                                        <Link href={route("spj.show", k.spj_id)} className="text-xs font-semibold text-[#431D6D] hover:text-[#2A164E] whitespace-nowrap">
+                                            {k.nomor_surat ?? "Lihat"} →
+                                        </Link>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <KosongKecil teks="Belum ada nota penginapan di atas tarif." />
+                    )}
+                </div>
+            </div>
+        </Kartu>
     );
 }
 

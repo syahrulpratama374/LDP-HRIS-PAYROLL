@@ -30,4 +30,9 @@ class SpjPeserta extends Model
     {
         return $this->belongsTo(Karyawan::class);
     }
+
+    public function biayas()
+    {
+        return $this->hasMany(SpjBiaya::class)->orderBy('tanggal')->orderBy('id');
+    }
 }

@@ -15,6 +15,9 @@ use App\Services\Spj\OtorisasiApprovalSpj;
 use App\Services\Spj\RekeningSpj;
 use App\Services\Spj\SpjKalkulator;
 use App\Services\Spj\SpjPdfService;
+use App\Services\Spj\RekapSelisihSpjService;
+use App\Services\Spj\ReimburseSpjService;
+use App\Models\SpjBiaya;
 use App\Support\Terbilang;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +42,7 @@ class SpjController extends Controller
         private SpjKalkulator $kalkulator,
         private OtorisasiApprovalSpj $otorisasi,
         private SpjPdfService $pdfService,
+        private ReimburseSpjService $reimburse,
     ) {}
 
     public function index(Request $request)
@@ -98,11 +102,15 @@ class SpjController extends Controller
         $user = $request->user();
         abort_unless($this->bolehLihat($user, $spj), 403, 'Anda tidak berhak melihat SPJ ini.');
 
-        $spj->load(['pesertas', 'pembuat:id,name', 'unitPenerbit:id,kode,nama',
+        $spj->load(['pesertas.biayas.pengunggah:id,name', 'pesertas.biayas.validator:id,name', 'pesertas.biayas.selisih',
+            'pembuat:id,name', 'unitPenerbit:id,kode,nama',
             'approvals.role:id,nama_role', 'approvals.jabatan:id,nama_jabatan',
             'approvals.userAktual.karyawan:id,user_id,nama_lengkap', 'approvals.atasNama:id,nama_lengkap']);
         $langkahAktif = $spj->approvals->firstWhere('status', SpjApproval::MENUNGGU);
         $cek = $this->otorisasi->periksa($spj, $user, $langkahAktif);
+        // TOTAL = uang harian + reimburse yang sudah divalidasi (sama dengan PDF)
+        $totalAkomodasi = (float) $spj->pesertas->flatMap->biayas->where('status', SpjBiaya::DIVALIDASI)->sum('nominal_dibayar');
+        $totalSemua = (float) $spj->total_uang_harian + $totalAkomodasi;
 
         return Inertia::render('PerjalananDinas/Show', [
             'spj' => [
@@ -123,7 +131,9 @@ class SpjController extends Controller
                 'tanggal_terbit' => $spj->tanggal_terbit?->toDateTimeString(),
                 'catatan_revisi' => $spj->catatan_revisi,
                 'total_uang_harian' => (float) $spj->total_uang_harian,
-                'terbilang' => Terbilang::rupiah((float) $spj->total_uang_harian),
+                'total_akomodasi' => $totalAkomodasi,
+                'total' => $totalSemua,
+                'terbilang' => Terbilang::rupiah($totalSemua),
             ],
             'pesertas' => $spj->pesertas->map(fn ($p) => [
                 'karyawan_id' => $p->karyawan_id,
@@ -136,6 +146,35 @@ class SpjController extends Controller
                 'tarif_penginapan' => $p->tarif_penginapan === null ? null : (float) $p->tarif_penginapan,
                 'batas_penginapan' => $p->batas_penginapan === null ? null : (float) $p->batas_penginapan,
                 'rekening' => RekeningSpj::untuk($user, $p->rekening_encrypted, $p->karyawan_id),
+                // Nota & reimburse (B6)
+                'id' => $p->id,
+                'bisa_unggah' => $this->reimburse->bolehUnggah($user, $spj, $p),
+                'penginapan_terpakai' => $this->reimburse->penginapanTerpakai($p),
+                'reimburse_dibayar' => (float) $p->biayas->where('status', SpjBiaya::DIVALIDASI)->sum('nominal_dibayar'),
+                'biayas' => $p->biayas->map(fn (SpjBiaya $b) => [
+                    'id' => $b->id,
+                    'jenis' => $b->jenis,
+                    'label_jenis' => $b->labelJenis(),
+                    'tanggal' => $b->tanggal,
+                    'keterangan' => $b->keterangan,
+                    'jumlah_malam' => $b->jumlah_malam,
+                    'nominal_nota' => (float) $b->nominal_nota,
+                    'nominal_dibayar' => $b->nominal_dibayar === null ? null : (float) $b->nominal_dibayar,
+                    'status' => $b->status,
+                    'catatan' => $b->catatan,
+                    'diunggah_oleh' => $b->pengunggah?->name,
+                    'divalidasi_oleh' => $b->validator?->name,
+                    'divalidasi_pada' => $b->divalidasi_pada?->toDateTimeString(),
+                    'selisih' => $b->selisih ? [
+                        'tingkat' => $b->selisih->tingkat,
+                        'persen' => (float) $b->selisih->persen,
+                        'nota_per_malam' => (float) $b->selisih->nota_per_malam,
+                        'tarif_per_malam' => (float) $b->selisih->tarif_per_malam,
+                    ] : null,
+                    'pratinjau' => $b->status === SpjBiaya::MENUNGGU && $this->reimburse->bolehValidasi($user)
+                        ? $this->reimburse->pratinjau($b->setRelation('peserta', $p)) : null,
+                    'bisa_hapus' => $this->reimburse->bolehHapus($user, $b->setRelation('peserta', $p->setRelation('spj', $spj))),
+                ])->values(),
             ])->values(),
             'approvals' => $spj->approvals->map(fn (SpjApproval $a) => [
                 'id' => $a->id,
@@ -158,6 +197,25 @@ class SpjController extends Controller
             'atasNama' => $cek['atas_nama']?->nama_lengkap,
             'bisaUbah' => $spj->bisaDiubahOleh($user),
             'bisaCetak' => filled($spj->nomor_surat),
+            'bisaValidasiNota' => $spj->status === Spj::STATUS_DISETUJUI && $this->reimburse->bolehValidasi($user),
+            'jenisBiaya' => SpjBiaya::JENIS,
+        ]);
+    }
+
+    /** Rekap selisih nota penginapan vs tarif per provinsi (Admin, HC, Finance). */
+    public function rekapSelisih(Request $request, RekapSelisihSpjService $rekap)
+    {
+        abort_unless(in_array((int) $request->user()->role_id, RekapSelisihSpjService::ROLE_LIHAT, true), 403,
+            'Rekap selisih SPJ hanya untuk HC, Finance, dan Admin.');
+        $tahun = (int) ($request->input('tahun') ?: now()->year);
+        $provinsi = $request->input('provinsi') ?: null;
+        $tingkat = in_array($request->input('tingkat'), ['peringatan', 'info'], true) ? $request->input('tingkat') : null;
+
+        return Inertia::render('PerjalananDinas/RekapSelisih', [
+            'tahun' => $tahun,
+            'filter' => ['provinsi' => $provinsi, 'tingkat' => $tingkat],
+            'perProvinsi' => $rekap->perProvinsi($tahun),
+            'kejadian' => $rekap->kejadian($tahun, $provinsi, $tingkat),
         ]);
     }
 

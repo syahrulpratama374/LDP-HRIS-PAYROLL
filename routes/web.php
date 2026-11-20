@@ -81,6 +81,13 @@ Route::middleware(['auth', 'verified', 'dynamic.role'])->group(function () {
     // Akses lewat menu 'spj.index'; aturan per aksi ditegakkan di controller.
     Route::prefix('perjalanan-dinas')->name('spj.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Spj\SpjController::class, 'index'])->name('index');
+        Route::get('/rekap-selisih', [\App\Http\Controllers\Spj\SpjController::class, 'rekapSelisih'])->name('rekap-selisih');
+        // Nota & reimburse (B6)
+        Route::post('/{spj}/nota', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'store'])->name('nota.store');
+        Route::get('/nota/{biaya}/berkas', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'berkas'])->name('nota.berkas');
+        Route::post('/nota/{biaya}/validasi', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'validasi'])->name('nota.validasi');
+        Route::post('/nota/{biaya}/tolak', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'tolak'])->name('nota.tolak');
+        Route::delete('/nota/{biaya}', [\App\Http\Controllers\Spj\SpjBiayaController::class, 'destroy'])->name('nota.destroy');
         Route::get('/buat', [\App\Http\Controllers\Spj\SpjController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Spj\SpjController::class, 'store'])->name('store');
         Route::post('/hitung', [\App\Http\Controllers\Spj\SpjController::class, 'hitung'])->name('hitung');

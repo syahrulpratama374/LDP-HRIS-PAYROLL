@@ -95,6 +95,8 @@ class MenuSeeder extends Seeder
             ['parent_id' => $masterDataGroup, 'title' => 'Master PTKP', 'route_name' => 'ptkp.index', 'order' => 6],
             ['parent_id' => $masterDataGroup, 'title' => 'Master Tarif TER', 'route_name' => 'tarif-ter.index', 'order' => 7],
             ['parent_id' => $masterDataGroup, 'title' => 'Master Tarif SPJ', 'route_name' => 'tarif-spj.index', 'order' => 9],
+            // Rekap nota penginapan vs tarif; role dibatasi controller (Admin, HC, Finance)
+            ['parent_id' => $masterDataGroup, 'title' => 'Rekap Selisih SPJ', 'route_name' => 'spj.rekap-selisih', 'order' => 10],
         ];
         foreach ($subMaster as $m) DB::table('menus')->insert(array_merge($m, ['created_at' => now(), 'updated_at' => now()]));
 
@@ -143,12 +145,14 @@ class MenuSeeder extends Seeder
                 'karyawan.index', 'absensi.index', 'jadwal-shift.index', 'pengumuman.index', 'admin.sp.index',
                 'departemen.index', 'jabatan.index', 'golongan.index', 'shift.index', 'master-cuti.index', 'hc.cuti.index',
                 'template.index', 'layout.index', 'admin.ticket.index', 'admin.aset.index', 'tarif-spj.index',
+                'spj.rekap-selisih',
             ]),
             // Finance: ESS + kasbon + payroll + master komponen/PTKP/TER
             4 => array_merge($ess, [
                 'admin.pinjaman.index', 'admin.payroll.index', 'admin.komponen.index', 'admin.komponen.karyawan.index',
                 'ptkp.index', 'tarif-ter.index', 'admin.spj.index', 'admin.lembur.index', 'karyawan.index',
                 'tarif-spj.index', // lihat saja; ubah dibatasi controller untuk HC & Admin
+                'spj.rekap-selisih',
             ]),
             // Supervisor: ESS + persetujuan bawahan (controller membatasi ke atasan_id)
             5 => array_merge($ess, [
